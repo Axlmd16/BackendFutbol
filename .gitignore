@@ -1,0 +1,86 @@
+# ---------------------------------------------
+# Python
+# ---------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales
+.env
+.venv/
+venv/
+ENV/
+
+# Archivos temporales
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Configuración y credenciales
+*.env
+.env.*
+!example.env
+
+# ---------------------------------------------
+# FastAPI / Uvicorn
+# ---------------------------------------------
+# Archivos generados por uvicorn
+*.pid
+
+# ---------------------------------------------
+# Alembic (migraciones)
+# ---------------------------------------------
+alembic/__pycache__/
+alembic/versions/*.pyc
+
+# Si generas archivos .py~ o backups
+*~
+
+# ---------------------------------------------
+# SQLite local (si usas)
+*.sqlite
+*.sqlite3
+
+# ---------------------------------------------
+# IDEs
+# ---------------------------------------------
+# VSCode
+.vscode/
+
+# Pycharm / Jetbrains
+.idea/
+*.iml
+
+# ---------------------------------------------
+# Dependencias
+# ---------------------------------------------
+pip-wheel-metadata/
+pip-log.txt
+
+# ---------------------------------------------
+# Pruebas / Pytest
+# ---------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+
+# ---------------------------------------------
+# Docker
+# ---------------------------------------------
+/data/
+docker-data/
+*.pid
+
+# ---------------------------------------------
+# Logs y cachés
+# ---------------------------------------------
+logs/
+.cache/
+*.log
