@@ -1,8 +1,5 @@
 # Importar Base primero
 from app.models.base import BaseModel
-
-# Importar todos los modelos para que SQLAlchemy los registre
-from app.models.user import User
 from app.models.athlete import Athlete
 from app.models.evaluator import Evaluator
 from app.models.evaluation import Evaluation
@@ -17,7 +14,6 @@ from app.models.technical_assessment import TechnicalAssessment
 # Exportar todos los modelos
 __all__ = [
     "BaseModel",
-    "User",
     "Athlete",
     "Evaluator",
     "Evaluation",

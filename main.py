@@ -11,7 +11,8 @@ from app.core.docs import get_openapi_config, get_tags_metadata
 from app.models import *  # noqa: F401, F403
 # from app.core.middleware import setup_cors, ErrorHandlerMiddleware, LoggingMiddleware
 from app.core.scalar_docs import setup_scalar_docs
-from app.services.routers import user_router
+
+# from app.services.routers import user_router
 from app.schemas.response import ResponseSchema
 
 # Configuración de logging
@@ -88,7 +89,7 @@ def create_application() -> FastAPI:
     
     # Routers
     API_PREFIX = "/api/v1"
-    app.include_router(user_router, prefix=API_PREFIX)
+    # app.include_router(user_router, prefix=API_PREFIX)
     
     # Endpoints base
     @app.get("/", include_in_schema=False)
