@@ -13,3 +13,5 @@ dependencies = [
     "python-jose[cryptography]>=3.5.0",
     "sqlalchemy>=2.0.44",
 ]
+[tool.watchfiles]
+ignore = ["**/__pycache__/**"]

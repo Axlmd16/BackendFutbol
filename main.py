@@ -8,6 +8,7 @@ import sys
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.docs import get_openapi_config, get_tags_metadata
+from app.models import *  # noqa: F401, F403
 # from app.core.middleware import setup_cors, ErrorHandlerMiddleware, LoggingMiddleware
 from app.core.scalar_docs import setup_scalar_docs
 from app.services.routers import user_router
