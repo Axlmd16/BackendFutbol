@@ -3,6 +3,8 @@ from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 class Statistic(BaseModel):
+    """Perfil estadistico del atleta con metricas fisicas y de juego."""
+
     __tablename__ = "statistics"
     
     speed = Column(Float, nullable=True)

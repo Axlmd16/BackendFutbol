@@ -1,13 +1,19 @@
+"""Esquemas base compartidos para respuestas y mapeo ORM."""
+
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
+
 class BaseSchema(BaseModel):
-    """Schema base con configuración común"""
+    """Configura conversión desde ORM y sirve como base para otros schemas."""
+
     model_config = ConfigDict(from_attributes=True)
 
+
 class BaseResponseSchema(BaseSchema):
-    """Schema para respuestas que incluyen timestamps"""
+    """Incluye identificador, timestamps y flag de actividad para respuestas estándar."""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
