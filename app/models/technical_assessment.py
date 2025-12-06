@@ -3,6 +3,8 @@ from app.models.test import Test
 from app.models.enums.scale import Scale
 
 class TechnicalAssessment(Test):
+    """Evaluacion tecnica del jugador usando escalas cualitativas por habilidad."""
+
     __tablename__ = "technical_assessments"
     
     id = Column(Integer, ForeignKey("tests.id"), primary_key=True)

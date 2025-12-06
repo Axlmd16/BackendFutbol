@@ -10,16 +10,16 @@ logger = logging.getLogger(__name__)
 ModelType = TypeVar("ModelType", bound=BaseModel)
 
 class BaseDAO(Generic[ModelType]):
-    """
-    DAO Genérico con TODAS las operaciones CRUD
-    Cualquier DAO específico hereda de esta clase
-    NO necesita interfaces porque Python usa duck typing
+    """DAO generico con CRUD, soft delete y utilidades de busqueda ordenada.
+
+    Se comparte entre todos los DAO concretos para no duplicar logica y
+    centralizar manejo de sesion, errores y filtros de activo.
     """
     
     def __init__(self, model: Type[ModelType]):
         self.model = model
     
-    # ==================== OPERACIONES BÁSICAS ====================
+    # OPERACIONES BASICAS CRUD
     
     def get_all(
         self, 
@@ -123,7 +123,7 @@ class BaseDAO(Generic[ModelType]):
             logger.error(f"Error deleting {self.model.__name__} {id}: {str(e)}")
             raise DatabaseException(f"Error al eliminar registro")
     
-    # ==================== OPERACIONES AVANZADAS ====================
+    # OPERACIONES AVANZADAS
     
     def get_by_field(
         self, 

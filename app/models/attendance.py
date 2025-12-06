@@ -3,6 +3,8 @@ from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 class Attendance(BaseModel):
+    """Registro de asistencia por atleta con hora, presencia y justificacion."""
+
     __tablename__ = "attendances"
     
     date = Column(DateTime, nullable=False, index=True)

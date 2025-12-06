@@ -3,6 +3,8 @@ from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 class Athlete(BaseModel):
+    """Deportista con datos de identificacion y relaciones a pruebas y estadisticas."""
+
     __tablename__ = "athletes"
     
     first_name = Column(String(100), nullable=False)

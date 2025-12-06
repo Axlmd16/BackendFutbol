@@ -2,6 +2,8 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Float
 from app.models.test import Test
 
 class YoyoTest(Test):
+    """Prueba Yo-Yo para capacidad aerobia con calculo de distancia y VO2."""
+
     __tablename__ = "yoyo_tests"
     
     id = Column(Integer, ForeignKey("tests.id"), primary_key=True)
