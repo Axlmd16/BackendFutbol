@@ -3,6 +3,8 @@ from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 class Evaluator(BaseModel):
+    """Evaluador responsable de las evaluaciones y asistencias."""
+
     __tablename__ = "evaluators"
     
     first_name = Column(String(100), nullable=False)

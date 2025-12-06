@@ -3,6 +3,8 @@ from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 class Test(BaseModel):
+    """Prueba base polimorfica asociada a una evaluacion y un atleta."""
+
     __tablename__ = "tests"
     
     type = Column(String(50))

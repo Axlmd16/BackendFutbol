@@ -3,6 +3,8 @@ from sqlalchemy.sql import func
 from app.core.database import Base
 
 class BaseModel(Base):
+    """Base comun para todas las entidades con campos de auditoria y activo."""
+
     __abstract__ = True
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)

@@ -3,6 +3,8 @@ from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 class Evaluation(BaseModel):
+    """Evento de evaluacion con fecha, lugar y observaciones asociadas a un evaluador."""
+
     __tablename__ = "evaluations"
     
     # Atributos de la evaluacion
