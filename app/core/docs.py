@@ -51,10 +51,6 @@ def get_tags_metadata() -> list[Dict[str, Any]]:
     """Metadata para agrupar endpoints"""
     return [
         {
-            "name": "Users",
-            "description": "Operaciones relacionadas con usuarios. Incluye registro, autenticación y gestión de perfiles."
-        },
-        {
             "name": "Health",
             "description": "Endpoints para verificar el estado de la API"
         }
