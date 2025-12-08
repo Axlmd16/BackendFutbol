@@ -8,6 +8,7 @@ from app.services.routers.sprint_test_router import router as sprint_test_router
 from app.services.routers.endurance_test_router import router as endurance_test_router
 from app.services.routers.yoyo_test_router import router as yoyo_test_router
 from app.services.routers.technical_assessment_router import router as technical_assessment_router
+from app.services.routers.inscription_router import router as inscription_router
 
 __all__ = [
 	"athlete_router",
