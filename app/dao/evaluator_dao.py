@@ -6,28 +6,33 @@ from app.dao.base import BaseDAO
 from app.models.evaluator import Evaluator
 
 
+# DAO específico para evaluadores
 class EvaluatorDAO(BaseDAO[Evaluator]):
     """DAO específico para evaluadores."""
-
+   
+    # Inicializador
     def __init__(self):
         super().__init__(Evaluator)
+    
 
+    # Obtener un evaluador por su DNI
     def get_by_dni(
         self,
         db: Session,
         dni: str,
         only_active: bool = True
     ) -> Optional[Evaluator]:
-        """Obtener un evaluador por DNI sin exponer lógica de búsqueda genérica."""
         return self.get_by_field(db, "dni", dni, only_active)
 
+
+
+    # Obtener múltiples evaluadores por una lista de IDs
     def get_by_ids(
         self,
         db: Session,
         evaluator_ids: List[int],
         only_active: bool = True
     ) -> List[Evaluator]:
-        """Recuperar múltiples evaluadores (útil para precargar sujetos ligados a tokens)."""
         if not evaluator_ids:
             return []
 
