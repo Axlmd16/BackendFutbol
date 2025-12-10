@@ -2,7 +2,6 @@
 from app.models.base import BaseModel
 from app.models.athlete import Athlete
 from app.models.representative import Representative
-from app.models.evaluator import Evaluator
 from app.models.evaluation import Evaluation
 from app.models.test import Test
 from app.models.attendance import Attendance
@@ -11,13 +10,14 @@ from app.models.sprint_test import SprintTest
 from app.models.endurance_test import EnduranceTest
 from app.models.yoyo_test import YoyoTest
 from app.models.technical_assessment import TechnicalAssessment
+from app.models.user import User
+from app.models.account import Account
 
 # Exportar todos los modelos
 __all__ = [
     "BaseModel",
     "Athlete",
     "Representative",
-    "Evaluator",
     "Evaluation",
     "Test",
     "Attendance",
@@ -26,4 +26,6 @@ __all__ = [
     "EnduranceTest",
     "YoyoTest",
     "TechnicalAssessment",
+    "User",
+    "Account",
 ]
