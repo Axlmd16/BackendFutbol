@@ -13,14 +13,6 @@ class Account(BaseModel):
     email = Column(String(150), unique=True, index=True, nullable=False)
     password = Column(String(255), nullable=False)
     role = Column(SQLEnum(Role, name="role_enum"), nullable=False)
-
-    # Atributos para seguridad y control de acceso
-    failed_attempts = Column(Integer, nullable=False, default=0)
-    is_locked = Column(Boolean, nullable=False, default=False)
-    locked_until = Column(DateTime(timezone=True), nullable=True)
-    last_login = Column(DateTime(timezone=True), nullable=True)
-    last_activity = Column(DateTime(timezone=True), nullable=True)
-
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     
     # Relacioneses
