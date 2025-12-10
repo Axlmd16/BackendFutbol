@@ -1,6 +1,7 @@
 # Importar Base primero
 from app.models.base import BaseModel
 from app.models.athlete import Athlete
+from app.models.representative import Representative
 from app.models.evaluator import Evaluator
 from app.models.evaluation import Evaluation
 from app.models.test import Test
@@ -15,6 +16,7 @@ from app.models.technical_assessment import TechnicalAssessment
 __all__ = [
     "BaseModel",
     "Athlete",
+    "Representative",
     "Evaluator",
     "Evaluation",
     "Test",
