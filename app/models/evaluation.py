@@ -14,11 +14,11 @@ class Evaluation(BaseModel):
     name = Column(String(100), nullable=False)
     observations = Column(Text, nullable=True)
     
-    evaluator_id = Column(Integer, ForeignKey("evaluators.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Relaciones
-    evaluator = relationship(
-        "Evaluator", 
+    user = relationship(
+        "User", 
         back_populates="evaluations"
     )
     
@@ -29,4 +29,4 @@ class Evaluation(BaseModel):
     )
     
     def __repr__(self):
-        return f"<Evaluation(id={self.id}, name='{self.name}', date={self.date}, evaluator_id={self.evaluator_id})>"
+        return f"<Evaluation(id={self.id}, name='{self.name}', date={self.date}, user_id={self.user_id})>"
