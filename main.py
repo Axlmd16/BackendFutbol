@@ -15,7 +15,6 @@ from app.core.scalar_docs import setup_scalar_docs
 from app.schemas.response import ResponseSchema
 from app.services.routers import athlete_router
 from app.services.routers import test_router
-from app.services.routers import evaluator_router
 from app.services.routers import evaluation_router
 from app.services.routers import attendance_router
 from app.services.routers import statistic_router
@@ -23,7 +22,6 @@ from app.services.routers import sprint_test_router
 from app.services.routers import endurance_test_router
 from app.services.routers import yoyo_test_router
 from app.services.routers import technical_assessment_router
-from app.services.routers import inscription_router
 
 # Configuración de logging
 logging.basicConfig(
@@ -101,7 +99,6 @@ def create_application() -> FastAPI:
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
     app.include_router(test_router, prefix=API_PREFIX)
-    app.include_router(evaluator_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(attendance_router, prefix=API_PREFIX)
     app.include_router(statistic_router, prefix=API_PREFIX)
@@ -109,7 +106,6 @@ def create_application() -> FastAPI:
     app.include_router(endurance_test_router, prefix=API_PREFIX)
     app.include_router(yoyo_test_router, prefix=API_PREFIX)
     app.include_router(technical_assessment_router, prefix=API_PREFIX)
-    app.include_router(inscription_router, prefix=API_PREFIX)
     
     # Endpoints base
     @app.get("/", include_in_schema=False)
