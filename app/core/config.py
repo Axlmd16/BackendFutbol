@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     # Database
@@ -23,6 +23,17 @@ class Settings(BaseSettings):
     
     # CORS
     ALLOWED_ORIGINS: List[str] = ["*"]
+
+    # Email 
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
+    SMTP_TLS: bool = True
+
+    # Restricciones de correo institucional
+    INSTITUTIONAL_EMAIL_DOMAINS: List[str] = []
     
     @property
     def DATABASE_URL(self) -> str:
