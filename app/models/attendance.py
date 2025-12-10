@@ -11,7 +11,7 @@ class Attendance(BaseModel):
     time = Column(String(10), nullable=False)
     is_present = Column(Boolean, nullable=False, default=False)
     justification = Column(Text, nullable=True)
-    evaluator_dni = Column(String(20), nullable=False, index=True)  # Clave externa a Evaluator.dni
+    user_dni = Column(String(10), nullable=False, index=True)  # Clave externa a User.dni
     
     athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False, index=True)
     
