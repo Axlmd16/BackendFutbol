@@ -59,3 +59,24 @@ class AccountController:
         soft_delete: bool = True,
     ) -> bool:
         return self.account_dao.delete(db, account_id, soft_delete)
+    
+
+    #Permite obtener una cuenta por su email
+    def get_by_email(
+        self,
+        db: Session,
+        email: str,
+        *,
+        only_active: bool = True,
+    ) -> Optional[Account]:
+        return self.account_dao.get_by_email(db, email, only_active)
+
+
+    #Permite actualizar la contraseña de una cuenta
+    def update_password(
+        self,
+        db: Session,
+        account_id: int,
+        new_password_hash: str,
+    ) -> Optional[Account]:
+        return self.account_dao.update_password(db, account_id, new_password_hash)
