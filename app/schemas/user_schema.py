@@ -1,18 +1,18 @@
-"""Esquemas Pydantic para operaciones de usuario."""
+"""Pydantic schemas for user operations."""
 
 from pydantic import BaseModel, EmailStr, Field
 
 class AdminCreateUserRequest(BaseModel):
-    """Payload requerido para que un admin cree otro usuario."""
+    """Payload required for admin-created users."""
 
-    nombres: str = Field(..., min_length=2, max_length=100)
-    apellidos: str = Field(..., min_length=2, max_length=100)
-    correo_institucional: EmailStr = Field(..., description="Correo corporativo del usuario")
-    dni: str = Field(..., min_length=6, max_length=15, description="Documento de identidad sin caracteres especiales")
-    rol: str = Field(..., description="administrador o entrenador")
+    first_name: str = Field(..., min_length=2, max_length=100)
+    last_name: str = Field(..., min_length=2, max_length=100)
+    institutional_email: EmailStr = Field(..., description="Corporate email of the user")
+    dni: str = Field(..., min_length=10, max_length=10, description="Ecuadorian DNI (10 digits)")
+    role: str = Field(..., description="administrator or coach")
 
 class AdminCreateUserResponse(BaseModel):
-    """Datos mínimos de usuario y cuenta creados."""
+    """Minimal user/account data after creation."""
 
     user_id: int
     account_id: int

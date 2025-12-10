@@ -1,5 +1,8 @@
 import logging
+import secrets
+import string
 
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.dao.account_dao import AccountDAO
@@ -8,18 +11,11 @@ from app.models.account import Account
 from app.models.enums.rol import Role
 from app.schemas.user_schema import AdminCreateUserRequest, AdminCreateUserResponse
 from app.utils.exceptions import AlreadyExistsException, UnauthorizedException, ValidationException, DatabaseException
-from app.utils.security import (
-    generate_secure_password,
-    hash_password,
-    is_email_allowed,
-    normalize_role,
-    validate_ec_dni,
-    sanitize_email,
-    sanitize_text,
-)
+from app.utils.security import is_email_allowed, validate_ec_dni
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserController:
@@ -48,18 +44,14 @@ class UserController:
 
         requester = self._ensure_requester_is_admin(db, requester_account_id)
 
-        first_name = sanitize_text(payload.nombres, max_length=100)
-        last_name = sanitize_text(payload.apellidos, max_length=100)
-        email = sanitize_email(payload.correo_institucional)
+        first_name = (payload.first_name or "").strip()
+        last_name = (payload.last_name or "").strip()
+        email = (payload.institutional_email or "").strip().lower()
         dni = validate_ec_dni(payload.dni)
-        role_normalized = normalize_role(payload.rol)
+        role_normalized = (payload.role or "").strip().lower()
 
-        # 3) Validaciones 
         if not first_name or not last_name:
             raise ValidationException("Nombre y apellidos son requeridos")
-
-        if not dni or len(dni) < 6:
-            raise ValidationException("DNI inválido")
 
         allowed_domains = settings.INSTITUTIONAL_EMAIL_DOMAINS or None
         if not is_email_allowed(email, allowed_domains):
@@ -83,8 +75,8 @@ class UserController:
             raise AlreadyExistsException("Ya existe una cuenta con ese correo")
 
         # 5) Generar credenciales
-        temp_password = generate_secure_password()
-        hashed_password = hash_password(temp_password)
+        temp_password = self._generate_temp_password()
+        hashed_password = self._hash_password(temp_password)
 
         # 6) Guadar el usaurio y la cuenta
         new_user = self.user_dao.create(db, {
@@ -115,3 +107,13 @@ class UserController:
             email=new_account.email,
             role=new_account.role.value,
         )
+
+    def _generate_temp_password(self, length: int = 14) -> str:
+        """Genera contraseña temporal fuerte."""
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
+        length = max(12, min(length, 48))
+        return "".join(secrets.choice(alphabet) for _ in range(length))
+
+    def _hash_password(self, plain_password: str) -> str:
+        """Hashea contraseña con bcrypt."""
+        return pwd_context.hash(plain_password)
