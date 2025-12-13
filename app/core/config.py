@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: List[str] = ["*"]
     
+    # Microservice de usuarios
+    PERSON_MS_BASE_URL: str = "http://localhost:8096"
+    PERSON_MS_ADMIN_EMAIL: str = "admin@admin.com"
+    PERSON_MS_ADMIN_PASSWORD: str = "12345678"
+
+    
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
