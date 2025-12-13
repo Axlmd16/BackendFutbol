@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = True
 
     # Restricciones de correo institucional
-    INSTITUTIONAL_EMAIL_DOMAINS: List[str] = []
+    INSTITUTIONAL_EMAIL_DOMAINS: List[str] = ['@unl.edu.ec']
     
     @property
     def DATABASE_URL(self) -> str:

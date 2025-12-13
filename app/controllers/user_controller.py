@@ -37,12 +37,9 @@ class UserController:
     def admin_create_user(
         self,
         db: Session,
-        requester_account_id: int,
         payload: AdminCreateUserRequest
     ) -> AdminCreateUserResponse:
         """Crea un usuario y su cuenta"""
-
-        requester = self._ensure_requester_is_admin(db, requester_account_id)
 
         first_name = (payload.first_name or "").strip()
         last_name = (payload.last_name or "").strip()
@@ -78,7 +75,7 @@ class UserController:
         temp_password = self._generate_temp_password()
         hashed_password = self._hash_password(temp_password)
 
-        # 6) Guadar el usaurio y la cuenta
+        # 6) Guadar 
         new_user = self.user_dao.create(db, {
             "first_name": first_name,
             "last_name": last_name,

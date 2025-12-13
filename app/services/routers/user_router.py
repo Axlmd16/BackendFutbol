@@ -21,13 +21,11 @@ user_controller = UserController()
 def admin_create_user(
 	payload: AdminCreateUserRequest,
 	db: Session = Depends(get_db),
-	requester_account_id: int = Header(..., alias="X-Admin-Account-Id"),
 ):
-	"""Solo el administrador raíz puede crear nuevos usuarios administradores o entrenadores."""
+	"""Solo el administrador puede crear nuevos usuarios administradores o entrenadores."""
 	try:
 		result = user_controller.admin_create_user(
 			db=db,
-			requester_account_id=requester_account_id,
 			payload=payload,
 		)
 		return ResponseSchema(
