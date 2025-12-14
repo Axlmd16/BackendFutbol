@@ -6,49 +6,33 @@ from pydantic import BaseModel, EmailStr, Field, SecretStr
 
 from app.schemas.base_schema import BaseResponseSchema
 
-#Campos comunes para crear o actualizar cuentas
-class AccountBase(BaseModel):
-    email: EmailStr = Field(..., description="Correo institucional del usuario")
-    role: str = Field(..., description="Rol asignado")
 
-#Esquema para crear cuentas con contraseña requerida
-class AccountCreate(AccountBase):
-    password: str = Field(..., min_length=8)
-
-
-#Esquema para actualizar cuentas con campos opcionales
-class AccountUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    role: Optional[str] = None
-    password: Optional[str] = Field(None, min_length=8)
-
-
-#Esquema de respuesta para exponer cuentas
 class AccountResponse(BaseResponseSchema):
-    email: EmailStr
+    """Respuesta de cuenta de usuario."""
     role: str
     user_id: int
+    external_account_id: str
 
-#Credenciales de inicio de sesión
+
 class LoginRequest(BaseModel):
+    """Solicitud de inicio de sesión."""
     email: EmailStr
     password: SecretStr = Field(..., min_length=8)
 
 
-
-#Respuesta de inicio de sesión con tokens y rol
 class LoginResponse(BaseModel):
+    """Respuesta de inicio de sesión."""
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
     role: str
 
-#Solicitud para iniciar proceso de recuperación de contraseña
+
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    """Solicitud para iniciar proceso de recuperación de contraseña"""
+    external: str = Field(..., description="Identificador externo de la cuenta")
 
 
-#Solicitud para restablecer contraseña
 class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=32)
     new_password: SecretStr = Field(..., min_length=8)
