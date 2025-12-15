@@ -1,3 +1,5 @@
+"""Pruebas unitarias básicas para AccountController (en español)."""
+
 import pytest
 from unittest.mock import MagicMock
 

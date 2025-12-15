@@ -34,7 +34,7 @@ class _Account:
 
 @pytest.mark.asyncio
 async def test_login_success(client, monkeypatch):
-	""""Prueba el flujo de inicio de sesión exitoso."""
+	"""Prueba login exitoso: devuelve access y refresh tokens."""
 	
 	def fake_post(url, json, timeout):
 		"""Simula una llamada HTTP POST para el inicio de sesión."""
@@ -61,6 +61,8 @@ async def test_login_success(client, monkeypatch):
 	assert body["status"] == "success"
 	assert body["data"]["external_account_id"] == "ext-123"
 	assert "access_token" in body["data"]
+	assert body["data"].get("refresh_token")
+	assert body["data"].get("token_type") == "bearer"
 
 
 @pytest.mark.asyncio
@@ -132,3 +134,46 @@ async def test_reset_password_invalid_token(client):
 
 	assert resp.status_code == 400
 	assert "Token" in resp.json()["detail"] or resp.json()["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_refresh_tokens_success(client):
+	"""Prueba que /accounts/refresh devuelve nuevos tokens a partir de un refresh válido."""
+	refresh_token = account_router_module.auth.create_refresh_token(subject="2", role="Coach")
+
+	resp = await client.post(
+		"/api/v1/accounts/refresh",
+		json={"refresh_token": refresh_token},
+	)
+
+	assert resp.status_code == 200
+	body = resp.json()
+	assert body["status"] == "success"
+	assert body["data"].get("access_token")
+	assert body["data"].get("refresh_token")
+	assert body["data"].get("role") == "Coach"
+	assert body["data"].get("token_type") == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_refresh_tokens_invalid(client):
+	"""Prueba que un refresh token inválido devuelve 401."""
+	resp = await client.post(
+		"/api/v1/accounts/refresh",
+		json={"refresh_token": "token-invalido"},
+	)
+
+	assert resp.status_code == 401
+	body = resp.json()
+	assert "token" in body.get("detail", "").lower() or body.get("status") == "error"
+
+
+@pytest.mark.asyncio
+async def test_logout(client):
+	"""Prueba que /accounts/logout responde éxito lógico de cierre de sesión."""
+	resp = await client.post("/api/v1/accounts/logout")
+
+	assert resp.status_code == 200
+	body = resp.json()
+	assert body["status"] == "success"
+	assert body["data"].get("revoked") is True

@@ -28,6 +28,18 @@ class LoginResponse(BaseModel):
     role: str
 
 
+class RefreshRequest(BaseModel):
+    """Solicitud para refrescar tokens."""
+    refresh_token: str = Field(..., min_length=10)
+
+
+class RefreshResponse(BaseModel):
+    """Respuesta de refresco de tokens."""
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+
+
 class ForgotPasswordRequest(BaseModel):
     """Solicitud para iniciar proceso de recuperación de contraseña"""
     account_id: int = Field(..., ge=1, description="Identificador local de la cuenta")

@@ -1,4 +1,4 @@
-"""Utilities for JWT auth validation and issuance."""
+"""Utilities for JWT auth issuance and validation."""
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
@@ -55,7 +55,7 @@ def create_refresh_token(*, subject: str, role: str) -> str:
 
 
 def decode_and_validate_token(token: str, *, expected_type: Optional[str] = None) -> Dict[str, Any]:
-    """Decodifica y valida el token JWT (y opcionalmente su tipo)."""
+    """Decodifica y valida el token JWT; opcionalmente verifica tipo."""
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except ExpiredSignatureError:

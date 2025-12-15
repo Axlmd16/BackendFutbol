@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     TOKEN_EXPIRES: int = 3600
+    REFRESH_EXPIRES: int = 60 * 60 * 24 * 7  # 7 días
 
     # ================= CORS =================
     ALLOWED_ORIGINS: List[str] = ["*"]

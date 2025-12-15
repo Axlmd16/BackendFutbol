@@ -5,11 +5,11 @@ from typing import Dict
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from jose import jwt
 from sqlalchemy.orm import Session
 
 from app.client.person_auth import PersonAuthService
 from app.controllers.account_controller import AccountController
+from app.core import auth
 from app.core.config import settings
 from app.core.database import get_db
 from app.schemas.account_schema import (
@@ -17,6 +17,8 @@ from app.schemas.account_schema import (
 	ForgotPasswordRequest,
 	LoginRequest,
 	LoginResponse,
+	RefreshRequest,
+	RefreshResponse,
 	ResetPasswordRequest,
 )
 from app.schemas.response import ResponseSchema
@@ -28,18 +30,6 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 account_controller = AccountController()
 reset_tokens_store: Dict[str, Dict[str, str | datetime]] = {}
 person_auth_service = PersonAuthService()
-
-
-def _create_access_token(subject: str, *, role: str) -> str:
-	"""Crea un token de acceso JWT."""
-	expire = datetime.utcnow() + timedelta(seconds=settings.TOKEN_EXPIRES)
-	payload = {
-		"sub": subject,
-		"role": role,
-		"exp": expire,
-		"iat": datetime.utcnow(),
-	}
-	return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def _purge_reset_tokens() -> None:
@@ -88,10 +78,11 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no enlazada")
 
 	role = _role_value(account.role)
-	access_token = _create_access_token(subject=str(account.id), role=role)
+	access_token = auth.create_access_token(subject=str(account.id), role=role)
+	refresh_token = auth.create_refresh_token(subject=str(account.id), role=role)
 	login_response = LoginResponse(
 		access_token=access_token,
-		refresh_token=None,
+		refresh_token=refresh_token,
 		role=role,
 	)
 	return ResponseSchema(
@@ -102,6 +93,37 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 			"external_account_id": external,
 			"person_ms_token": ms_token,
 		},
+	)
+
+
+@router.post("/refresh", response_model=ResponseSchema)
+def refresh_tokens(payload: RefreshRequest):
+	"""Genera un nuevo access y refresh token a partir de un refresh válido."""
+	claims = auth.decode_and_validate_token(payload.refresh_token, expected_type="refresh")
+	account_id = str(claims["sub"])
+	role = claims["role"]
+
+	new_access = auth.create_access_token(subject=account_id, role=role)
+	new_refresh = auth.create_refresh_token(subject=account_id, role=role)
+	refresh_response = RefreshResponse(
+		access_token=new_access,
+		refresh_token=new_refresh,
+		token_type="bearer",
+	)
+	return ResponseSchema(
+		status="success",
+		message="Tokens refrescados",
+		data={**refresh_response.model_dump(), "role": role},
+	)
+
+
+@router.post("/logout", response_model=ResponseSchema)
+def logout():
+	"""Cierra sesión a nivel lógico; el cliente debe descartar tokens."""
+	return ResponseSchema(
+		status="success",
+		message="Logout exitoso. Tokens limpiados en cliente.",
+		data={"revoked": True},
 	)
 
 
