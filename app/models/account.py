@@ -1,25 +1,31 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, Enum as SQLEnum
+
 from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
-
 from app.models.enums.rol import Role
 
+
 class Account(BaseModel):
-    """Cuenta de usuario con datos de autenticacion y rol."""
+    """Cuenta de usuario en el club, enlazada a la cuenta del MS de usuarios."""
 
     __tablename__ = "accounts"
-    
-    email = Column(String(150), unique=True, index=True, nullable=False)
-    password = Column(String(255), nullable=False)
+
+    external_account_id = Column(String(36), unique=True, index=True, nullable=False)
     role = Column(SQLEnum(Role, name="role_enum"), nullable=False)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
-    
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
     # Relaciones
     user = relationship(
         "User",
-        back_populates="account"
+        back_populates="account",
     )
-    
+
     def __repr__(self):
-        return f"<Account(id={self.id}, email='{self.email}', role='{self.role.name}')>"
+        return f"<Account id={self.id} external_account_id={self.external_account_id} role={self.role}>"
