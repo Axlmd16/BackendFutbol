@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  app:
+    image: joseguaman1/users-docker:v1
+    container_name: springboot-app
+    depends_on:
+      mariadb:
+        condition: service_healthy 
+    ports:
+      - "8096:8096"
+    environment:
+      SPRING_APPLICATION_NAME: user
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/sportDB
+      SPRING_DATASOURCE_USERNAME: desarrollo
+      SPRING_DATASOURCE_PASSWORD: desarrollo
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.mariadb.jdbc.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4200,http://localhost
+      CORS_ALLOWED_METHODS: GET,POST,PUT,DELETE,OPTIONS
+      CORS_ALLOWED_HEADERS: "*"
+      CORS_ALLOW_CREDENTIALS: "true"
+      OTHERS_KEY: 1234567FDUCAMETB
+      SERVER_PORT: 8096
+
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb-db
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: sportDB
+      MARIADB_USER: desarrollo
+      MARIADB_PASSWORD: desarrollo
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    # AGREGA ESTO --------------------------
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # --------------------------------------
+
+volumes:
+  mariadb_data:

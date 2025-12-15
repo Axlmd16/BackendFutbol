@@ -1,8 +1,22 @@
-"""Security helpers: DNI validation and email rules."""
+"""Security helpers: DNI validation, email rules, and JWT authentication."""
 
 import re
 from typing import Iterable, Optional
+from pydantic import BaseModel
 from app.utils.exceptions import ValidationException
+
+
+class CurrentUser(BaseModel):
+    """
+    Modelo de usuario autenticado extraído del token JWT.
+    
+    Se utiliza para inyección de dependencias en endpoints protegidos.
+    """
+    id: int
+    email: str
+    role: str
+    external_id: Optional[str] = None
+    is_active: bool = True
 
 
 def validate_ec_dni(value: str) -> str:

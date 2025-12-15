@@ -127,3 +127,5 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+docker-compose.yml
