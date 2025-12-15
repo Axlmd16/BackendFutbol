@@ -125,5 +125,51 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 	)
 
 
+@router.post("/reset-password", response_model=ResponseSchema)
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+	"""Restablece la contraseña en el MS de personas usando el external guardado."""
+	try:
+		payload.validate_passwords()
+	except ValueError as exc:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+	_purge_reset_tokens()
+	token_data = reset_tokens_store.get(payload.token)
+	if not token_data:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token inválido o expirado")
+
+	if token_data["expires_at"] < datetime.utcnow():
+		reset_tokens_store.pop(payload.token, None)
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token expirado")
+
+	# Actualiza la contraseña en el MS de personas
+	try:
+		token = person_auth_service.token or asyncio.run(person_auth_service.login())
+		resp = httpx.post(
+			f"{settings.PERSON_MS_BASE_URL}/api/person/update-account",
+			headers={"Authorization": token},
+			json={
+				"external": token_data["external"],
+				"password": payload.new_password.get_secret_value(),
+			},
+			timeout=10.0,
+		)
+		resp.raise_for_status()
+	except httpx.HTTPStatusError as exc:
+		reset_tokens_store.pop(payload.token, None)
+		msg = exc.response.text if exc.response is not None else "No se pudo actualizar la contraseña en el servicio externo"
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+	except Exception as exc:
+		reset_tokens_store.pop(payload.token, None)
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error al comunicarse con el servicio de personas: {exc}")
+
+	reset_tokens_store.pop(payload.token, None)
+	return ResponseSchema(
+		status="success",
+		message="Contraseña restablecida correctamente",
+		data={"external": token_data["external"]},
+	)
+
+
 
 
