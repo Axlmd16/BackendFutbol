@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Float, String, Integer, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Float, String, Integer, ForeignKey, Enum as SQLEnum, Date
 
 from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
@@ -18,11 +18,10 @@ class Athlete(BaseModel):
     
     # Datos específicos del atleta
     type_athlete = Column(String(50), nullable=False)
-    date_of_birth = Column(String(10), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
     height = Column(Float, nullable=True)
     weight = Column(Float, nullable=True)
     sex = Column(SQLEnum(Sex, name="sex_enum"), nullable=False)
-
     
     representative_id = Column(
         Integer,
@@ -60,9 +59,7 @@ class Athlete(BaseModel):
     def age(self):
         if self.date_of_birth:
             today = datetime.date.today()
-            birth_date = datetime.datetime.strptime(self.date_of_birth, "%Y-%m-%d").date()
-            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-            return age
+            return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
         return None
     
     @property
