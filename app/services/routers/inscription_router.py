@@ -1,0 +1,38 @@
+"""Router para inscripción de deportistas UNL."""
+
+from app.controllers.athlete_controller import AthleteController
+from app.core.database import get_db
+from app.schemas.athlete_schema import AthleteInscriptionDTO
+from app.schemas.response import ResponseSchema
+from app.utils.exceptions import AppException
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session
+
+router = APIRouter(prefix="/inscription", tags=["Inscription"])
+athlete_controller = AthleteController()
+
+
+@router.post(
+    "/deportista",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar deportista UNL"
+)
+def register_athlete(inscription_data: AthleteInscriptionDTO, db: Session = Depends(get_db)):
+    try:
+        result = athlete_controller.register_athlete_unl(db, inscription_data)
+        return ResponseSchema(
+            status="success",
+            message="Deportista registrado exitosamente",
+            data={
+                "athlete_id": result.athlete_id,
+                "statistic_id": result.statistic_id,
+                "first_name": result.first_name,
+                "last_name": result.last_name,
+                "institutional_email": result.institutional_email
+            }
+        )
+    except AppException as app_exc:
+        return ResponseSchema(status="error", message=app_exc.message, data=None)
+    except Exception:
+        return ResponseSchema(status="error", message="Error al procesar la inscripción. Intente más tarde.", data=None)

@@ -9,6 +9,7 @@ from app.services.routers.yoyo_test_router import router as yoyo_test_router
 from app.services.routers.technical_assessment_router import router as technical_assessment_router
 from app.services.routers.user_router import router as user_router
 from app.services.routers.account_router import router as account_router
+from app.services.routers.inscription_router import router as inscription_router
 
 __all__ = [
 	"athlete_router",

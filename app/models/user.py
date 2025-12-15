@@ -1,34 +1,36 @@
-from sqlalchemy import Column, String, Enum as SQLEnum
+from sqlalchemy import Column, String
+
 from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
 
 class User(BaseModel):
-    """Usuario del sistema con datos personales y relacion a cuenta."""
-    
+    """Usuario del sistema asociado a una persona del MS de usuarios."""
+
     __tablename__ = "users"
-    
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
+
+    external_person_id = Column(String(36), unique=True, index=True, nullable=False)
+
+    full_name = Column(String(200), nullable=False)
     dni = Column(String(10), unique=True, index=True, nullable=False)
-    
+
     # Relaciones
     account = relationship(
         "Account",
         back_populates="user",
         uselist=False,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
-    
+
     evaluations = relationship(
         "Evaluation",
         back_populates="user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
-    
+
     @property
     def role(self):
         return self.account.role if self.account else None
 
     def __repr__(self):
-        return f"<User(id={self.id}, dni='{self.dni}', name='{self.first_name} {self.last_name}')>"
+        return f"<User id={self.id} dni={self.dni} full_name={self.full_name}>"

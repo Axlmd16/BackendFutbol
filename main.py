@@ -14,6 +14,7 @@ from app.core.scalar_docs import setup_scalar_docs
 
 from app.schemas.response import ResponseSchema
 from app.services.routers import athlete_router
+from app.services.routers import inscription_router
 from app.services.routers import test_router
 from app.services.routers import evaluation_router
 from app.services.routers import attendance_router
@@ -22,8 +23,6 @@ from app.services.routers import sprint_test_router
 from app.services.routers import endurance_test_router
 from app.services.routers import yoyo_test_router
 from app.services.routers import technical_assessment_router
-from app.services.routers import user_router
-from app.services.routers import account_router
 
 # Configuración de logging
 logging.basicConfig(
@@ -37,20 +36,20 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Eventos de ciclo de vida"""
-    logger.info("🚀 Starting application...")
+    logger.info("Starting application...")
     
     try:
         Base.metadata.create_all(bind=engine)
-        logger.info("✅ Database tables created")
+        logger.info("Database tables created")
     except Exception as e:
-        logger.error(f"❌ Error creating tables: {str(e)}")
+        logger.error(f" Error creating tables: {str(e)}")
     
-    logger.info(f"📊 Scalar Docs: http://{settings.APP_HOST}:{settings.APP_PORT}/scalar")
-    logger.info("✅ Application started")
+    logger.info(f"Scalar Docs: http://{settings.APP_HOST}:{settings.APP_PORT}/scalar")
+    logger.info("Application started")
     
     yield
     
-    logger.info("🛑 Shutting down...")
+    logger.info("Shutting down...")
 
 
 def create_application() -> FastAPI:
@@ -100,6 +99,7 @@ def create_application() -> FastAPI:
     # Routers
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
+    app.include_router(inscription_router, prefix=API_PREFIX)
     app.include_router(test_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(attendance_router, prefix=API_PREFIX)
@@ -108,8 +108,6 @@ def create_application() -> FastAPI:
     app.include_router(endurance_test_router, prefix=API_PREFIX)
     app.include_router(yoyo_test_router, prefix=API_PREFIX)
     app.include_router(technical_assessment_router, prefix=API_PREFIX)
-    app.include_router(user_router, prefix=API_PREFIX)
-    app.include_router(account_router, prefix=API_PREFIX)
     
     # Endpoints base
     @app.get("/", include_in_schema=False)
