@@ -1,18 +1,42 @@
-from sqlalchemy import Column, String
+import datetime
+from sqlalchemy import Column, Float, String, Integer, ForeignKey, Enum as SQLEnum
+
 from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
 
-class Athlete(BaseModel):
-    """Deportista con datos de identificacion y relaciones a pruebas y estadisticas."""
+from app.models.enums.sex import Sex
 
+class Athlete(BaseModel):
+    """Deportista asociado a una persona del MS de usuarios."""
+    
     __tablename__ = "athletes"
     
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    dni = Column(String(20), unique=True, index=True, nullable=False)
+    external_person_id = Column(String(36), unique=True, index=True, nullable=False)
+    
+    full_name = Column(String(200), nullable=False)
+    dni = Column(String(10), unique=True, index=True, nullable=False)
+    
+    # Datos específicos del atleta
     type_athlete = Column(String(50), nullable=False)
+    date_of_birth = Column(String(10), nullable=True)
+    height = Column(Float, nullable=True)
+    weight = Column(Float, nullable=True)
+    sex = Column(SQLEnum(Sex, name="sex_enum"), nullable=False)
+
+    
+    representative_id = Column(
+        Integer,
+        ForeignKey("representatives.id"),
+        nullable=True,
+        index=True
+    )
     
     # Relaciones
+    representative = relationship(
+        "Representative",
+        back_populates="athletes"
+    )
+    
     tests = relationship(
         "Test",
         back_populates="athlete",
@@ -32,5 +56,26 @@ class Athlete(BaseModel):
         cascade="all, delete-orphan"
     )
     
+    @property
+    def age(self):
+        if self.date_of_birth:
+            today = datetime.date.today()
+            birth_date = datetime.datetime.strptime(self.date_of_birth, "%Y-%m-%d").date()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            return age
+        return None
+    
+    @property
+    def is_adult(self):
+        return self.age >= 18 if self.age is not None else None
+    
+    @property
+    def representative_name(self):
+        return self.representative.full_name if self.representative else None
+    
+    @property
+    def representative_dni(self):
+        return self.representative.dni if self.representative else None
+    
     def __repr__(self):
-        return f"<Athlete(id={self.id}, dni='{self.dni}', name='{self.first_name} {self.last_name}', type='{self.type_athlete}')>"
+        return f"<Athlete {self.full_name} - DNI: {self.dni}>"
