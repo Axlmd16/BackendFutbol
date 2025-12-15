@@ -4,7 +4,7 @@ import secrets
 from typing import Dict
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from jose import jwt
 from sqlalchemy.orm import Session
 
@@ -64,6 +64,7 @@ def _handle_app_exception(exc: AppException) -> None:
 @router.post("/login", response_model=ResponseSchema)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
 	"""Endpoint para login de usuario."""
+	print("Login endpoint called with:", payload.email)
 	try:
 		resp = httpx.post(
 			f"{settings.PERSON_MS_BASE_URL}/api/person/login",
@@ -107,14 +108,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/forgot-password", response_model=ResponseSchema)
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
 	"""Solicitud para iniciar proceso de recuperación de contraseña"""
-	account = account_controller.get_by_external(db, payload.external)
+	account = account_controller.get_account(db, payload.account_id)
 	if not account:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
 
 	_purge_reset_tokens()
 	token = secrets.token_urlsafe(32)
 	reset_tokens_store[token] = {
-		"external": payload.external,
+		"external": account.external_account_id,
 		"expires_at": datetime.utcnow() + timedelta(hours=1),
 	}
 	return ResponseSchema(

@@ -30,7 +30,7 @@ class LoginResponse(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     """Solicitud para iniciar proceso de recuperación de contraseña"""
-    external: str = Field(..., description="Identificador externo de la cuenta")
+    account_id: int = Field(..., ge=1, description="Identificador local de la cuenta")
 
 
 class ResetPasswordRequest(BaseModel):

@@ -43,4 +43,4 @@ class AccountController:
         only_active: bool = True,
     ) -> Optional[Account]:
         """Obtiene una cuenta por su external_account_id."""
-        return self.account_dao.get_by_external(db, external_account_id, only_active)
+        return self.account_dao.get_by_external(db, external_account_id, only_active=only_active)
