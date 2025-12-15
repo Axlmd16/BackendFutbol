@@ -2,6 +2,7 @@
 
 from app.controllers.athlete_controller import AthleteController
 from app.core.database import get_db
+from app.core.security import get_current_user, CurrentUser
 from app.schemas.athlete_schema import MinorAthleteCreateSchema, MinorAthleteResponseSchema
 from app.schemas.response import ResponseSchema
 from app.utils.exceptions import (
@@ -139,26 +140,42 @@ athlete_controller = AthleteController()
 )
 async def register_minor_athlete(
     minor_data: MinorAthleteCreateSchema,
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Endpoint para registrar un deportista menor de edad.
     
+    **PROTECCIÓN:** Requiere autenticación con token JWT válido.
+    
     Implementa todas las validaciones de seguridad y negocio requeridas
     según estándares OWASP y requisitos legales para menores.
     
+    Headers requeridos:
+        Authorization: Bearer <token>
+    
     Args:
         minor_data: Datos validados del menor y su representante legal
+        current_user: Usuario autenticado (inyectado por dependencia)
         db: Sesión de base de datos (inyectada)
         
     Returns:
         ResponseSchema con datos del atleta y representante creados
     """
     try:
+        # Registrar quién realizó la inscripción (auditoría)
+        logger.info(
+            f"Iniciando registro de menor por usuario: {current_user.email} "
+            f"(ID: {current_user.id}, Role: {current_user.role})"
+        )
+        
         # Llamar al controlador que contiene toda la lógica de negocio
         result = athlete_controller.register_minor_athlete(db, minor_data)
         
-        logger.info(f"✅ Endpoint exitoso - Menor registrado: {minor_data.dni}")
+        logger.info(
+            f"✅ Endpoint exitoso - Menor registrado: {minor_data.dni} "
+            f"por usuario: {current_user.email}"
+        )
         
         return ResponseSchema(
             status="success",

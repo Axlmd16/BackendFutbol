@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     TOKEN_EXPIRES: int = 3600
+    
+    # Spring Boot JWT Integration
+    # Esta clave DEBE coincidir con OTHERS_KEY del docker-compose.yml
+    SPRING_BOOT_JWT_SECRET: Optional[str] = None
 
     # ================= CORS =================
     ALLOWED_ORIGINS: List[str] = ["*"]
