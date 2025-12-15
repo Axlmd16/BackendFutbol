@@ -34,6 +34,7 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
+    """Restablece la contraseña usando un token de recuperación."""
     token: str = Field(..., min_length=32)
     new_password: SecretStr = Field(..., min_length=8)
     confirm_password: SecretStr = Field(..., min_length=8)
