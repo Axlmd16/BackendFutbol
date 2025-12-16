@@ -36,3 +36,22 @@ class AthleteDAO(BaseDAO[Athlete]):
             Deportista encontrado o None
         """
         return self.get_by_field(db, "dni", dni, only_active)
+    
+    def get_by_external_person_id(
+        self,
+        db: Session,
+        external_person_id: str,
+        only_active: bool = True
+    ) -> Optional[Athlete]:
+        """
+        Obtiene un deportista por su external_person_id del MS de Usuarios.
+        
+        Args:
+            db: Sesión de base de datos
+            external_person_id: ID externo de la persona en el MS de Usuarios
+            only_active: Si True, solo busca deportistas activos
+            
+        Returns:
+            Deportista encontrado o None
+        """
+        return self.get_by_field(db, "external_person_id", external_person_id, only_active)

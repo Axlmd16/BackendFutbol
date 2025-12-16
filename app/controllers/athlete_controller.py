@@ -2,6 +2,7 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.representative_dao import RepresentativeDAO
 from app.schemas.athlete_schema import MinorAthleteCreateSchema, MinorAthleteResponseSchema
 from app.utils.exceptions import AlreadyExistsException, ValidationException, DatabaseException
+from app.utils.person_creator import create_person_only_in_ms
 from sqlalchemy.orm import Session
 from datetime import date
 import logging
@@ -21,13 +22,19 @@ class AthleteController:
         self.athlete_dao = AthleteDAO()
         self.representative_dao = RepresentativeDAO()
     
-    def register_minor_athlete(
+    async def register_minor_athlete(
         self, 
         db: Session, 
         minor_data: MinorAthleteCreateSchema
     ) -> MinorAthleteResponseSchema:
         """
         Registra un deportista menor de edad junto con su representante legal.
+        
+        FLUJO DE INTEGRACIÓN CON MS DE USUARIOS:
+        1. Crea la persona del MENOR en el MS de Usuarios (sin cuenta de login)
+        2. Crea la persona del REPRESENTANTE en el MS de Usuarios (sin cuenta de login)
+        3. Obtiene los external_person_id de ambos
+        4. Persiste localmente usando esos IDs externos
         
         Validaciones de seguridad y negocio (OWASP):
         1. Verifica que el menor sea efectivamente < 18 años
@@ -69,7 +76,7 @@ class AthleteController:
                     "Por favor, asegúrese de obtener el consentimiento firmado del tutor legal."
                 )
             
-            # VALIDACIÓN 3: Verificar unicidad del DNI del menor
+            # VALIDACIÓN 3: Verificar unicidad del DNI del menor localmente
             existing_athlete = self.athlete_dao.get_by_dni(db, minor_data.dni)
             if existing_athlete:
                 logger.warning(f"Intento de registro duplicado de menor con DNI: {minor_data.dni}")
@@ -77,39 +84,94 @@ class AthleteController:
                     f"Ya existe un deportista registrado con el DNI: {minor_data.dni}"
                 )
             
-            # VALIDACIÓN 4: Verificar unicidad del DNI del representante
+            # VALIDACIÓN 4: Verificar unicidad del DNI del representante localmente
             existing_representative = self.representative_dao.get_by_dni(
                 db, 
                 minor_data.representative.dni
             )
             
-            # Si el representante no existe, crearlo
+            # ========================================
+            # INTEGRACIÓN CON MS DE USUARIOS
+            # ========================================
+            
+            # PASO 1: Crear persona del MENOR en MS de Usuarios (sin cuenta de login)
+            logger.info(f"Creando persona MENOR en MS de Usuarios: DNI {minor_data.dni}")
+            try:
+                minor_person_data = await create_person_only_in_ms(
+                    first_name=minor_data.first_name,
+                    last_name=minor_data.last_name,
+                    dni=minor_data.dni,
+                    type_identification="CEDULA",
+                    direction=None,
+                    phone=None
+                )
+                minor_external_id = minor_person_data["external_person_id"]
+                minor_full_name = minor_person_data["full_name"]
+                
+                logger.info(
+                    f"✅ Persona MENOR creada en MS - "
+                    f"External ID: {minor_external_id}, DNI: {minor_data.dni}"
+                )
+            except ValidationException as e:
+                logger.error(f"Error al crear menor en MS: {e.message}")
+                raise ValidationException(
+                    f"No se pudo registrar al menor en el sistema institucional: {e.message}"
+                )
+            
+            # PASO 2: Crear persona del REPRESENTANTE en MS de Usuarios (si no existe localmente)
+            representative = None
             if not existing_representative:
-                logger.info(f"Creando nuevo representante con DNI: {minor_data.representative.dni}")
-                representative_data = {
-                    "first_name": minor_data.representative.first_name,
-                    "last_name": minor_data.representative.last_name,
-                    "dni": minor_data.representative.dni,
-                    "address": minor_data.representative.address,
-                    "phone": minor_data.representative.phone,
-                    "email": minor_data.representative.email
-                }
-                representative = self.representative_dao.create(db, representative_data)
+                logger.info(f"Creando persona REPRESENTANTE en MS de Usuarios: DNI {minor_data.representative.dni}")
+                try:
+                    guardian_person_data = await create_person_only_in_ms(
+                        first_name=minor_data.representative.first_name,
+                        last_name=minor_data.representative.last_name,
+                        dni=minor_data.representative.dni,
+                        type_identification="CEDULA",
+                        direction=minor_data.representative.address,
+                        phone=minor_data.representative.phone
+                    )
+                    guardian_external_id = guardian_person_data["external_person_id"]
+                    guardian_full_name = guardian_person_data["full_name"]
+                    
+                    logger.info(
+                        f"✅ Persona REPRESENTANTE creada en MS - "
+                        f"External ID: {guardian_external_id}, DNI: {minor_data.representative.dni}"
+                    )
+                    
+                    # Persistir representante localmente con external_person_id
+                    representative_data = {
+                        "external_person_id": guardian_external_id,
+                        "full_name": guardian_full_name,
+                        "dni": minor_data.representative.dni,
+                        "phone": minor_data.representative.phone,
+                        "relationship_type": minor_data.representative.relationship_type
+                    }
+                    representative = self.representative_dao.create(db, representative_data)
+                    
+                except ValidationException as e:
+                    logger.error(f"Error al crear representante en MS: {e.message}")
+                    raise ValidationException(
+                        f"No se pudo registrar al representante en el sistema institucional: {e.message}"
+                    )
             else:
                 logger.info(f"Usando representante existente con DNI: {minor_data.representative.dni}")
                 representative = existing_representative
             
-            # PERSISTENCIA: Crear el deportista menor vinculado al representante
-            logger.info(f"Registrando deportista menor: {minor_data.dni}")
+            # ========================================
+            # PERSISTENCIA LOCAL
+            # ========================================
+            
+            # PASO 3: Crear el deportista menor vinculado al representante
+            logger.info(f"Registrando deportista menor localmente: {minor_data.dni}")
             athlete_data = {
-                "first_name": minor_data.first_name,
-                "last_name": minor_data.last_name,
+                "external_person_id": minor_external_id,
+                "full_name": minor_full_name,
                 "dni": minor_data.dni,
-                "birth_date": minor_data.birth_date,
+                "date_of_birth": minor_data.birth_date,
                 "sex": minor_data.sex,
                 "type_athlete": "MINOR",  # Tipo automático para menores
-                "representative_id": representative.id,
-                "parental_authorization": "SI"  # Confirmado explícitamente
+                "representative_id": representative.id
             }
             
             athlete = self.athlete_dao.create(db, athlete_data)
@@ -117,7 +179,7 @@ class AthleteController:
             # AUDITORÍA: Registrar la acción en logs
             logger.info(
                 f"✅ Deportista menor registrado exitosamente - "
-                f"Atleta ID: {athlete.id}, DNI: {athlete.dni}, "
+                f"Atleta ID: {athlete.id}, DNI: {athlete.dni}, External ID: {minor_external_id}, "
                 f"Representante ID: {representative.id}, DNI: {representative.dni}, "
                 f"Edad: {age} años"
             )

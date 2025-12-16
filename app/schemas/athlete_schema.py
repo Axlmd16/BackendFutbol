@@ -49,6 +49,10 @@ class RepresentativeCreateSchema(BaseModel):
         ...,
         description="Correo electrónico válido"
     )
+    relationship_type: str = Field(
+        default="PADRE/MADRE",
+        description="Tipo de relación con el menor (ej: PADRE/MADRE, TUTOR, ABUELO)"
+    )
     
     @field_validator('dni')
     @classmethod

@@ -55,3 +55,22 @@ class RepresentativeDAO(BaseDAO[Representative]):
             Representante encontrado o None
         """
         return self.get_by_field(db, "email", email, only_active)
+    
+    def get_by_external_person_id(
+        self,
+        db: Session,
+        external_person_id: str,
+        only_active: bool = True
+    ) -> Optional[Representative]:
+        """
+        Obtiene un representante por su external_person_id del MS de Usuarios.
+        
+        Args:
+            db: Sesión de base de datos
+            external_person_id: ID externo de la persona en el MS de Usuarios
+            only_active: Si True, solo busca representantes activos
+            
+        Returns:
+            Representante encontrado o None
+        """
+        return self.get_by_field(db, "external_person_id", external_person_id, only_active)

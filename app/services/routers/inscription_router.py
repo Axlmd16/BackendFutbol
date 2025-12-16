@@ -170,7 +170,7 @@ async def register_minor_athlete(
         )
         
         # Llamar al controlador que contiene toda la lógica de negocio
-        result = athlete_controller.register_minor_athlete(db, minor_data)
+        result = await athlete_controller.register_minor_athlete(db, minor_data)
         
         logger.info(
             f"✅ Endpoint exitoso - Menor registrado: {minor_data.dni} "
