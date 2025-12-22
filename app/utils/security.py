@@ -2,12 +2,16 @@
 
 import re
 from typing import Iterable, Optional
+
+from passlib.context import CryptContext
+
 from app.utils.exceptions import ValidationException
+
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def validate_ec_dni(value: str) -> str:
-    """Valida DNI (10 dígitoss).
-    """
+    """Valida DNI (10 dígitoss)."""
 
     if value is None:
         raise ValidationException("DNI es requerido")
@@ -36,7 +40,10 @@ def validate_ec_dni(value: str) -> str:
 
     return digits
 
-def is_email_allowed(email: str, allowed_domains: Optional[Iterable[str]] = None) -> bool:
+
+def is_email_allowed(
+    email: str, allowed_domains: Optional[Iterable[str]] = None
+) -> bool:
     """Valida formato general y dominio permitido (si se especifica)."""
     pattern = r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$"
     if not re.match(pattern, email):
@@ -47,3 +54,14 @@ def is_email_allowed(email: str, allowed_domains: Optional[Iterable[str]] = None
         return domain in normalized
     return True
 
+
+def hash_password(password: str) -> str:
+    if not password:
+        raise ValidationException("La contraseña es requerida")
+    return _pwd_context.hash(password)
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    if not password or not password_hash:
+        return False
+    return _pwd_context.verify(password, password_hash)

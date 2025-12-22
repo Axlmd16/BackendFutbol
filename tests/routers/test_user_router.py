@@ -1,7 +1,7 @@
 # tests/routers/test_user_router.py
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.models.enums.rol import Role
+
+import pytest
 
 
 @pytest.fixture
@@ -16,30 +16,26 @@ def mock_person_client():
 @pytest.mark.asyncio
 async def test_admin_create_user_endpoint_success(client, mock_person_client):
     """POST /users/admin-create debe crear usuario exitosamente."""
-    
+
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         # Configurar el mock del resultado
         mock_result = MagicMock(
             user_id=5,
             account_id=50,
-            external_person_id="test-uuid-123",
-            external_account_id="test-uuid-123",
             full_name="Ana López",
             email="ana.lopez@test.com",
-            dni="1713175071",
-            role="ADMINISTRATOR"
+            role="ADMINISTRATOR",
         )
-        mock_result.model_dump = MagicMock(return_value={
-            "user_id": 5,
-            "account_id": 50,
-            "external_person_id": "test-uuid-123",
-            "external_account_id": "test-uuid-123",
-            "full_name": "Ana López",
-            "email": "ana.lopez@test.com",
-            "dni": "1713175071",
-            "role": "ADMINISTRATOR"
-        })
-        
+        mock_result.model_dump = MagicMock(
+            return_value={
+                "user_id": 5,
+                "account_id": 50,
+                "full_name": "Ana López",
+                "email": "ana.lopez@test.com",
+                "role": "ADMINISTRATOR",
+            }
+        )
+
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
         response = await client.post(
@@ -54,8 +50,8 @@ async def test_admin_create_user_endpoint_success(client, mock_person_client):
                 "direction": "Av. Principal",
                 "phone": "0999888777",
                 "type_identification": "CEDULA",
-                "type_stament": "DOCENTES"
-            }
+                "type_stament": "DOCENTES",
+            },
         )
 
         assert response.status_code == 201
@@ -63,7 +59,6 @@ async def test_admin_create_user_endpoint_success(client, mock_person_client):
         assert data["status"] == "success"
         assert data["data"]["user_id"] == 5
         assert data["data"]["account_id"] == 50
-        assert data["data"]["external_person_id"] == "test-uuid-123"
 
 
 @pytest.mark.asyncio
@@ -81,8 +76,8 @@ async def test_admin_create_user_endpoint_dni_invalido(client):
             "direction": "Calle 123",
             "phone": "0999999999",
             "type_identification": "CEDULA",
-            "type_stament": "DOCENTES"
-        }
+            "type_stament": "DOCENTES",
+        },
     )
 
     # Tu aplicación devuelve 422 con formato personalizado
@@ -102,7 +97,7 @@ async def test_admin_create_user_endpoint_dni_invalido(client):
 async def test_admin_create_user_endpoint_rol_invalido(client, mock_person_client):
     """Debe rechazar rol no válido."""
     from app.utils.exceptions import ValidationException
-    
+
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         # Configurar el mock para lanzar la excepción
         mock_controller.admin_create_user = AsyncMock(
@@ -121,8 +116,8 @@ async def test_admin_create_user_endpoint_rol_invalido(client, mock_person_clien
                 "direction": "Calle 456",
                 "phone": "0988888888",
                 "type_identification": "CEDULA",
-                "type_stament": "DOCENTES"
-            }
+                "type_stament": "DOCENTES",
+            },
         )
 
         # ValidationException tiene status_code 422
@@ -135,7 +130,7 @@ async def test_admin_create_user_endpoint_rol_invalido(client, mock_person_clien
 async def test_admin_create_user_endpoint_dni_duplicado(client, mock_person_client):
     """Debe rechazar DNI duplicado."""
     from app.utils.exceptions import AlreadyExistsException
-    
+
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         # Configurar el mock para lanzar la excepción de DNI duplicado
         mock_controller.admin_create_user = AsyncMock(
@@ -154,8 +149,8 @@ async def test_admin_create_user_endpoint_dni_duplicado(client, mock_person_clie
                 "direction": "Calle 789",
                 "phone": "0977777777",
                 "type_identification": "CEDULA",
-                "type_stament": "DOCENTES"
-            }
+                "type_stament": "DOCENTES",
+            },
         )
 
         assert response.status_code == 409
@@ -167,11 +162,13 @@ async def test_admin_create_user_endpoint_dni_duplicado(client, mock_person_clie
 async def test_admin_create_user_endpoint_error_ms_usuarios(client, mock_person_client):
     """Debe manejar error del MS de usuarios correctamente."""
     from app.utils.exceptions import ValidationException
-    
+
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         # Configurar el mock para lanzar excepción de error del MS
         mock_controller.admin_create_user = AsyncMock(
-            side_effect=ValidationException("No se pudo registrar la persona en el MS de usuarios")
+            side_effect=ValidationException(
+                "No se pudo registrar la persona en el MS de usuarios"
+            )
         )
 
         response = await client.post(
@@ -186,8 +183,8 @@ async def test_admin_create_user_endpoint_error_ms_usuarios(client, mock_person_
                 "direction": "Calle 101",
                 "phone": "0966666666",
                 "type_identification": "CEDULA",
-                "type_stament": "DOCENTES"
-            }
+                "type_stament": "DOCENTES",
+            },
         )
 
         # ValidationException tiene status_code 422
@@ -199,29 +196,25 @@ async def test_admin_create_user_endpoint_error_ms_usuarios(client, mock_person_
 @pytest.mark.asyncio
 async def test_admin_create_user_endpoint_rol_coach_success(client, mock_person_client):
     """POST /users/admin-create debe crear entrenador exitosamente."""
-    
+
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_result = MagicMock(
             user_id=6,
             account_id=60,
-            external_person_id="test-uuid-456",
-            external_account_id="test-uuid-456",
             full_name="Carlos Mendez",
             email="carlos@test.com",
-            dni="1234567890",
-            role="COACH"
+            role="COACH",
         )
-        mock_result.model_dump = MagicMock(return_value={
-            "user_id": 6,
-            "account_id": 60,
-            "external_person_id": "test-uuid-456",
-            "external_account_id": "test-uuid-456",
-            "full_name": "Carlos Mendez",
-            "email": "carlos@test.com",
-            "dni": "1234567890",
-            "role": "COACH"
-        })
-        
+        mock_result.model_dump = MagicMock(
+            return_value={
+                "user_id": 6,
+                "account_id": 60,
+                "full_name": "Carlos Mendez",
+                "email": "carlos@test.com",
+                "role": "COACH",
+            }
+        )
+
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
         response = await client.post(
@@ -236,8 +229,8 @@ async def test_admin_create_user_endpoint_rol_coach_success(client, mock_person_
                 "direction": "Av. Central",
                 "phone": "0988888888",
                 "type_identification": "CEDULA",
-                "type_stament": "DOCENTES"
-            }
+                "type_stament": "DOCENTES",
+            },
         )
 
         assert response.status_code == 201
@@ -249,7 +242,7 @@ async def test_admin_create_user_endpoint_rol_coach_success(client, mock_person_
 @pytest.mark.asyncio
 async def test_admin_create_user_endpoint_error_generico(client, mock_person_client):
     """Debe manejar errores genéricos con status 500."""
-    
+
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         # Configurar el mock para lanzar una excepción genérica
         mock_controller.admin_create_user = AsyncMock(
@@ -268,8 +261,8 @@ async def test_admin_create_user_endpoint_error_generico(client, mock_person_cli
                 "direction": "Calle 202",
                 "phone": "0955555555",
                 "type_identification": "CEDULA",
-                "type_stament": "DOCENTES"
-            }
+                "type_stament": "DOCENTES",
+            },
         )
 
         assert response.status_code == 500
@@ -292,8 +285,8 @@ async def test_admin_create_user_endpoint_password_corto(client):
             "direction": "Calle 123",
             "phone": "0999999999",
             "type_identification": "CEDULA",
-            "type_stament": "DOCENTES"
-        }
+            "type_stament": "DOCENTES",
+        },
     )
 
     assert response.status_code == 422
