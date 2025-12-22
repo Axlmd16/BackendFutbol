@@ -4,6 +4,7 @@ import httpx
 
 from app.client.person_auth import PersonAuthService
 from app.core.config import settings
+from app.utils.exceptions import ValidationException  # Importa tu excepción
 
 auth_service = PersonAuthService()
 
@@ -14,24 +15,30 @@ class PersonClient:
         self.timeout = timeout
 
     async def _authorized_request(self, method: str, url: str, **kwargs) -> Any:
-        # 1) Asegurar token
         token = auth_service.token or await auth_service.login()
 
         headers = kwargs.pop("headers", {})
-        headers["Authorization"] = token  # ya incluye 'Bearer ...'
+        headers["Authorization"] = token
 
         async with httpx.AsyncClient(
             base_url=self.base_url, timeout=self.timeout
         ) as client:
             resp = await client.request(method, url, headers=headers, **kwargs)
 
-            # Si el token expira y el MS responde 401, reintentar
             if resp.status_code == 401:
                 token = await auth_service.login()
                 headers["Authorization"] = token
                 resp = await client.request(method, url, headers=headers, **kwargs)
 
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                try:
+                    error_data = resp.json()
+                    error_message = error_data.get("message", "Error desconocido")
+                except Exception:
+                    error_message = resp.text or f"Error {resp.status_code}"
+
+                raise ValidationException(error_message)
+
             return resp.json()
 
     async def create_person(self, data: Dict[str, Any]) -> Dict[str, Any]:

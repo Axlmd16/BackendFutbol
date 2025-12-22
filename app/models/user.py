@@ -9,8 +9,6 @@ class User(BaseModel):
 
     __tablename__ = "users"
 
-    external_person_id = Column(String(36), nullable=True, index=True)
-
     full_name = Column(String(200), nullable=False)
     dni = Column(String(10), unique=True, index=True, nullable=False)
 
