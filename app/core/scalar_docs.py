@@ -7,7 +7,7 @@ def setup_scalar_docs(app: FastAPI) -> None:
     Configurar Scalar como documentación alternativa
     Scalar es una alternativa moderna y elegante a Swagger UI
     """
-    
+
     @app.get("/scalar", include_in_schema=False)
     async def scalar_html():
         """Documentación usando Scalar"""
@@ -44,5 +44,5 @@ def setup_scalar_docs(app: FastAPI) -> None:
             </body>
             </html>
             """,
-            status_code=200
+            status_code=200,
         )

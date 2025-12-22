@@ -1,5 +1,6 @@
 import enum
 
+
 class Scale(enum.Enum):
     """Escala cualitativa para puntuar habilidades tecnicas."""
 
