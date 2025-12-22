@@ -1,7 +1,8 @@
 """Esquema de respuesta estándar para endpoints FastAPI."""
 
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel
-from typing import Any, Optional, Dict
 
 
 class ResponseSchema(BaseModel):
@@ -11,11 +12,13 @@ class ResponseSchema(BaseModel):
     message: str
     data: Optional[Any] = None
     errors: Optional[Dict[str, Any]] = None
-    
-    model_config = {"json_schema_extra": {
-        "example": {
-            "status": "success",
-            "message": "Operación realizada correctamente",
-            "data": {"id": 1}
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "success",
+                "message": "Operación realizada correctamente",
+                "data": {"id": 1},
+            }
         }
-    }}
+    }

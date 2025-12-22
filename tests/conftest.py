@@ -1,7 +1,9 @@
 # tests/conftest.py
-import pytest
 from unittest.mock import MagicMock
-from httpx import AsyncClient, ASGITransport
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 
 @pytest.fixture
 def mock_db_session():
@@ -9,11 +11,12 @@ def mock_db_session():
     session = MagicMock()
     yield session
 
+
 @pytest.fixture
 async def client(mock_db_session):
     """Cliente HTTP asíncrono con override de dependencia get_db."""
-    from main import app
     from app.core.database import get_db
+    from main import app
 
     async def override_get_db():
         yield mock_db_session

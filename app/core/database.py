@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
 from app.core.config import settings
 
 # ================= DATABASE ENGINE =================
@@ -22,6 +23,7 @@ SessionLocal = sessionmaker(
 
 # ================= BASE =================
 Base = declarative_base()
+
 
 # ================= DEPENDENCY =================
 def get_db():
