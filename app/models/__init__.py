@@ -5,6 +5,7 @@ from app.models.attendance import Attendance
 from app.models.base import BaseModel
 from app.models.endurance_test import EnduranceTest
 from app.models.evaluation import Evaluation
+from app.models.representative import Representative
 from app.models.sprint_test import SprintTest
 from app.models.statistic import Statistic
 from app.models.technical_assessment import TechnicalAssessment
@@ -26,4 +27,5 @@ __all__ = [
     "TechnicalAssessment",
     "User",
     "Account",
+    "Representative",
 ]
