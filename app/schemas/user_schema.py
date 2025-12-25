@@ -29,6 +29,22 @@ class AccountBase(BaseModel):
     role: Role
 
 
+class UserFilter(BaseModel):
+    """Encapsula los parámetros de búsqueda y paginación."""
+
+    page: int = Field(1, ge=1, description="Número de página")
+    limit: int = Field(10, ge=1, le=100, description="Registros por página")
+    search: Optional[str] = Field(None, description="Búsqueda por nombre o DNI")
+    role: Optional[str] = Field(
+        None, description="Filtrar por rol (Administrator/Coach)"
+    )
+
+    @property
+    def skip(self) -> int:
+        """Calcula automáticamente el offset para la BD."""
+        return (self.page - 1) * self.limit
+
+
 # ==========================================
 # REQUEST SCHEMAS (Entradas)
 

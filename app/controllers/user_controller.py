@@ -13,6 +13,7 @@ from app.schemas.user_schema import (
     AdminUpdateUserRequest,
     AdminUpdateUserResponse,
     CreatePersonInMSRequest,
+    UserFilter,
 )
 from app.utils.exceptions import AlreadyExistsException, ValidationException
 from app.utils.security import hash_password, validate_ec_dni
@@ -181,8 +182,8 @@ class UserController:
 
         return new_user, new_account
 
-    def get_all_users(self, db: Session, skip=0, limit=10, search=None, role=None):
+    def get_all_users(self, db: Session, filters: UserFilter):
         """
-        Obtiene todos los usuarios del club.
+        Obtiene usuarios aplicando los filtros recibidos.
         """
-        return self.user_dao.get_all(db)
+        return self.user_dao.get_all_with_filters(db, filters=filters)

@@ -1,6 +1,6 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.controllers.user_controller import UserController
@@ -9,6 +9,7 @@ from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
     AdminUpdateUserRequest,
+    UserFilter,
     UserResponse,
 )
 from app.utils.exceptions import AppException
@@ -90,26 +91,12 @@ async def admin_update_user(
     ),
 )
 def get_all_users(
-    db: Annotated[Session, Depends(get_db)],
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100),
-    search: Optional[str] = Query(None),
-    role: Optional[str] = Query(None),
+    db: Annotated[Session, Depends(get_db)], filters: Annotated[UserFilter, Depends()]
 ):
-    skip = (page - 1) * limit
-
-    result, total_count = user_controller.get_all_users(
-        db=db,
-        skip=skip,
-        limit=limit,
-        search=search,
-        role=role,
-    )
-
-    paginated_data = PaginatedResponse(items=result, total=total_count)
+    items, total = user_controller.get_all_users(db=db, filters=filters)
 
     return ResponseSchema(
         status="success",
         message="Usuarios obtenidos correctamente",
-        data=paginated_data,
+        data=PaginatedResponse(items=items, total=total),
     )
