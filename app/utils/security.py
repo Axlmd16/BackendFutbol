@@ -98,7 +98,7 @@ def create_access_token(
 
 
 def create_reset_token(account_id: int, email: str, expires_seconds: int = 900) -> str:
-    """Genera un token corto para restablecimiento de contraseña (por defecto 15 min)."""
+    """Genera un token para restablecimiento de contraseña (por defecto 15 min)."""
 
     return create_access_token(
         subject=account_id,
