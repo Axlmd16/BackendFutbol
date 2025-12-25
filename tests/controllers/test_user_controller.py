@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.controllers.user_controller import UserController
 from app.models.enums.rol import Role
-from app.schemas.user_schema import AdminCreateUserRequest
+from app.schemas.user_schema import AdminCreateUserRequest, AdminUpdateUserRequest
 from app.utils.exceptions import AlreadyExistsException, ValidationException
 
 
@@ -208,7 +208,11 @@ async def test_admin_create_user_persona_existe_en_otro_club(
     # El controlador debe recuperar el external por DNI para enlazar localmente
     user_controller.person_client.get_by_identification.return_value = {
         "status": "success",
-        "data": {"external": "32345678-1234-1234-1234-123456789012"},
+        "data": {
+            "external": "32345678-1234-1234-1234-123456789012",
+            "first_name": "Juan",
+            "last_name": "Pérez",
+        },
     }
 
     result = await user_controller.admin_create_user(
@@ -220,3 +224,104 @@ async def test_admin_create_user_persona_existe_en_otro_club(
     assert result.account_id == 30
     user_controller.user_dao.create.assert_called_once()
     user_controller.account_dao.create.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user_persona_existe_nombre_no_coincide_debe_fallar(
+    user_controller, mock_db_session, valid_payload
+):
+    """Si el DNI existe en el MS pero los nombres no coinciden, debe rechazar."""
+
+    user_controller.user_dao.exists = MagicMock(return_value=False)
+    user_controller.account_dao.exists = MagicMock(return_value=False)
+
+    # MS responde que ya existe
+    user_controller.person_client.create_person_with_account.return_value = {
+        "status": "error",
+        "message": "Ya existe una persona con esa identificación",
+    }
+
+    # En el MS el DNI pertenece a otra persona
+    user_controller.person_client.get_by_identification.return_value = {
+        "status": "success",
+        "data": {
+            "external": "42345678-1234-1234-1234-123456789012",
+            "first_name": "Juan",
+            "last_name": "Pérez",
+        },
+    }
+
+    # Pero aquí intentamos registrar con nombres distintos
+    valid_payload.first_name = "Domenica"
+    valid_payload.last_name = "Riofrío"
+
+    with pytest.raises(ValidationException) as exc_info:
+        await user_controller.admin_create_user(
+            db=mock_db_session, payload=valid_payload
+        )
+
+    assert "DNI ya está registrado" in str(exc_info.value) or "DNI ya está" in str(
+        exc_info.value
+    )
+
+
+@pytest.mark.asyncio
+async def test_admin_update_user_actualiza_external_local(
+    user_controller, mock_db_session
+):
+    """Si el MS cambia el external al actualizar, debe sincronizarse en el club."""
+
+    payload = AdminUpdateUserRequest(
+        id=1,
+        first_name="Juan",
+        last_name="Pérez",
+        direction="Calle Principal 123",
+        phone="0987654321",
+        type_identification="CEDULA",
+        type_stament="DOCENTES",
+    )
+
+    local_external = "OLD-EXTERNAL-123456789012345678901234567890"
+
+    user_controller.user_dao.get_by_id = MagicMock(
+        return_value=MagicMock(
+            id=1,
+            full_name="Juan Pérez",
+            external=local_external,
+            dni="0926687856",
+            updated_at=MagicMock(),
+            is_active=True,
+            account=MagicMock(email="juan.perez@example.com", role=Role.ADMINISTRATOR),
+        )
+    )
+
+    # MS actualiza y devuelve nuevo external (o se recupera por DNI)
+    user_controller.person_client.update_person.return_value = {
+        "status": "success",
+        "data": {"external": "NEW-EXTERNAL-123456789012345678901234567890"},
+    }
+
+    user_controller.user_dao.update = MagicMock(
+        return_value=MagicMock(
+            id=1,
+            full_name="Juan Pérez",
+            external="NEW-EXTERNAL-123456789012345678901234567890",
+            updated_at=MagicMock(),
+            is_active=True,
+            account=MagicMock(email="juan.perez@example.com", role=Role.ADMINISTRATOR),
+        )
+    )
+
+    result = await user_controller.admin_update_user(
+        db=mock_db_session, payload=payload
+    )
+
+    # Debe llamar al MS usando el external LOCAL, no el que venga del frontend.
+    called_payload = user_controller.person_client.update_person.call_args.args[0]
+    assert called_payload["external"] == local_external
+
+    # Verifica que se haya persistido el external nuevo localmente
+    user_controller.user_dao.update.assert_called_once()
+    _, _, update_data = user_controller.user_dao.update.mock_calls[0].args
+    assert update_data["external"] == "NEW-EXTERNAL-123456789012345678901234567890"
+    assert result.user_id == 1

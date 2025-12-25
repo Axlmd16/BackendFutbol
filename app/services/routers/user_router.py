@@ -14,7 +14,7 @@ user_controller = UserController()
 
 
 @router.post(
-    "/users/create",
+    "/create",
     response_model=ResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Crear usuario administrador/entrenador",
@@ -45,7 +45,7 @@ async def admin_create_user(
 
 
 @router.put(
-    "/users/update",
+    "/update",
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Actualizar usuario administrador/entrenador",

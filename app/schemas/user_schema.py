@@ -44,10 +44,16 @@ class AdminCreateUserRequest(BaseModel):
         raise ValueError("Rol inválido. Use Administrator o Coach")
 
 
-class AdminUpdateUserRequest(AdminCreateUserRequest):
+class AdminUpdateUserRequest(BaseModel):
     """Datos que el admin ingresa para actualizar administradores/entrenadores."""
 
-    pass
+    first_name: str = Field(..., min_length=2, max_length=100)
+    last_name: str = Field(..., min_length=2, max_length=100)
+    type_identification: str = Field(default="CEDULA")
+    type_stament: str = Field(default="EXTERNOS")
+    direction: Optional[str] = Field(default="S/N")
+    phone: Optional[str] = Field(default="S/N")
+    id: int = Field(..., gt=0)
 
 
 class AdminUpdateUserResponse(BaseModel):
