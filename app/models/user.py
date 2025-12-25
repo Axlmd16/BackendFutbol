@@ -9,6 +9,7 @@ class User(BaseModel):
 
     __tablename__ = "users"
 
+    external = Column(String(36), index=True, nullable=False)
     full_name = Column(String(200), nullable=False)
     dni = Column(String(10), unique=True, index=True, nullable=False)
 
@@ -31,4 +32,7 @@ class User(BaseModel):
         return self.account.role if self.account else None
 
     def __repr__(self):
-        return f"<User id={self.id} dni={self.dni} full_name={self.full_name}>"
+        return (
+            f"<User id={self.id} dni={self.dni} "
+            f"full_name={self.full_name} external={self.external}>"
+        )
