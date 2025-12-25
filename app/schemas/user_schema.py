@@ -65,6 +65,7 @@ class AdminCreateUserResponse(BaseModel):
     full_name: str
     email: EmailStr
     role: str
+    external: str
 
 
 class CreatePersonInMSRequest(BaseModel):
@@ -83,6 +84,7 @@ class CreateLocalUserAccountRequest(BaseModel):
     """Datos para crear usuario y cuenta localmente."""
 
     full_name: str = Field(..., min_length=2, max_length=200)
+    external: str = Field(..., min_length=30, max_length=50)
     dni: str = Field(..., min_length=10, max_length=10)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=64)

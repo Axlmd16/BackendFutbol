@@ -56,7 +56,7 @@ async def test_admin_create_user_success_administrator(
     user_controller.person_client.create_person_with_account.return_value = {
         "status": "success",
         "message": "Se ha registrado correctamente",
-        "data": {},
+        "data": {"external": "12345678-1234-1234-1234-123456789012"},
         "errors": [],
     }
 
@@ -92,6 +92,7 @@ async def test_admin_create_user_success_coach(
     user_controller.person_client.create_person_with_account.return_value = {
         "status": "success",
         "message": "Se ha registrado correctamente",
+        "data": {"external": "22345678-1234-1234-1234-123456789012"},
     }
 
     result = await user_controller.admin_create_user(
@@ -202,6 +203,12 @@ async def test_admin_create_user_persona_existe_en_otro_club(
     user_controller.person_client.create_person_with_account.return_value = {
         "status": "error",
         "message": "Ya existe una persona con esa identificación",
+    }
+
+    # El controlador debe recuperar el external por DNI para enlazar localmente
+    user_controller.person_client.get_by_identification.return_value = {
+        "status": "success",
+        "data": {"external": "32345678-1234-1234-1234-123456789012"},
     }
 
     result = await user_controller.admin_create_user(

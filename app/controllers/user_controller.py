@@ -36,11 +36,59 @@ class UserController:
     async def create_person_in_users_ms(
         self,
         data: CreatePersonInMSRequest,
-    ) -> None:
+    ) -> str:
         """Crea la persona en el MS de usuarios.
 
         Es idempotente: si la persona ya existe, no falla.
         """
+
+        def _is_duplicate_message(raw_message: str) -> bool:
+            msg = (raw_message or "").strip().lower()
+            return (
+                "la persona ya esta registrada con esa identificacion" in msg
+                or "la persona ya está registrada con esa identificacion" in msg
+                or ("ya existe una persona" in msg and "identific" in msg)
+                or "already exists" in msg
+                or "duplicad" in msg
+            )
+
+        def _extract_external(resp: object) -> str | None:
+            if not isinstance(resp, dict):
+                return None
+            data_block = resp.get("data")
+            if isinstance(data_block, dict):
+                external = data_block.get("external")
+                return str(external) if external else None
+            if isinstance(data_block, list) and data_block:
+                first = data_block[0]
+                if isinstance(first, dict):
+                    external = first.get("external")
+                    return str(external) if external else None
+            external = resp.get("external")
+            return str(external) if external else None
+
+        async def _get_existing_external_by_dni(dni: str) -> str:
+            try:
+                existing = await self.person_client.get_by_identification(dni)
+            except Exception as e:
+                logger.error(
+                    f"No se pudo consultar persona existente en MS usuarios "
+                    f"por DNI {dni}: {e}"
+                )
+                raise ValidationException(
+                    (
+                        "La persona ya existe en el módulo de usuarios, "
+                        "pero no se pudo recuperar su identificador externo"
+                    )
+                ) from e
+
+            external = _extract_external(existing)
+            if not external:
+                raise ValidationException(
+                    "La persona ya existe en el módulo de usuarios, pero,"
+                    "la respuesta no contiene el identificador externo"
+                )
+            return external
 
         person_payload = {
             "first_name": data.first_name,
@@ -58,7 +106,12 @@ class UserController:
             save_resp = await self.person_client.create_person_with_account(
                 person_payload
             )
-        except ValidationException:
+        except ValidationException as e:
+            if _is_duplicate_message(getattr(e, "message", "") or str(e)):
+                logger.info(
+                    f"Persona con DNI {data.dni} ya existe en MS usuarios, continuando."
+                )
+                return await _get_existing_external_by_dni(data.dni)
             raise
         except Exception as e:
             logger.error(f"Error inesperado al llamar a MS de usuarios: {e}")
@@ -67,23 +120,25 @@ class UserController:
             ) from e
 
         status = save_resp.get("status")
-        message = save_resp.get("message", "").lower()
+        raw_message = save_resp.get("message") or save_resp.get("detail") or ""
+        message = str(raw_message).lower()
 
         if status == "success":
-            return
+            external = _extract_external(save_resp)
+            if external:
+                return external
+            return await _get_existing_external_by_dni(data.dni)
 
-        if (
-            "ya existe" in message
-            or "already exists" in message
-            or "duplicad" in message
-        ):
+        if _is_duplicate_message(message):
             logger.info(
                 f"Persona con DNI {data.dni} ya existe en MS usuarios, continuando..."
             )
-            return
+            return await _get_existing_external_by_dni(data.dni)
 
         raise ValidationException(
-            save_resp.get("message", "Error desconocido al crear persona")
+            save_resp.get("message")
+            or save_resp.get("detail")
+            or "Error desconocido al crear persona"
         )
 
     async def update_person_in_users_ms(
@@ -153,6 +208,7 @@ class UserController:
         new_user = self.user_dao.create(
             db,
             {
+                "external": data.external,
                 "full_name": data.full_name,
                 "dni": dni,
             },
@@ -193,7 +249,7 @@ class UserController:
             )
 
         # Crear persona en el MS de usuarios (idempotente)
-        await self.create_person_in_users_ms(
+        external = await self.create_person_in_users_ms(
             CreatePersonInMSRequest(
                 first_name=first_name,
                 last_name=last_name,
@@ -211,6 +267,7 @@ class UserController:
             new_user = self.user_dao.create(
                 db,
                 {
+                    "external": external,
                     "full_name": full_name,
                     "dni": dni,
                 },
@@ -235,6 +292,7 @@ class UserController:
             full_name=full_name,
             email=email,
             role=new_account.role.value,
+            external=external,
         )
 
     def admin_update_user(
