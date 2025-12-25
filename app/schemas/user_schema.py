@@ -1,4 +1,5 @@
 # app/schemas/user_schema.py
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -41,6 +42,21 @@ class AdminCreateUserRequest(BaseModel):
             return Role.COACH
 
         raise ValueError("Rol inválido. Use Administrator o Coach")
+
+
+class AdminUpdateUserRequest(AdminCreateUserRequest):
+    """Datos que el admin ingresa para actualizar administradores/entrenadores."""
+
+    pass
+
+
+class AdminUpdateUserResponse(BaseModel):
+    user_id: int
+    full_name: str
+    email: EmailStr
+    role: str
+    updated_at: datetime
+    is_active: bool
 
 
 class AdminCreateUserResponse(BaseModel):

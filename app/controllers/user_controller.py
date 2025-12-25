@@ -10,6 +10,8 @@ from app.dao.user_dao import UserDAO
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
     AdminCreateUserResponse,
+    AdminUpdateUserRequest,
+    AdminUpdateUserResponse,
     CreateLocalUserAccountRequest,
     CreatePersonInMSRequest,
 )
@@ -82,6 +84,52 @@ class UserController:
 
         raise ValidationException(
             save_resp.get("message", "Error desconocido al crear persona")
+        )
+
+    async def update_person_in_users_ms(
+        self,
+        data: CreatePersonInMSRequest,
+    ) -> None:
+        """Actualiza la persona en el MS de usuarios.
+
+        Es idempotente: si la persona no existe, no falla.
+        """
+        person_payload = {
+            "first_name": data.first_name,
+            "last_name": data.last_name,
+            "identification": data.dni,
+            "type_identification": data.type_identification,
+            "type_stament": data.type_stament,
+            "direction": data.direction or "S/N",
+            "phono": data.phone or "S/N",
+        }
+
+        try:
+            update_resp = await self.person_client.update_person_by_dni(
+                data.dni, person_payload
+            )
+        except ValidationException:
+            raise
+        except Exception as e:
+            logger.error(f"Error inesperado al llamar a MS de usuarios: {e}")
+            raise ValidationException(
+                "Error de comunicación con el módulo de usuarios"
+            ) from e
+
+        status = update_resp.get("status")
+        message = update_resp.get("message", "").lower()
+
+        if status == "success":
+            return
+
+        if "no existe" in message or "does not exist" in message:
+            logger.info(
+                f"Persona con DNI {data.dni} no existe en MS usuarios, continuando..."
+            )
+            return
+
+        raise ValidationException(
+            update_resp.get("message", "Error desconocido al actualizar persona")
         )
 
     def create_local_user_account(
@@ -187,4 +235,32 @@ class UserController:
             full_name=full_name,
             email=email,
             role=new_account.role.value,
+        )
+
+    def admin_update_user(
+        self,
+        db: Session,
+        payload: AdminUpdateUserRequest,
+    ) -> AdminUpdateUserResponse:  # noqa: F821
+        """Actualiza un admin/entrenador en el MS de usuarios y localmente."""
+
+        # Verificar que el usuario exista
+        user = self.user_dao.exists(db=db, field="id", value=payload.user_id)
+        if not user:
+            raise ValidationException("El usuario a actualizar no existe")
+
+        # Actualizar campos del usuario
+        update_data = {
+            "full_name": payload.full_name.strip(),
+        }
+
+        self.user_dao.update(db, user, update_data)
+
+        return AdminUpdateUserResponse(
+            user_id=user.id,
+            full_name=user.full_name,
+            email=user.account.email,
+            role=user.account.role.value,
+            updated_at=user.updated_at,
+            is_active=user.is_active,
         )
