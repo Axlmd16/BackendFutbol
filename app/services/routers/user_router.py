@@ -1,11 +1,11 @@
-from typing import Annotated, List
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.controllers.user_controller import UserController
 from app.core.database import get_db
-from app.schemas.response import ResponseSchema
+from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
     AdminUpdateUserRequest,
@@ -81,16 +81,35 @@ async def admin_update_user(
 
 @router.get(
     "/all",
-    response_model=ResponseSchema[List[UserResponse]],
+    response_model=ResponseSchema[PaginatedResponse[UserResponse]],
     status_code=status.HTTP_200_OK,
-    summary="Obtener todos los usuarios",
-    description="Obtiene una lista de todos los usuarios ",
+    summary="Obtener todos los usuarios con paginación",
+    description=(
+        "Obtiene una lista paginada de todos los usuarios, "
+        "con opción de búsqueda y filtrado por rol."
+    ),
 )
-def get_all_users(db: Annotated[Session, Depends(get_db)]):
-    result = user_controller.get_all_users(db=db)
+def get_all_users(
+    db: Annotated[Session, Depends(get_db)],
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
+):
+    skip = (page - 1) * limit
+
+    result, total_count = user_controller.get_all_users(
+        db=db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        role=role,
+    )
+
+    paginated_data = PaginatedResponse(items=result, total=total_count)
 
     return ResponseSchema(
         status="success",
         message="Usuarios obtenidos correctamente",
-        data=result,
+        data=paginated_data,
     )

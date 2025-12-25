@@ -1,6 +1,6 @@
 """Esquema de respuesta estándar para endpoints FastAPI."""
 
-from typing import Any, Dict, Generic, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -14,3 +14,8 @@ class ResponseSchema(BaseModel, Generic[T]):
     errors: Optional[Dict[str, Any]] = None
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    total: int

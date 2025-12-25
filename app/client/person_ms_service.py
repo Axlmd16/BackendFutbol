@@ -135,9 +135,11 @@ class PersonMSService:
             if external:
                 return external
 
-            raise ValidationException(
-                "El módulo de usuarios respondió 'success' pero no incluyó el identificador externo"
+            logger.warning(
+                f"MS respondió 'success' sin external para DNI {data.dni}. "
+                "Intentando recuperar external por DNI..."
             )
+            return await self._get_and_validate_existing_person(data)
 
         if self._is_duplicate_message(raw_message):
             logger.info(f"Persona con DNI {data.dni} ya existe en MS usuarios")
@@ -233,15 +235,9 @@ class PersonMSService:
             matches = ms_joined_n == expected_full
 
         if not matches:
-            shown = (
-                ms_full
-                or " ".join([p for p in [ms_first or "", ms_last or ""] if p.strip()])
-                or "(sin nombre)"
-            )
             raise ValidationException(
-                f"El DNI ya está registrado en el ms de usuarios a nombre de otra perso"
-                f"En el MS figura: '{shown}', pero aquí estás intentando registrar: "
-                f"'{expected_data.first_name} {expected_data.last_name}'."
+                "Los datos personales no coinciden con el DNI registrado"
+                " en el módulo de usuarios. "
             )
 
     @staticmethod

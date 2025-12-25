@@ -65,7 +65,7 @@ async def test_admin_create_user_success_administrator(
         db=mock_db_session, payload=valid_payload
     )
 
-    assert result.user_id == 1
+    assert result.id == 1
     assert result.account_id == 10
     assert result.full_name == "Juan Pérez"
     assert result.email == "juan.perez@example.com"
@@ -221,7 +221,7 @@ async def test_admin_create_user_persona_existe_en_otro_club(
     )
 
     # Debe crear el usuario local aunque ya exista en MS
-    assert result.user_id == 3
+    assert result.id == 3
     assert result.account_id == 30
     user_controller.user_dao.create.assert_called_once()
     user_controller.account_dao.create.assert_called_once()
@@ -261,9 +261,7 @@ async def test_admin_create_user_persona_existe_nombre_no_coincide_debe_fallar(
             db=mock_db_session, payload=valid_payload
         )
 
-    assert "DNI ya está registrado" in str(exc_info.value) or "DNI ya está" in str(
-        exc_info.value
-    )
+    assert "datos personales no coinciden" in str(exc_info.value).lower()
 
 
 @pytest.mark.asyncio
@@ -327,4 +325,4 @@ async def test_admin_update_user_actualiza_external_local(
     user_controller.user_dao.update.assert_called_once()
     _, _, update_data = user_controller.user_dao.update.mock_calls[0].args
     assert update_data["external"] == "NEW-EXTERNAL-123456789012345678901234567890"
-    assert result.user_id == 1
+    assert result.id == 1

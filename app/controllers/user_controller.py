@@ -78,7 +78,7 @@ class UserController:
         )
 
         return AdminCreateUserResponse(
-            user_id=user.id,
+            id=user.id,
             account_id=account.id,
             full_name=full_name,
             email=email,
@@ -127,7 +127,7 @@ class UserController:
             raise ValidationException("Error al actualizar el usuario")
 
         return AdminUpdateUserResponse(
-            user_id=updated_user.id,
+            id=updated_user.id,
             full_name=updated_user.full_name,
             email=updated_user.account.email,
             role=updated_user.account.role.value,
@@ -181,7 +181,7 @@ class UserController:
 
         return new_user, new_account
 
-    def get_all_users(self, db: Session):
+    def get_all_users(self, db: Session, skip=0, limit=10, search=None, role=None):
         """
         Obtiene todos los usuarios del club.
         """
