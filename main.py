@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import settings
@@ -18,6 +19,7 @@ from app.services.routers import (
     account_router,
     athlete_router,
     attendance_router,
+    auth_router,
     endurance_test_router,
     evaluation_router,
     sprint_test_router,
@@ -83,6 +85,15 @@ def create_application() -> FastAPI:
     # Scalar docs
     setup_scalar_docs(app)
 
+    # CORS (necesario para frontend en http://localhost:5173)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     # Manejo de validación
     @app.exception_handler(RequestValidationError)
     async def validation_handler(request: Request, exc: RequestValidationError):
@@ -108,6 +119,7 @@ def create_application() -> FastAPI:
     # Routers
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
+    app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(test_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(attendance_router, prefix=API_PREFIX)
