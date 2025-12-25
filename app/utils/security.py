@@ -97,6 +97,16 @@ def create_access_token(
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
+def create_reset_token(account_id: int, email: str, expires_seconds: int = 900) -> str:
+    """Genera un token corto para restablecimiento de contraseña (por defecto 15 min)."""
+
+    return create_access_token(
+        subject=account_id,
+        expires_seconds=expires_seconds,
+        extra_claims={"action": "reset_password", "email": email},
+    )
+
+
 def decode_token(token: str) -> dict:
     """Decodifica y valida un JWT, retornando el payload."""
 
@@ -110,9 +120,18 @@ def decode_token(token: str) -> dict:
         raise UnauthorizedException("Token invalido o expirado") from exc
 
 
+def validate_reset_token(token: str) -> dict:
+    """Valida que el token sea de tipo reset_password y retorna el payload."""
+
+    payload = decode_token(token)
+    if payload.get("action") != "reset_password":
+        raise UnauthorizedException("Token de reset invalido")
+    return payload
+
+
 def get_current_account(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> Account:
     """Dependencia para obtener la cuenta autenticada desde el JWT."""
 
