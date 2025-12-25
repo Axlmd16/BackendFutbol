@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from app.controllers.user_controller import UserController
 from app.core.database import get_db
 from app.schemas.response import ResponseSchema
-from app.schemas.user_schema import AdminCreateUserRequest, AdminUpdateUserRequest
+from app.schemas.user_schema import (
+    AdminCreateUserRequest,
+    AdminUpdateUserRequest,
+    UserResponse,
+)
 from app.utils.exceptions import AppException
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -73,3 +77,20 @@ async def admin_update_user(
         raise HTTPException(
             status_code=500, detail=f"Error inesperado: {str(e)}"
         ) from e
+
+
+@router.get(
+    "/all",
+    response_model=ResponseSchema[List[UserResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Obtener todos los usuarios",
+    description="Obtiene una lista de todos los usuarios ",
+)
+def get_all_users(db: Annotated[Session, Depends(get_db)]):
+    result = user_controller.get_all_users(db=db)
+
+    return ResponseSchema(
+        status="success",
+        message="Usuarios obtenidos correctamente",
+        data=result,
+    )

@@ -180,3 +180,9 @@ class UserController:
         )
 
         return new_user, new_account
+
+    def get_all_users(self, db: Session):
+        """
+        Obtiene todos los usuarios del club.
+        """
+        return self.user_dao.get_all(db)

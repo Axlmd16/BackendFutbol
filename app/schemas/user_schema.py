@@ -95,3 +95,14 @@ class CreateLocalUserAccountRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=64)
     role: Role
+
+
+class UserResponse(BaseModel):
+    id: int
+    full_name: str
+    dni: str
+    role: str
+    external: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)

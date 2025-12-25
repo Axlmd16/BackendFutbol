@@ -7,7 +7,7 @@ import pytest
 @pytest.fixture
 def mock_person_client():
     """Mock del PersonClient para todos los tests del router."""
-    with patch("app.controllers.user_controller.PersonClient") as mock:
+    with patch("app.client.person_ms_service.PersonClient") as mock:
         client_instance = AsyncMock()
         mock.return_value = client_instance
         yield client_instance
@@ -39,7 +39,7 @@ async def test_admin_create_user_endpoint_success(client, mock_person_client):
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
         response = await client.post(
-            "/api/v1/users/admin-create",
+            "/api/v1/users/create",
             json={
                 "first_name": "Ana",
                 "last_name": "López",
@@ -65,7 +65,7 @@ async def test_admin_create_user_endpoint_success(client, mock_person_client):
 async def test_admin_create_user_endpoint_dni_invalido(client):
     """Debe rechazar DNI que no tenga 10 dígitos."""
     response = await client.post(
-        "/api/v1/users/admin-create",
+        "/api/v1/users/create",
         json={
             "first_name": "Carlos",
             "last_name": "Ruiz",
@@ -105,7 +105,7 @@ async def test_admin_create_user_endpoint_rol_invalido(client, mock_person_clien
         )
 
         response = await client.post(
-            "/api/v1/users/admin-create",
+            "/api/v1/users/create",
             json={
                 "first_name": "Pedro",
                 "last_name": "González",
@@ -138,7 +138,7 @@ async def test_admin_create_user_endpoint_dni_duplicado(client, mock_person_clie
         )
 
         response = await client.post(
-            "/api/v1/users/admin-create",
+            "/api/v1/users/create",
             json={
                 "first_name": "Luis",
                 "last_name": "Martínez",
@@ -172,7 +172,7 @@ async def test_admin_create_user_endpoint_error_ms_usuarios(client, mock_person_
         )
 
         response = await client.post(
-            "/api/v1/users/admin-create",
+            "/api/v1/users/create",
             json={
                 "first_name": "María",
                 "last_name": "Fernández",
@@ -218,7 +218,7 @@ async def test_admin_create_user_endpoint_rol_coach_success(client, mock_person_
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
         response = await client.post(
-            "/api/v1/users/admin-create",
+            "/api/v1/users/create",
             json={
                 "first_name": "Carlos",
                 "last_name": "Mendez",
@@ -250,7 +250,7 @@ async def test_admin_create_user_endpoint_error_generico(client, mock_person_cli
         )
 
         response = await client.post(
-            "/api/v1/users/admin-create",
+            "/api/v1/users/create",
             json={
                 "first_name": "Roberto",
                 "last_name": "Silva",
@@ -274,7 +274,7 @@ async def test_admin_create_user_endpoint_error_generico(client, mock_person_cli
 async def test_admin_create_user_endpoint_password_corto(client):
     """Debe rechazar password menor a 8 caracteres."""
     response = await client.post(
-        "/api/v1/users/admin-create",
+        "/api/v1/users/create",
         json={
             "first_name": "Test",
             "last_name": "User",
@@ -296,3 +296,30 @@ async def test_admin_create_user_endpoint_password_corto(client):
     # Verificar que hay un error sobre el password
     password_errors = [e for e in data["errors"] if "password" in e["field"]]
     assert len(password_errors) > 0
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_endpoint_success(client):
+    """GET /users/all debe devolver lista serializable de usuarios."""
+
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.get_all_users.return_value = [
+            {
+                "id": 1,
+                "external": "b82fa112-954c-4a48-812f-5fb0cb62f170",
+                "full_name": "Juan Pérez",
+                "dni": "1150696951",
+                "email": "juan.perez@test.com",
+                "role": "ADMINISTRATOR",
+                "is_active": True,
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": None,
+            }
+        ]
+
+        response = await client.get("/api/v1/users/all")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "success"
+        assert isinstance(payload["data"], list)
+        assert payload["data"][0]["id"] == 1

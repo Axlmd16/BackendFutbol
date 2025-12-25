@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 class PersonMSService:
     """Servicio que encapsula toda la lógica de interacción con el MS de usuarios."""
 
-    def __init__(self):
-        self.person_client = PersonClient()
+    def __init__(self, person_client: Optional[PersonClient] = None):
+        self.person_client = person_client or PersonClient()
 
     async def create_or_get_person(self, data: CreatePersonInMSRequest) -> str:
         """
@@ -30,7 +30,7 @@ class PersonMSService:
             save_resp = await self.person_client.create_person_with_account(
                 person_payload
             )
-            return self._handle_create_response(save_resp, data)
+            return await self._handle_create_response(save_resp, data)
         except ValidationException as e:
             if self._is_duplicate_error(e):
                 logger.info(
@@ -94,6 +94,19 @@ class PersonMSService:
                 "Error de comunicación con el módulo de usuarios"
             ) from e
 
+    async def get_all_users(self):
+        """
+        Obtiene todos los usuarios del club desde el MS de usuarios.
+        """
+        try:
+            users_resp = await self.person_client.get_all_filter()
+            return users_resp.get("data", [])
+        except Exception as e:
+            logger.error(f"Error al obtener usuarios del MS de usuarios: {e}")
+            raise ValidationException(
+                "Error de comunicación con el módulo de usuarios"
+            ) from e
+
     # Metodos privados
 
     def _build_person_payload(self, data: CreatePersonInMSRequest) -> dict:
@@ -110,7 +123,7 @@ class PersonMSService:
             "password": f"Pass{random.randint(10000, 99999)}!",
         }
 
-    def _handle_create_response(
+    async def _handle_create_response(
         self, save_resp: dict, data: CreatePersonInMSRequest
     ) -> str:
         """Procesa la respuesta del MS al crear persona."""
@@ -122,12 +135,13 @@ class PersonMSService:
             if external:
                 return external
 
+            raise ValidationException(
+                "El módulo de usuarios respondió 'success' pero no incluyó el identificador externo"
+            )
+
         if self._is_duplicate_message(raw_message):
             logger.info(f"Persona con DNI {data.dni} ya existe en MS usuarios")
-            # Usar el método async correctamente
-            import asyncio
-
-            return asyncio.create_task(self._get_and_validate_existing_person(data))
+            return await self._get_and_validate_existing_person(data)
 
         raise ValidationException(
             save_resp.get("message")

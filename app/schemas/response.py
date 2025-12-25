@@ -1,24 +1,16 @@
 """Esquema de respuesta estándar para endpoints FastAPI."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Generic, Optional, TypeVar
 
 from pydantic import BaseModel
 
+T = TypeVar("T")
 
-class ResponseSchema(BaseModel):
-    """Envuelve estado, mensaje, datos y errores opcionales."""
 
-    status: str  # "success" | "error"
+class ResponseSchema(BaseModel, Generic[T]):
+    status: str
     message: str
-    data: Optional[Any] = None
+    data: Optional[T] = None
     errors: Optional[Dict[str, Any]] = None
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "status": "success",
-                "message": "Operación realizada correctamente",
-                "data": {"id": 1},
-            }
-        }
-    }
+    model_config = {"from_attributes": True}
