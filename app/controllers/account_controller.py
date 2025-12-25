@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.dao.account_dao import AccountDAO
-from app.schemas.user_schema import LoginRequest, TokenResponse
+from app.schemas.account_schema import LoginRequest, LoginResponse
 from app.utils.exceptions import UnauthorizedException
 from app.utils.security import create_access_token, verify_password
 
@@ -13,7 +13,7 @@ class AccountController:
     def __init__(self) -> None:
         self.account_dao = AccountDAO()
 
-    def login(self, db: Session, payload: LoginRequest) -> TokenResponse:
+    def login(self, db: Session, payload: LoginRequest) -> LoginResponse:
         """Iniciar sesión y obtener un token de acceso."""
         email = payload.email.strip().lower()
         account = self.account_dao.get_by_email(db, email, only_active=True)
@@ -26,7 +26,7 @@ class AccountController:
 
         token = self.generate_jwt(account)
 
-        return TokenResponse(
+        return LoginResponse(
             access_token=token,
             token_type="bearer",
             expires_in=settings.TOKEN_EXPIRES,
