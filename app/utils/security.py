@@ -1,10 +1,13 @@
-"""Security helpers: DNI validation and email rules."""
+"""Security helpers: DNI validation, email rules y JWT/password helpers."""
 
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
 
+from jose import jwt
 from passlib.context import CryptContext
 
+from app.core.config import settings
 from app.utils.exceptions import ValidationException
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -65,3 +68,23 @@ def verify_password(password: str, password_hash: str) -> bool:
     if not password or not password_hash:
         return False
     return _pwd_context.verify(password, password_hash)
+
+
+def create_access_token(
+    subject: str | int,
+    expires_seconds: int | None = None,
+    extra_claims: dict | None = None,
+) -> str:
+    """Genera un JWT firmado con expiración."""
+
+    exp_seconds = expires_seconds or settings.TOKEN_EXPIRES
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(subject),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=exp_seconds)).timestamp()),
+    }
+    if extra_claims:
+        payload.update(extra_claims)
+
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
