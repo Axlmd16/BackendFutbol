@@ -63,7 +63,7 @@ class AccountController:
 
         return create_reset_token(account.id, account.email)
 
-    def confirm_password_reset(self, db: Session, payload: PasswordResetConfirm) -> None:
+    def confirm_password_reset(self, db: Session, payload: PasswordResetConfirm) -> None:  # noqa: E501
         """Valida el token de reset y actualiza la contraseña."""
 
         data = validate_reset_token(payload.token)
