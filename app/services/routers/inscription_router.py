@@ -4,8 +4,14 @@ from app.controllers.athlete_controller import AthleteController
 from app.core.database import get_db
 from app.schemas.athlete_schema import AthleteInscriptionDTO
 from app.schemas.response import ResponseSchema
-from app.utils.exceptions import AppException
+from app.utils.exceptions import (
+    AppException,
+    ValidationException,
+    AlreadyExistsException,
+    DatabaseException,
+)
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/inscription", tags=["Inscription"])
@@ -32,7 +38,28 @@ def register_athlete(inscription_data: AthleteInscriptionDTO, db: Session = Depe
                 "institutional_email": result.institutional_email
             }
         )
-    except AppException as app_exc:
-        return ResponseSchema(status="error", message=app_exc.message, data=None)
+    except ValidationException as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"status": "error", "message": exc.message, "data": None},
+        )
+    except AlreadyExistsException as exc:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"status": "error", "message": exc.message, "data": None},
+        )
+    except DatabaseException as exc:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"status": "error", "message": exc.message, "data": None},
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"status": "error", "message": exc.message, "data": None},
+        )
     except Exception:
-        return ResponseSchema(status="error", message="Error al procesar la inscripción. Intente más tarde.", data=None)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"status": "error", "message": "Error al procesar la inscripción. Intente más tarde.", "data": None},
+        )

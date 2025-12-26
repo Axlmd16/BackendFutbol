@@ -14,7 +14,6 @@ from app.services.routers.inscription_router import router as inscription_router
 __all__ = [
 	"athlete_router",
 	"attendance_router",
-	"evaluator_router",
 	"evaluation_router",
 	"test_router",
 	"statistic_router",
@@ -24,4 +23,5 @@ __all__ = [
 	"technical_assessment_router",
 	"user_router",
 	"account_router",
+	"inscription_router",
 ]

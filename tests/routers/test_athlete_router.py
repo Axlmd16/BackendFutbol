@@ -57,8 +57,8 @@ async def test_register_athlete_endpoint_rol_invalido(client):
             "university_role": "deportista",
         })
 
-        # El router devuelve 201 con cuerpo de error personalizado
-        assert resp.status_code == 201
+        # El router devuelve 400 en caso de rol inválido
+        assert resp.status_code == 400
         body = resp.json()
         assert body.get("status") == "error"
         assert "Rol inválido" in (body.get("message") or body.get("detail", ""))
@@ -81,7 +81,7 @@ async def test_register_athlete_endpoint_dni_duplicado(client):
             "university_role": "student",
         })
 
-        assert resp.status_code == 201
+        assert resp.status_code == 409
         body = resp.json()
         assert body.get("status") == "error"
         assert "DNI" in (body.get("message") or body.get("detail", ""))
@@ -104,7 +104,7 @@ async def test_register_athlete_endpoint_email_duplicado(client):
             "university_role": "student",
         })
 
-        assert resp.status_code == 201
+        assert resp.status_code == 409
         body = resp.json()
         assert body.get("status") == "error"
         assert "email" in (body.get("message", "") + body.get("detail", "")).lower()

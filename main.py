@@ -15,6 +15,7 @@ from app.core.scalar_docs import setup_scalar_docs
 from app.schemas.response import ResponseSchema
 from app.services.routers import athlete_router
 from app.services.routers import inscription_router
+from app.services.routers import user_router
 from app.services.routers import test_router
 from app.services.routers import evaluation_router
 from app.services.routers import attendance_router
@@ -100,6 +101,7 @@ def create_application() -> FastAPI:
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
     app.include_router(inscription_router, prefix=API_PREFIX)
+    app.include_router(user_router, prefix=API_PREFIX)
     app.include_router(test_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(attendance_router, prefix=API_PREFIX)

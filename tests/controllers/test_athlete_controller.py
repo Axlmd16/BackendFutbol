@@ -27,7 +27,7 @@ def valid_data():
     return AthleteInscriptionDTO(
         first_name="Juan",
         last_name="Pérez",
-        dni="12345678",
+        dni="1710034065",
         phone="3424123456",
         birth_date="1998-05-15",
         institutional_email="juan.perez@unl.edu.ar",
@@ -55,7 +55,7 @@ def test_register_athlete_unl_success(controller, mock_db_session, valid_data):
     assert result.last_name == "Pérez"
     assert result.institutional_email == "juan.perez@unl.edu.ar"
 
-    controller.athlete_dao.exists.assert_any_call(mock_db_session, "dni", "12345678")
+    controller.athlete_dao.exists.assert_any_call(mock_db_session, "dni", "1710034065")
     controller.athlete_dao.exists.assert_any_call(mock_db_session, "institutional_email", "juan.perez@unl.edu.ar")
     controller.athlete_dao.create.assert_called_once()
     controller.statistic_dao.create.assert_called_once()
