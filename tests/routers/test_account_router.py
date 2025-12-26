@@ -45,10 +45,10 @@ async def test_login_invalid_credentials(client):
 
 
 @pytest.mark.asyncio
-async def test_password_reset_request_returns_token(client):
-    """Prueba de solicitud de restablecimiento de contraseña."""
+async def test_password_reset_request_success(client):
+    """Prueba de solicitud de restablecimiento de contraseña con respuesta genérica."""
     with patch("app.services.routers.account_router.account_controller") as mock_ctrl:
-        mock_ctrl.request_password_reset.return_value = "reset123"
+        mock_ctrl.request_password_reset.return_value = None
 
         response = await client.post(
             "/api/v1/accounts/password-reset/request",
@@ -58,25 +58,24 @@ async def test_password_reset_request_returns_token(client):
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
-        assert data["data"]["reset_token"] == "reset123"
+        assert data["data"] is None
 
 
 @pytest.mark.asyncio
-async def test_password_reset_request_not_found(client):
-    """Debe devolver 404 si la cuenta no existe."""
+async def test_password_reset_request_always_generic_success(client):
+    """Siempre responde éxito genérico para evitar enumeración de cuentas."""
     with patch("app.services.routers.account_router.account_controller") as mock_ctrl:
-        mock_ctrl.request_password_reset.side_effect = NotFoundException(
-            "Cuenta no encontrada"
-        )
+        mock_ctrl.request_password_reset.return_value = None
 
         response = await client.post(
             "/api/v1/accounts/password-reset/request",
             json={"email": "missing@test.com"},
         )
 
-        assert response.status_code == 404
+        assert response.status_code == 200
         data = response.json()
-        assert "Cuenta no encontrada" in data["detail"]
+        assert data["status"] == "success"
+        assert data["data"] is None
 
 
 @pytest.mark.asyncio

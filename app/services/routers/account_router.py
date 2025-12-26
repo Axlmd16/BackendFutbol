@@ -1,3 +1,5 @@
+from typing import Callable, TypeVar
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,7 +7,6 @@ from app.controllers.account_controller import AccountController
 from app.core.database import get_db
 from app.schemas.account_schema import (
     LoginRequest,
-    LoginResponse,
     PasswordResetConfirm,
     PasswordResetRequest,
 )
@@ -14,6 +15,19 @@ from app.utils.exceptions import AppException
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 account_controller = AccountController()
+
+T = TypeVar("T")
+
+
+def handle_exceptions(fn: Callable[[], T]) -> T:
+    """Aplica manejo consistente de errores en endpoints."""
+
+    try:
+        return fn()
+    except AppException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    except Exception as exc:  # pragma: no cover - catch-all defensivo
+        raise HTTPException(status_code=500, detail="Error inesperado") from exc
 
 
 @router.post(
@@ -25,17 +39,13 @@ account_controller = AccountController()
 )
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> ResponseSchema:  # noqa: B008 (FastAPI dependency injection)
     """Endpoint para iniciar sesión y obtener un token JWT."""
-    try:
-        token_data: LoginResponse = account_controller.login(db, payload)
-        return ResponseSchema(
+    return handle_exceptions(
+        lambda: ResponseSchema(
             status="success",
             message="Inicio de sesión exitoso",
-            data=token_data.model_dump(),
+            data=account_controller.login(db, payload).model_dump(),
         )
-    except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    except Exception as exc:  # pragma: no cover - catch-all defensivo
-        raise HTTPException(status_code=500, detail="Error inesperado") from exc
+    )
 
 
 @router.post(
@@ -50,17 +60,16 @@ def request_password_reset(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> ResponseSchema:
     """Genera un token de restablecimiento de contraseña y lo envía por correo."""
-    try:
-        account_controller.request_password_reset(db, payload)
-        return ResponseSchema(
-            status="success",
-            message="Si el correo existe, se ha enviado un enlace de restablecimiento",
-            data=None,
-        )
-    except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    except Exception as exc:  # pragma: no cover - catch-all defensivo
-        raise HTTPException(status_code=500, detail="Error inesperado") from exc
+    return handle_exceptions(
+        lambda: (
+            account_controller.request_password_reset(db, payload),
+            ResponseSchema(
+                status="success",
+                message="Si el correo existe, se ha enviado un enlace de restablecimiento",
+                data=None,
+            ),
+        )[1]
+    )
 
 
 @router.post(
@@ -75,14 +84,13 @@ def confirm_password_reset(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> ResponseSchema:
     """Confirma el restablecimiento de contraseña usando el token proporcionado."""
-    try:
-        account_controller.confirm_password_reset(db, payload)
-        return ResponseSchema(
-            status="success",
-            message="Contraseña actualizada",
-            data=None,
-        )
-    except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    except Exception as exc:  # pragma: no cover - catch-all defensivo
-        raise HTTPException(status_code=500, detail="Error inesperado") from exc
+    return handle_exceptions(
+        lambda: (
+            account_controller.confirm_password_reset(db, payload),
+            ResponseSchema(
+                status="success",
+                message="Contraseña actualizada",
+                data=None,
+            ),
+        )[1]
+    )

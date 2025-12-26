@@ -79,7 +79,7 @@ def test_login_bad_password(monkeypatch, controller):
 
 
 def test_request_password_reset_success(monkeypatch, controller):
-    """Prueba de solicitud de reseteo de contraseña exitoso."""
+    """Genera token y envía correo sin devolverlo."""
     db = MagicMock()
     account = _mock_account()
     monkeypatch.setattr(
@@ -91,22 +91,37 @@ def test_request_password_reset_success(monkeypatch, controller):
         "app.controllers.account_controller.create_reset_token",
         lambda *args, **kwargs: "reset123",
     )
+    sent = {"called": False, "args": None}
+    def _send_reset_email(**kwargs):
+        sent["called"] = True
+        sent["args"] = kwargs
+    monkeypatch.setattr(
+        "app.controllers.account_controller.send_reset_email",
+        _send_reset_email,
+    )
 
-    token = controller.request_password_reset(db, MagicMock(email="user@test.com"))
-    assert token == "reset123"
+    controller.request_password_reset(db, MagicMock(email="user@test.com"))
+    assert sent["called"] is True
+    assert sent["args"]["to_email"] == "user@test.com"
+    assert sent["args"]["reset_token"] == "reset123"
 
 
 def test_request_password_reset_not_found(monkeypatch, controller):
-    """Prueba de solicitud de reseteo de contraseña con cuenta no encontrada."""
+    """No revela existencia: no envía correo ni lanza excepción."""
     db = MagicMock()
     monkeypatch.setattr(
         controller.account_dao,
         "get_by_email",
         lambda db, email, only_active=True: None,
     )
+    sent = {"called": False}
+    monkeypatch.setattr(
+        "app.controllers.account_controller.send_reset_email",
+        lambda **kwargs: sent.update({"called": True}),
+    )
 
-    with pytest.raises(NotFoundException):
-        controller.request_password_reset(db, MagicMock(email="user@test.com"))
+    controller.request_password_reset(db, MagicMock(email="user@test.com"))
+    assert sent["called"] is False
 
 
 def test_confirm_password_reset_success(monkeypatch, controller):

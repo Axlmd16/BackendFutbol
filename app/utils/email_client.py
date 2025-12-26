@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 def send_credentials_email(to_email: str, full_name: str, temp_password: str) -> None:
     """Envía un correo con la contraseña temporal.
 
+    Args:
+        to_email: Destinatario del correo.
+        full_name: Nombre del usuario que recibirá las credenciales.
+        temp_password: Contraseña temporal generada.
+
     Si la configuración SMTP no está presente, solo se registra el evento.
     """
     smtp_host = settings.SMTP_HOST
@@ -57,7 +62,16 @@ def send_credentials_email(to_email: str, full_name: str, temp_password: str) ->
 
 
 def send_reset_email(to_email: str, full_name: str, reset_token: str) -> None:
-    """Envía correo con el token de reseteo (o link)."""
+    """Envía correo con el token de reseteo (o link).
+
+    Args:
+        to_email: Destinatario del correo.
+        full_name: Nombre del usuario.
+        reset_token: Token de restablecimiento que se incluirá en el mensaje.
+
+    Returns:
+        None. Envía el correo o registra el evento si SMTP no está configurado.
+    """
     smtp_host = settings.SMTP_HOST
     smtp_port = settings.SMTP_PORT
     smtp_user = settings.SMTP_USER

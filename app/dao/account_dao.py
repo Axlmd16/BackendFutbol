@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from app.dao.base import BaseDAO
@@ -11,6 +13,15 @@ class AccountDAO(BaseDAO[Account]):
         super().__init__(Account)
 
     
-    def get_by_email(self, db: Session, email: str, only_active: bool = True):
-        """Obtener una cuenta por email."""
+    def get_by_email(self, db: Session, email: str, only_active: bool = True) -> Optional[Account]:  # noqa: E501
+        """Obtener una cuenta por email.
+
+        Args:
+            db: Sesión de SQLAlchemy para realizar la consulta.
+            email: Correo electrónico de la cuenta a buscar.
+            only_active: Si es True, limita la búsqueda a cuentas activas.
+
+        Returns:
+            Account | None: Cuenta encontrada o None si no existe/coincide el filtro.
+        """
         return self.get_by_field(db, "email", email, only_active=only_active)
