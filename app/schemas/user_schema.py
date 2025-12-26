@@ -118,7 +118,7 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
 class AdminUpdateUserRequest(PersonBase):
     """Datos para actualizar un usuario existente."""
 
-    id: int = Field(..., gt=0, description="ID del usuario a actualizar")
+    # id: int = Field(..., gt=0, description="ID del usuario a actualizar")
 
 
 class CreatePersonInMSRequest(PersonBase):

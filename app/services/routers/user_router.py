@@ -66,7 +66,7 @@ async def admin_create_user(
 
 
 @router.put(
-    "/update",
+    "/update/{user_id}",
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Actualizar usuario administrador/entrenador",
@@ -75,6 +75,7 @@ async def admin_create_user(
 async def admin_update_user(
     payload: AdminUpdateUserRequest,
     db: Annotated[Session, Depends(get_db)],
+    user_id: int,
     # TODO: agregar dependencia de autenticación
 ) -> ResponseSchema:
     """Solo el administrador puede actualizar usuarios administradores o entrenadores"""
@@ -82,6 +83,7 @@ async def admin_update_user(
         result = await user_controller.admin_update_user(
             db=db,
             payload=payload,
+            user_id=user_id,
         )
         return ResponseSchema(
             status="success",
@@ -142,17 +144,29 @@ def get_all_users(
 async def get_by_id(user_id: int, db: Annotated[Session, Depends(get_db)]):
     user = await user_controller.get_user_by_id(db=db, user_id=user_id)
     if not user:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content=ResponseSchema(
-                status="error",
-                message="Usuario no encontrado",
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        raise AppException(status_code=404, message="Usuario no encontrado")
     return ResponseSchema(
         status="success",
         message="Usuario obtenido correctamente",
         data=user.model_dump(),
+    )
+
+
+@router.patch(
+    "/desactivate/{user_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Desactivar usuario",
+    description="Desactiva un usuario, impidiendo su acceso al sistema.",
+)
+def desactivate_user(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Desactiva un usuario (soft delete)"""
+    user_controller.desactivate_user(db=db, user_id=user_id)
+    return ResponseSchema(
+        status="success",
+        message="Usuario desactivado correctamente",
+        data=None,
     )

@@ -92,6 +92,7 @@ class UserController:
         self,
         db: Session,
         payload: AdminUpdateUserRequest,
+        user_id: int,
     ) -> AdminUpdateUserResponse:
         """
         Actualiza un administrador o entrenador.
@@ -102,7 +103,7 @@ class UserController:
         3. Actualizar localmente (incluyendo external si cambió)
         """
         # Verificar que el usuario existe
-        user = self.user_dao.get_by_id(db=db, id=payload.id, only_active=False)
+        user = self.user_dao.get_by_id(db=db, id=user_id, only_active=False)
         if not user:
             raise ValidationException("El usuario a actualizar no existe")
 
@@ -226,3 +227,13 @@ class UserController:
             created_at=user.created_at,
             updated_at=user.updated_at,
         )
+
+    def desactivate_user(self, db: Session, user_id: int) -> None:
+        """
+        Desactiva un usuario (soft delete).
+        """
+        user = self.user_dao.get_by_id(db=db, id=user_id)
+        if not user:
+            raise ValidationException("El usuario a desactivar no existe")
+
+        self.user_dao.update(db, user_id, {"is_active": False})
