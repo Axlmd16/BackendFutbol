@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.controllers.user_controller import UserController
@@ -9,6 +10,7 @@ from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
     AdminUpdateUserRequest,
+    UserDetailResponse,
     UserFilter,
     UserResponse,
 )
@@ -42,11 +44,25 @@ async def admin_create_user(
             data=result.model_dump(),
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(e)}"
-        ) from e
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.put(
@@ -73,11 +89,25 @@ async def admin_update_user(
             data=result.model_dump(),
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(e)}"
-        ) from e
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.get(
@@ -99,4 +129,30 @@ def get_all_users(
         status="success",
         message="Usuarios obtenidos correctamente",
         data=PaginatedResponse(items=items, total=total),
+    )
+
+
+@router.get(
+    "/{user_id}",
+    response_model=ResponseSchema[UserDetailResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Obtener usuario por ID",
+    description="Obtiene los detalles de un usuario específico por su ID.",
+)
+async def get_by_id(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    user = await user_controller.get_user_by_id(db=db, user_id=user_id)
+    if not user:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=ResponseSchema(
+                status="error",
+                message="Usuario no encontrado",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    return ResponseSchema(
+        status="success",
+        message="Usuario obtenido correctamente",
+        data=user.model_dump(),
     )

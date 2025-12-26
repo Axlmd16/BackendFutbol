@@ -13,6 +13,7 @@ from app.schemas.user_schema import (
     AdminUpdateUserRequest,
     AdminUpdateUserResponse,
     CreatePersonInMSRequest,
+    UserDetailResponse,
     UserFilter,
 )
 from app.utils.exceptions import AlreadyExistsException, ValidationException
@@ -187,3 +188,41 @@ class UserController:
         Obtiene usuarios aplicando los filtros recibidos.
         """
         return self.user_dao.get_all_with_filters(db, filters=filters)
+
+    async def get_user_by_id(
+        self, db: Session, user_id: int
+    ) -> UserDetailResponse | None:
+        """
+        Obtiene la informacion personal de un uusario
+        """
+        user = self.user_dao.get_by_id(db=db, id=user_id)
+        if not user:
+            return None
+
+        # Obtener datos desde MS de personas
+        person_data = await self.person_ms_service.get_user_by_identification(user.dni)
+        if not person_data:
+            raise ValidationException("No se encontró la información de la persona")
+
+        print("PERSON DATA:", person_data)
+        nombre = person_data["data"]["firts_name"]
+
+        print(f"nombre: {nombre}")
+
+        return UserDetailResponse(
+            id=user.id,
+            full_name=user.full_name,
+            role=user.account.role.value,
+            dni=user.dni,
+            email=user.account.email,
+            external=user.external,
+            is_active=user.is_active,
+            first_name=person_data["data"]["firts_name"],
+            last_name=person_data["data"]["last_name"],
+            direction=person_data["data"]["direction"],
+            phone=person_data["data"]["phono"],
+            type_identification=person_data["data"]["type_identification"],
+            type_stament=person_data["data"]["type_stament"],
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )

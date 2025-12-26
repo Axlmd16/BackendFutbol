@@ -107,6 +107,21 @@ class PersonMSService:
                 "Error de comunicación con el módulo de usuarios"
             ) from e
 
+    async def get_user_by_identification(self, identification: str) -> dict:
+        """
+        Obtiene un usuario por su identificación desde el MS de usuarios.
+        """
+        try:
+            user_resp = await self.person_client.get_by_identification(identification)
+            return user_resp
+        except Exception as e:
+            logger.error(
+                f"Error al obtener usuario por identificación del MS de usuarios: {e}"
+            )
+            raise ValidationException(
+                "Error de comunicación con el módulo de usuarios"
+            ) from e
+
     # Metodos privados
 
     def _build_person_payload(self, data: CreatePersonInMSRequest) -> dict:

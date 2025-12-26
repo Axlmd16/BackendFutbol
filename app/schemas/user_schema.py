@@ -21,6 +21,39 @@ class PersonBase(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True, from_attributes=True)
 
+    @field_validator("type_identification", mode="before")
+    @classmethod
+    def _normalize_type_identification(cls, value: Any) -> str:
+        if value is None:
+            return "CEDULA"
+
+        raw = str(value).strip().lower()
+        mapping = {
+            "dni": "CEDULA",
+            "cedula": "CEDULA",
+            "cédula": "CEDULA",
+            "cedula_ec": "CEDULA",
+            "passport": "PASSPORT",
+            "pasaporte": "PASSPORT",
+            "ruc": "RUC",
+        }
+        return mapping.get(raw, str(value).strip().upper())
+
+    @field_validator("type_stament", mode="before")
+    @classmethod
+    def _normalize_type_stament(cls, value: Any) -> str:
+        if value is None:
+            return "EXTERNOS"
+        raw = str(value).strip().lower()
+        mapping = {
+            "administrativos": "ADMINISTRATIVOS",
+            "docentes": "DOCENTES",
+            "estudiantes": "ESTUDIANTES",
+            "trabajadores": "TRABAJADORES",
+            "externos": "EXTERNOS",
+        }
+        return mapping.get(raw, str(value).strip().upper())
+
 
 class AccountBase(BaseModel):
     """Campos base de cuenta de usuario."""
@@ -124,6 +157,19 @@ class UserResponse(UserResponseBase):
     email: EmailStr
     external: str
     is_active: bool
+
+
+class UserDetailResponse(UserResponse):
+    """Respuesta detallada de usuario (GET /id)."""
+
+    first_name: str
+    last_name: str
+    direction: Optional[str]
+    phone: Optional[str]
+    type_identification: str
+    type_stament: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 class AdminCreateUserResponse(UserResponseBase):
