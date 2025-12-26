@@ -65,7 +65,7 @@ def request_password_reset(
             account_controller.request_password_reset(db, payload),
             ResponseSchema(
                 status="success",
-                message="Si el correo existe, se ha enviado un enlace de restablecimiento",
+                message="Si el correo existe, se ha enviado un enlace de restablecimiento",  # noqa: E501
                 data=None,
             ),
         )[1]

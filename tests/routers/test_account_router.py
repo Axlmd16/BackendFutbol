@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.utils.exceptions import NotFoundException, UnauthorizedException
+from app.utils.exceptions import UnauthorizedException
 
 
 @pytest.mark.asyncio

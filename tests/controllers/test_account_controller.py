@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.controllers.account_controller import AccountController
-from app.utils.exceptions import NotFoundException, UnauthorizedException
+from app.utils.exceptions import UnauthorizedException
 
 
 @pytest.fixture
