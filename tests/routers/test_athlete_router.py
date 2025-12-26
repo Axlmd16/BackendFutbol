@@ -1,10 +1,13 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.mark.asyncio
 async def test_register_athlete_endpoint_success(client):
-    with patch("app.services.routers.inscription_router.athlete_controller") as mock_controller:
+    with patch(
+        "app.services.routers.inscription_router.athlete_controller"
+    ) as mock_controller:
         mock_result = MagicMock(
             athlete_id=1,
             statistic_id=10,
@@ -21,7 +24,9 @@ async def test_register_athlete_endpoint_success(client):
         })
         mock_controller.register_athlete_unl = MagicMock(return_value=mock_result)
 
-        resp = await client.post("/api/v1/inscription/deportista", json={
+        resp = await client.post(
+            "/api/v1/inscription/deportista",
+            json={
             "first_name": "Juan",
             "last_name": "Pérez",
             "dni": "12345678",
@@ -31,7 +36,8 @@ async def test_register_athlete_endpoint_success(client):
             "university_role": "student",
             "weight": "75.5",
             "height": "180",
-        })
+            },
+        )
 
         assert resp.status_code == 201
         data = resp.json()
@@ -44,18 +50,25 @@ async def test_register_athlete_endpoint_success(client):
 async def test_register_athlete_endpoint_rol_invalido(client):
     from app.utils.exceptions import ValidationException
 
-    with patch("app.services.routers.inscription_router.athlete_controller") as mock_controller:    
+    with patch(
+        "app.services.routers.inscription_router.athlete_controller"
+    ) as mock_controller:
         mock_controller.register_athlete_unl = MagicMock(
-            side_effect=ValidationException("Rol inválido. Debe ser uno de: STUDENT, TEACHER, ADMIN, WORKER")
+            side_effect=ValidationException(
+                "Rol inválido. Debe ser uno de: STUDENT, TEACHER, ADMIN, WORKER"
+            )
         )
         
-        resp = await client.post("/api/v1/inscription/deportista", json={
+        resp = await client.post(
+            "/api/v1/inscription/deportista",
+            json={
             "first_name": "Ana",
             "last_name": "López",
             "dni": "12345678",
             "institutional_email": "ana@test.com",
             "university_role": "deportista",
-        })
+            },
+        )
 
         # El router devuelve 400 en caso de rol inválido
         assert resp.status_code == 400
@@ -68,18 +81,22 @@ async def test_register_athlete_endpoint_rol_invalido(client):
 async def test_register_athlete_endpoint_dni_duplicado(client):
     from app.utils.exceptions import AlreadyExistsException
 
-    with patch("app.services.routers.inscription_router.athlete_controller") as mock_controller:    
+    with patch(
+        "app.services.routers.inscription_router.athlete_controller"
+    ) as mock_controller:
         mock_controller.register_athlete_unl = MagicMock(
             side_effect=AlreadyExistsException("El DNI ya existe en el sistema.")
         )
-        
-        resp = await client.post("/api/v1/inscription/deportista", json={
+        resp = await client.post(
+            "/api/v1/inscription/deportista",
+            json={
             "first_name": "Luis",
             "last_name": "Martínez",
             "dni": "12345678",
             "institutional_email": "luis@test.com",
             "university_role": "student",
-        })
+            },
+        )
 
         assert resp.status_code == 409
         body = resp.json()
@@ -91,18 +108,24 @@ async def test_register_athlete_endpoint_dni_duplicado(client):
 async def test_register_athlete_endpoint_email_duplicado(client):
     from app.utils.exceptions import AlreadyExistsException
 
-    with patch("app.services.routers.inscription_router.athlete_controller") as mock_controller:    
+    with patch(
+        "app.services.routers.inscription_router.athlete_controller"
+    ) as mock_controller:
         mock_controller.register_athlete_unl = MagicMock(
-            side_effect=AlreadyExistsException("El email institucional ya existe en el sistema.")   
+            side_effect=AlreadyExistsException(
+                "El email institucional ya existe en el sistema."
+            )
         )
-        
-        resp = await client.post("/api/v1/inscription/deportista", json={
+        resp = await client.post(
+            "/api/v1/inscription/deportista",
+            json={
             "first_name": "Roberto",
             "last_name": "Silva",
             "dni": "87654321",
             "institutional_email": "roberto@test.com",
             "university_role": "student",
-        })
+            },
+        )
 
         assert resp.status_code == 409
         body = resp.json()
@@ -113,12 +136,15 @@ async def test_register_athlete_endpoint_email_duplicado(client):
 @pytest.mark.asyncio
 async def test_register_athlete_endpoint_validacion_formato(client):
     # Falta campo requerido (email), debería 422 con formato custom
-    resp = await client.post("/api/v1/inscription/deportista", json={
+    resp = await client.post(
+        "/api/v1/inscription/deportista",
+        json={
         "first_name": "Test",
         "last_name": "User",
         "dni": "1234",
         "university_role": "student",
-    })
+        },
+    )
     assert resp.status_code == 422
     body = resp.json()
     assert body.get("status") == "error" or "errors" in body

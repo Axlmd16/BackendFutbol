@@ -1,7 +1,9 @@
 """Esquemas Pydantic para inscripcion de deportistas UNL."""
 
 from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, EmailStr
+
 from app.schemas.base_schema import BaseSchema
 
 

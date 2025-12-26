@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String
-from app.models.base import BaseModel
 from sqlalchemy.orm import relationship
+
+from app.models.base import BaseModel
 
 
 class Athlete(BaseModel):
@@ -20,9 +21,21 @@ class Athlete(BaseModel):
     weight = Column(String(20), nullable=True)
     height = Column(String(20), nullable=True)
 
-    tests = relationship("Test", back_populates="athlete", cascade="all, delete-orphan")
-    attendances = relationship("Attendance", back_populates="athlete", cascade="all, delete-orphan")
-    statistic = relationship("Statistic", back_populates="athlete", uselist=False, cascade="all, delete-orphan")
+    tests = relationship(
+        "Test", back_populates="athlete", cascade="all, delete-orphan"
+    )
+    attendances = relationship(
+        "Attendance", back_populates="athlete", cascade="all, delete-orphan"
+    )
+    statistic = relationship(
+        "Statistic",
+        back_populates="athlete",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
-        return f"<Athlete(id={self.id}, dni='{self.dni}', name='{self.first_name} {self.last_name}', type='{self.type_athlete}')>"
+        return (
+            f"<Athlete id={self.id} dni='{self.dni}' name="
+            f"'{self.first_name} {self.last_name}' type='{self.type_athlete}'>"
+        )

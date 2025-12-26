@@ -1,7 +1,8 @@
 """Tests para el router de inscripción de deportistas UNL."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -22,9 +23,17 @@ async def test_register_athlete_unl_success(client, mock_db_session):
     # Mock de los DAOs a nivel de instancia
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
     
-    with patch("app.dao.athlete_dao.AthleteDAO.exists", return_value=False), \
-         patch("app.dao.athlete_dao.AthleteDAO.create", return_value=mock_athlete), \
-         patch("app.dao.statistic_dao.StatisticDAO.create", return_value=mock_statistic):
+    with (
+        patch("app.dao.athlete_dao.AthleteDAO.exists", return_value=False),
+        patch(
+            "app.dao.athlete_dao.AthleteDAO.create",
+            return_value=mock_athlete,
+        ),
+        patch(
+            "app.dao.statistic_dao.StatisticDAO.create",
+            return_value=mock_statistic,
+        ),
+    ):
         
         # Request
         response = await client.post(
@@ -38,8 +47,8 @@ async def test_register_athlete_unl_success(client, mock_db_session):
                 "institutional_email": "juan.perez@unl.edu.ec",
                 "university_role": "STUDENT",
                 "weight": "75.5",
-                "height": "180"
-            }
+                "height": "180",
+            },
         )
         
         # Assertions
@@ -89,8 +98,8 @@ async def test_register_athlete_duplicate_dni(client, mock_db_session):
                 "institutional_email": "juan.perez@unl.edu.ec",
                 "university_role": "STUDENT",
                 "weight": "75.5",
-                "height": "180"
-            }
+                "height": "180",
+            },
         )
         
         # Assertions
@@ -119,8 +128,8 @@ async def test_register_athlete_duplicate_email(client, mock_db_session):
                 "institutional_email": "juan.perez@unl.edu.ec",
                 "university_role": "STUDENT",
                 "weight": "75.5",
-                "height": "180"
-            }
+                "height": "180",
+            },
         )
         
         # Assertions
@@ -187,9 +196,17 @@ async def test_register_athlete_all_valid_roles(client, mock_db_session):
         mock_statistic = MagicMock()
         mock_statistic.id = 1
         
-        with patch("app.dao.athlete_dao.AthleteDAO.exists", return_value=False), \
-             patch("app.dao.athlete_dao.AthleteDAO.create", return_value=mock_athlete), \
-             patch("app.dao.statistic_dao.StatisticDAO.create", return_value=mock_statistic):
+        with (
+            patch("app.dao.athlete_dao.AthleteDAO.exists", return_value=False),
+            patch(
+                "app.dao.athlete_dao.AthleteDAO.create",
+                return_value=mock_athlete,
+            ),
+            patch(
+                "app.dao.statistic_dao.StatisticDAO.create",
+                return_value=mock_statistic,
+            ),
+        ):
             
             response = await client.post(
                 "/api/v1/inscription/deportista",

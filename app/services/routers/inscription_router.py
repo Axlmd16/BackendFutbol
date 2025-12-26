@@ -1,18 +1,19 @@
 """Router para inscripción de deportistas UNL."""
 
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+
 from app.controllers.athlete_controller import AthleteController
 from app.core.database import get_db
 from app.schemas.athlete_schema import AthleteInscriptionDTO
 from app.schemas.response import ResponseSchema
 from app.utils.exceptions import (
-    AppException,
-    ValidationException,
     AlreadyExistsException,
+    AppException,
     DatabaseException,
+    ValidationException,
 )
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/inscription", tags=["Inscription"])
 athlete_controller = AthleteController()
@@ -24,7 +25,10 @@ athlete_controller = AthleteController()
     status_code=status.HTTP_201_CREATED,
     summary="Registrar deportista UNL"
 )
-def register_athlete(inscription_data: AthleteInscriptionDTO, db: Session = Depends(get_db)):
+def register_athlete(
+    inscription_data: AthleteInscriptionDTO,
+    db: Session = Depends(get_db),  # noqa: B008 (FastAPI dependency pattern)
+):
     try:
         result = athlete_controller.register_athlete_unl(db, inscription_data)
         return ResponseSchema(
@@ -61,5 +65,9 @@ def register_athlete(inscription_data: AthleteInscriptionDTO, db: Session = Depe
     except Exception:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"status": "error", "message": "Error al procesar la inscripción. Intente más tarde.", "data": None},
+            content={
+                "status": "error",
+                "message": "Error al procesar la inscripción. Intente más tarde.",
+                "data": None,
+            },
         )

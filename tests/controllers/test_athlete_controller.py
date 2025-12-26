@@ -1,10 +1,11 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from sqlalchemy.orm import Session
 
 from app.controllers.athlete_controller import AthleteController
 from app.schemas.athlete_schema import AthleteInscriptionDTO
-from app.utils.exceptions import ValidationException, AlreadyExistsException
+from app.utils.exceptions import AlreadyExistsException, ValidationException
 
 
 @pytest.fixture
@@ -55,8 +56,14 @@ def test_register_athlete_unl_success(controller, mock_db_session, valid_data):
     assert result.last_name == "Pérez"
     assert result.institutional_email == "juan.perez@unl.edu.ar"
 
-    controller.athlete_dao.exists.assert_any_call(mock_db_session, "dni", "1710034065")
-    controller.athlete_dao.exists.assert_any_call(mock_db_session, "institutional_email", "juan.perez@unl.edu.ar")
+    controller.athlete_dao.exists.assert_any_call(
+        mock_db_session, "dni", "1710034065"
+    )
+    controller.athlete_dao.exists.assert_any_call(
+        mock_db_session,
+        "institutional_email",
+        "juan.perez@unl.edu.ar",
+    )
     controller.athlete_dao.create.assert_called_once()
     controller.statistic_dao.create.assert_called_once()
 

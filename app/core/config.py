@@ -1,6 +1,7 @@
-from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
 from typing import List, Optional
+
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -52,10 +53,7 @@ class Settings(BaseSettings):
 
     # ================= PYDANTIC V2 CONFIG =================
     model_config = ConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )
 
 
