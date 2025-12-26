@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = 'nzvl bfwk ebqp rian'
     SMTP_FROM: Optional[str] = 'darwin.granda@unl.edu.ec'
     SMTP_SSL: bool = True
+    # URL del frontend para construir enlaces en correos
+    FRONTEND_URL: Optional[str] = "http://localhost:5173"
 
     # Restricciones de correo institucional
     INSTITUTIONAL_EMAIL_DOMAINS: List[str] = ["@unl.edu.ec"]

@@ -84,6 +84,9 @@ def send_reset_email(to_email: str, full_name: str, reset_token: str) -> None:
         logger.info("Token de reset para %s: %s", to_email, reset_token)  # útil en dev
         return
 
+    frontend_base = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+    reset_link = f"{frontend_base.rstrip('/')}/reset-password?token={reset_token}"
+
     message = EmailMessage()
     message["Subject"] = "Restablecer contraseña"
     message["From"] = smtp_from
@@ -91,8 +94,7 @@ def send_reset_email(to_email: str, full_name: str, reset_token: str) -> None:
     message.set_content(
         f"Hola {full_name},\n\n"
         "Solicitaste restablecer tu contraseña.\n"
-        f"Token: {reset_token}\n"
-        "O usa el enlace: https://tu-frontend/reset?token=" + reset_token + "\n\n"
+        f"Usa este enlace para continuar: {reset_link}\n\n"
         "Si no fuiste tú, ignora este correo.\n"
     )
 
