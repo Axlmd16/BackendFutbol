@@ -28,12 +28,12 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["*"]
 
     # ================= EMAIL =================
-    SMTP_HOST: Optional[str] = None
-    SMTP_PORT: int = 587
-    SMTP_USER: Optional[str] = None
-    SMTP_PASSWORD: Optional[str] = None
-    SMTP_FROM: Optional[str] = None
-    SMTP_TLS: bool = True
+    SMTP_HOST: Optional[str] = 'smtp.gmail.com'
+    SMTP_PORT: int = 465
+    SMTP_USER: Optional[str] = 'darwin.granda@unl.edu.ec'
+    SMTP_PASSWORD: Optional[str] = 'nzvl bfwk ebqp rian'
+    SMTP_FROM: Optional[str] = 'darwin.granda@unl.edu.ec'
+    SMTP_SSL: bool = True
 
     # Restricciones de correo institucional
     INSTITUTIONAL_EMAIL_DOMAINS: List[str] = ["@unl.edu.ec"]

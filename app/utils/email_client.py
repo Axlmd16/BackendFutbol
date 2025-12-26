@@ -19,7 +19,7 @@ def send_credentials_email(to_email: str, full_name: str, temp_password: str) ->
     smtp_user = settings.SMTP_USER
     smtp_password = settings.SMTP_PASSWORD
     smtp_from = settings.SMTP_FROM or smtp_user
-    use_tls = settings.SMTP_TLS
+    use_ssl = settings.SMTP_SSL
 
     if not smtp_host or not smtp_port or not smtp_from:
         logger.warning("SMTP no configurado; se omite envío de correo a %s", to_email)
@@ -40,12 +40,17 @@ def send_credentials_email(to_email: str, full_name: str, temp_password: str) ->
     )
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-            if use_tls:
+        if use_ssl:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
                 server.starttls()
-            if smtp_user and smtp_password:
-                server.login(smtp_user, smtp_password)
-            server.send_message(message)
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(message)
         logger.info("Correo de credenciales enviado a %s", to_email)
     except Exception as exc:  # pragma: no cover - entorno sin SMTP
         logger.error("No se pudo enviar correo a %s: %s", to_email, str(exc))
@@ -58,7 +63,7 @@ def send_reset_email(to_email: str, full_name: str, reset_token: str) -> None:
     smtp_user = settings.SMTP_USER
     smtp_password = settings.SMTP_PASSWORD
     smtp_from = settings.SMTP_FROM or smtp_user
-    use_tls = settings.SMTP_TLS
+    use_ssl = settings.SMTP_SSL
 
     if not smtp_host or not smtp_port or not smtp_from:
         logger.warning("SMTP no configurado; se omite envío de reset a %s", to_email)
@@ -78,12 +83,17 @@ def send_reset_email(to_email: str, full_name: str, reset_token: str) -> None:
     )
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-            if use_tls:
+        if use_ssl:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
                 server.starttls()
-            if smtp_user and smtp_password:
-                server.login(smtp_user, smtp_password)
-            server.send_message(message)
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(message)
         logger.info("Correo de reset enviado a %s", to_email)
     except Exception as exc:  # pragma: no cover
         logger.error("No se pudo enviar correo a %s: %s", to_email, str(exc))

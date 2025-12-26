@@ -49,14 +49,13 @@ def request_password_reset(
     payload: PasswordResetRequest,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> ResponseSchema:
-    """Genera un token de restablecimiento de contraseña."""
+    """Genera un token de restablecimiento de contraseña y lo envía por correo."""
     try:
-        reset_token = account_controller.request_password_reset(db, payload)
-        # En desarrollo devolvemos el token para que puedas usarlo sin SMTP
+        account_controller.request_password_reset(db, payload)
         return ResponseSchema(
             status="success",
-            message="Si el correo existe, se generó un token de reset",
-            data={"reset_token": reset_token},
+            message="Si el correo existe, se ha enviado un enlace de restablecimiento",
+            data=None,
         )
     except AppException as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc

@@ -8,6 +8,7 @@ from app.schemas.account_schema import (
     PasswordResetConfirm,
     PasswordResetRequest,
 )
+from app.utils.email_client import send_reset_email
 from app.utils.exceptions import NotFoundException, UnauthorizedException
 from app.utils.security import (
     create_access_token,
@@ -52,16 +53,19 @@ class AccountController:
             extra_claims={"role": account.role.value, "email": account.email},
         ) 
 
-    def request_password_reset(self, db: Session, payload: PasswordResetRequest) -> str:
-        """Genera un token de reset."""
+    def request_password_reset(self, db: Session, payload: PasswordResetRequest) -> None:  # noqa: E501
+        """Genera un token de reset y lo envía por correo."""
 
         email = payload.email.strip().lower()
         account = self.account_dao.get_by_email(db, email, only_active=True)
 
+        # Por seguridad, no revelamos si el email existe o no
         if not account:
-            raise NotFoundException("Cuenta no encontrada")
+            return
 
-        return create_reset_token(account.id, account.email)
+        reset_token = create_reset_token(account.id, account.email)
+        send_reset_email(to_email=account.email, full_name=email,
+                          reset_token=reset_token)
 
     def confirm_password_reset(self, db: Session, payload: PasswordResetConfirm) -> None:  # noqa: E501
         """Valida el token de reset y actualiza la contraseña."""
