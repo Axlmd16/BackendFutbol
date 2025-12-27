@@ -46,19 +46,20 @@ def athlete_controller():
 def valid_minor_data():
     """
     Fixture con datos válidos para un menor de edad.
+    Usa DNIs ecuatorianos válidos con dígito verificador correcto.
     """
     birth_date = date.today() - timedelta(days=365 * 12)  # 12 años
     
     return MinorAthleteCreateSchema(
         first_name="Juan Carlos",
         last_name="Pérez López",
-        dni="1234567890",
+        dni="1722345673",  # DNI válido ecuatoriano (verificador correcto)
         birth_date=birth_date,
         sex="M",
         representative=RepresentativeCreateSchema(
             first_name="María Elena",
             last_name="López García",
-            dni="0987654321",
+            dni="1721234563",  # DNI válido ecuatoriano (verificador correcto)
             address="Av. Principal 123, Ciudad",
             phone="+593991234567",
             email="maria.lopez@email.com",
@@ -182,7 +183,7 @@ class TestMinorAthleteRegistration:
             first_call_arg = mock_create_person.call_args_list[0][0][0]
             assert first_call_arg.first_name == "Juan Carlos"
             assert first_call_arg.last_name == "Pérez López"
-            assert first_call_arg.dni == "1234567890"
+            assert first_call_arg.dni == "1722345673"
             assert first_call_arg.type_stament == "EXTERNOS"
             # El menor NO debe tener email (se genera dummy)
             assert first_call_arg.email is None
@@ -191,7 +192,7 @@ class TestMinorAthleteRegistration:
             second_call_arg = mock_create_person.call_args_list[1][0][0]
             assert second_call_arg.first_name == "María Elena"
             assert second_call_arg.last_name == "López García"
-            assert second_call_arg.dni == "0987654321"
+            assert second_call_arg.dni == "1721234563"
             assert second_call_arg.type_stament == "EXTERNOS"
             # CRITICO: El representante DEBE tener el email REAL del formulario
             assert second_call_arg.email == "maria.lopez@email.com"
@@ -201,19 +202,19 @@ class TestMinorAthleteRegistration:
             athlete_controller.representative_dao.create.assert_called_once()
             rep_data = athlete_controller.representative_dao.create.call_args[0][1]
             assert rep_data["external_person_id"] == mock_ms_external_id_guardian
-            assert rep_data["dni"] == "0987654321"
+            assert rep_data["dni"] == "1721234563"
 
             # Verificar persistencia local del atleta
             athlete_controller.athlete_dao.create.assert_called_once()
             athlete_data = athlete_controller.athlete_dao.create.call_args[0][1]
             assert athlete_data["external_person_id"] == mock_ms_external_id_minor
-            assert athlete_data["dni"] == "1234567890"
+            assert athlete_data["dni"] == "1722345673"
             assert athlete_data["type_athlete"] == "MINOR"
             assert athlete_data["representative_id"] == 1
 
             # Verificar respuesta
-            assert result.athlete.dni == "1234567890"
-            assert result.representative.dni == "0987654321"
+            assert result.athlete.dni == "1722345673"
+            assert result.representative.dni == "1721234563"
 
     
     @pytest.mark.asyncio
@@ -329,7 +330,7 @@ class TestMinorAthleteRegistration:
         existing_representative.full_name = "María Elena López García"
         existing_representative.first_name = "María Elena"
         existing_representative.last_name = "López García"
-        existing_representative.dni = "0987654321"
+        existing_representative.dni = "1721234563"
         existing_representative.phone = "+593991234567"
         existing_representative.email = "maria.lopez@email.com"
         existing_representative.address = "Av. Principal 123, Ciudad"

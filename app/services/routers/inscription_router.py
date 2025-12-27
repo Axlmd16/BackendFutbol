@@ -1,19 +1,21 @@
 """Router para inscripciones de deportistas en la escuela de fútbol."""
 
-from app.controllers.athlete_controller import AthleteController
-from app.core.database import get_db
-from app.core.security import get_current_user, CurrentUser
-from app.schemas.athlete_schema import MinorAthleteCreateSchema, MinorAthleteResponseSchema
-from app.schemas.response import ResponseSchema
-from app.utils.exceptions import (
-    AlreadyExistsException, 
-    ValidationException, 
-    DatabaseException,
-    AppException
-)
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-import logging
+
+from app.controllers.athlete_controller import AthleteController
+from app.core.database import get_db
+from app.core.security import CurrentUser, get_current_user
+from app.schemas.athlete_schema import MinorAthleteCreateSchema
+from app.schemas.response import ResponseSchema
+from app.utils.exceptions import (
+    AlreadyExistsException,
+    AppException,
+    DatabaseException,
+    ValidationException,
+)
 
 logger = logging.getLogger(__name__)
 
