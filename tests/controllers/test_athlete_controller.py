@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -20,6 +20,10 @@ def controller():
     c.athlete_dao.exists = MagicMock()
     c.athlete_dao.create = MagicMock()
     c.statistic_dao.create = MagicMock()
+    # Mock de PersonMSService
+    c.person_ms_service.create_or_get_person = AsyncMock(
+        return_value="12345678-1234-1234-1234-123456789012"
+    )
     return c
 
 
@@ -31,89 +35,72 @@ def valid_data():
         dni="1710034065",
         phone="3424123456",
         birth_date="1998-05-15",
-        institutional_email="juan.perez@unl.edu.ar",
-        university_role="student",
-        weight="75.5",
-        height="180",
+        weight=75.5,
+        height=180.0,
     )
 
 
-def test_register_athlete_unl_success(controller, mock_db_session, valid_data):
-    controller.athlete_dao.exists.side_effect = [False, False]
+@pytest.mark.asyncio
+async def test_register_athlete_unl_success(controller, mock_db_session, valid_data):
+    """Test exitoso de registro de atleta."""
+    controller.athlete_dao.exists.return_value = False
     controller.athlete_dao.create.return_value = MagicMock(
         id=1,
-        first_name="Juan",
-        last_name="Pérez",
-        institutional_email="juan.perez@unl.edu.ar",
+        full_name="Juan Pérez",
+        dni="1710034065",
     )
     controller.statistic_dao.create.return_value = MagicMock(id=10)
 
-    result = controller.register_athlete_unl(mock_db_session, valid_data)
+    result = await controller.register_athlete_unl(mock_db_session, valid_data)
 
     assert result.athlete_id == 1
     assert result.statistic_id == 10
-    assert result.first_name == "Juan"
-    assert result.last_name == "Pérez"
-    assert result.institutional_email == "juan.perez@unl.edu.ar"
+    assert result.full_name == "Juan Pérez"
+    assert result.dni == "1710034065"
 
-    controller.athlete_dao.exists.assert_any_call(mock_db_session, "dni", "1710034065")
-    controller.athlete_dao.exists.assert_any_call(
-        mock_db_session,
-        "institutional_email",
-        "juan.perez@unl.edu.ar",
+    controller.athlete_dao.exists.assert_called_once_with(
+        mock_db_session, "dni", "1710034065"
     )
     controller.athlete_dao.create.assert_called_once()
     controller.statistic_dao.create.assert_called_once()
+    controller.person_ms_service.create_or_get_person.assert_awaited_once()
 
 
-def test_register_athlete_unl_invalid_role(controller, mock_db_session, valid_data):
-    valid_data.university_role = "deportista"
-
-    with pytest.raises(ValidationException) as exc:
-        controller.register_athlete_unl(mock_db_session, valid_data)
-
-    assert "Rol inválido" in str(exc.value)
-
-
-def test_register_athlete_unl_duplicate_dni(controller, mock_db_session, valid_data):
-    controller.athlete_dao.exists.side_effect = [True, False]
+@pytest.mark.asyncio
+async def test_register_athlete_unl_duplicate_dni(
+    controller, mock_db_session, valid_data
+):
+    """Test con DNI duplicado."""
+    controller.athlete_dao.exists.return_value = True
 
     with pytest.raises(AlreadyExistsException) as exc:
-        controller.register_athlete_unl(mock_db_session, valid_data)
+        await controller.register_athlete_unl(mock_db_session, valid_data)
 
     assert "DNI" in str(exc.value)
     controller.athlete_dao.create.assert_not_called()
     controller.statistic_dao.create.assert_not_called()
 
 
-def test_register_athlete_unl_duplicate_email(controller, mock_db_session, valid_data):
-    controller.athlete_dao.exists.side_effect = [False, True]
+@pytest.mark.asyncio
+async def test_register_athlete_unl_invalid_dni(
+    controller, mock_db_session, valid_data
+):
+    """Test con DNI inválido."""
+    valid_data.dni = "invalid"
 
-    with pytest.raises(AlreadyExistsException) as exc:
-        controller.register_athlete_unl(mock_db_session, valid_data)
+    with pytest.raises(ValidationException) as exc:
+        await controller.register_athlete_unl(mock_db_session, valid_data)
 
-    assert "email" in str(exc.value).lower()
-    controller.athlete_dao.create.assert_not_called()
-    controller.statistic_dao.create.assert_not_called()
+    assert "dni" in str(exc.value).lower()
 
 
-def test_register_athlete_unl_uppercase_role(controller, mock_db_session, valid_data):
-    valid_data.university_role = "teacher"  # minúsculas en input
-    controller.athlete_dao.exists.side_effect = [False, False]
+@pytest.mark.asyncio
+async def test_register_athlete_unl_invalid_date(
+    controller, mock_db_session, valid_data
+):
+    """Test con fecha de nacimiento inválida."""
+    valid_data.birth_date = "invalid-date"
+    controller.athlete_dao.exists.return_value = False
 
-    # Capturar el payload pasado al DAO
-    def _create(_, payload):
-        # Assert temprano sobre el rol en mayúsculas
-        assert payload["university_role"] == "TEACHER"
-        m = MagicMock()
-        m.id = 3
-        m.first_name = valid_data.first_name
-        m.last_name = valid_data.last_name
-        m.institutional_email = valid_data.institutional_email
-        return m
-
-    controller.athlete_dao.create.side_effect = _create
-    controller.statistic_dao.create.return_value = MagicMock(id=30)
-
-    result = controller.register_athlete_unl(mock_db_session, valid_data)
-    assert result.athlete_id == 3
+    with pytest.raises(ValidationException):
+        await controller.register_athlete_unl(mock_db_session, valid_data)

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 
 from app.schemas.base_schema import BaseSchema
 
@@ -17,10 +17,8 @@ class AthleteInscriptionDTO(BaseModel):
     dni: str
     phone: Optional[str] = None
     birth_date: Optional[str] = None  # YYYY-MM-DD
-    institutional_email: EmailStr
-    university_role: str  # STUDENT | TEACHER | ADMIN | WORKER
-    weight: Optional[str] = None
-    height: Optional[str] = None
+    weight: Optional[float] = None
+    height: Optional[float] = None
 
 
 class AthleteInscriptionResponseDTO(BaseSchema):
@@ -28,7 +26,5 @@ class AthleteInscriptionResponseDTO(BaseSchema):
 
     athlete_id: int
     statistic_id: int
-    first_name: str
-    last_name: str
-    institutional_email: EmailStr
-    message: str = "Deportista registrado exitosamente"
+    full_name: str
+    dni: str
