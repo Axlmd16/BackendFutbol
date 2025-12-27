@@ -15,7 +15,6 @@ from app.services.routers.yoyo_test_router import router as yoyo_test_router
 __all__ = [
     "athlete_router",
     "attendance_router",
-    "evaluator_router",
     "evaluation_router",
     "test_router",
     "statistic_router",

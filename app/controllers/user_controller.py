@@ -36,6 +36,7 @@ class UserController:
         self,
         db: Session,
         payload: AdminCreateUserRequest,
+        requester_account_id: int | None = None,
     ) -> AdminCreateUserResponse:
         """
         Crea un administrador o entrenador.

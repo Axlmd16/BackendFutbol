@@ -7,6 +7,8 @@ from app.models.base import BaseModel
 class Test(BaseModel):
     """Prueba base polimorfica asociada a una evaluacion y un atleta."""
 
+    __test__ = False  # evitar que pytest la coleccione como clase de prueba
+
     __tablename__ = "tests"
 
     type = Column(String(50))

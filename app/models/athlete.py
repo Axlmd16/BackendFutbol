@@ -71,5 +71,5 @@ class Athlete(BaseModel):
     def representative_dni(self):
         return self.representative.dni if self.representative else None
 
-    def __repr__(self):
+    def _repr_(self):
         return f"<Athlete {self.full_name} - DNI: {self.dni}>"

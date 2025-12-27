@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -34,7 +34,8 @@ async def admin_create_user(
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
 ) -> ResponseSchema:
-    """Solo el administrador puede crear usuarios administradores o entrenadores"""
+    """Solo el administrador puede crear usuarios administradores o entrenadores."""
+
     try:
         result = await user_controller.admin_create_user(
             db=db,
@@ -42,29 +43,17 @@ async def admin_create_user(
         )
         return ResponseSchema(
             status="success",
-            message="Usuario creado correctamente como administrador/entrenador.",
+            message=(
+                "Usuario creado correctamente en el club y en el sistema institucional"
+            ),
             data=result.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=f"Error inesperado: {str(e)}",
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    except Exception as exc:  # pragma: no cover - se devuelve 500 genérico
+        raise HTTPException(
+            status_code=500, detail=f"Error inesperado: {str(exc)}"
+        ) from exc
 
 
 @router.put(
@@ -102,7 +91,7 @@ async def admin_update_user(
                 errors=None,
             ).model_dump(),
         )
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - se devuelve 500 genérico
         return JSONResponse(
             status_code=500,
             content=ResponseSchema(
@@ -131,11 +120,39 @@ def get_all_users(
 ):
     items, total = user_controller.get_all_users(db=db, filters=filters)
 
-    return ResponseSchema(
-        status="success",
-        message="Usuarios obtenidos correctamente",
-        data=PaginatedResponse(items=items, total=total),
-    )
+    try:
+        items, total = user_controller.get_all_users(db=db, filters=filters)
+
+        return ResponseSchema(
+            status="success",
+            message="Usuarios obtenidos correctamente",
+            data=PaginatedResponse(
+                items=items,
+                total=total,
+                page=filters.page,
+                limit=filters.limit,
+            ).model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.get(
@@ -152,9 +169,10 @@ async def get_by_id(
 ):
     try:
         user = await user_controller.get_user_by_id(db=db, user_id=user_id)
-        if not user:
+
+        if user is None:
             return JSONResponse(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 content=ResponseSchema(
                     status="error",
                     message="Usuario no encontrado",
@@ -162,6 +180,7 @@ async def get_by_id(
                     errors=None,
                 ).model_dump(),
             )
+
         return ResponseSchema(
             status="success",
             message="Usuario obtenido correctamente",
@@ -196,7 +215,7 @@ async def get_by_id(
     summary="Desactivar usuario",
     description="Desactiva un usuario. Solo Administradores.",
 )
-def desactivate_user(
+async def desactivate_user(
     user_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],

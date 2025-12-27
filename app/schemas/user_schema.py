@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 from typing import Any, Optional
 
@@ -9,6 +10,16 @@ from app.models.enums.rol import Role
 # BASES (Reutilizables)
 
 
+class TypeStament(str, enum.Enum):
+    """Valores permitidos para type_stament."""
+
+    DOCENTES = "DOCENTES"
+    ESTUDIANTES = "ESTUDIANTES"
+    ADMINISTRATIVOS = "ADMINISTRATIVOS"
+    TRABAJADORES = "TRABAJADORES"
+    EXTERNOS = "EXTERNOS"
+
+
 class PersonBase(BaseModel):
     """Campos comunes de información personal."""
 
@@ -17,8 +28,7 @@ class PersonBase(BaseModel):
     direction: Optional[str] = Field(default="S/N")
     phone: Optional[str] = Field(default="S/N")
     type_identification: str = Field(default="CEDULA")
-    type_stament: str = Field(default="EXTERNOS")
-
+    type_stament: TypeStament = Field(default=TypeStament.EXTERNOS)
     model_config = ConfigDict(validate_assignment=True, from_attributes=True)
 
     @field_validator("type_identification", mode="before")
@@ -41,18 +51,32 @@ class PersonBase(BaseModel):
 
     @field_validator("type_stament", mode="before")
     @classmethod
-    def _normalize_type_stament(cls, value: Any) -> str:
+    def _normalize_type_stament(cls, value: Any) -> TypeStament:
         if value is None:
-            return "EXTERNOS"
+            return TypeStament.EXTERNOS
+
+        if isinstance(value, TypeStament):
+            return value
+
         raw = str(value).strip().lower()
         mapping = {
             "administrativos": "ADMINISTRATIVOS",
+            "docente": "DOCENTES",
             "docentes": "DOCENTES",
             "estudiantes": "ESTUDIANTES",
             "trabajadores": "TRABAJADORES",
+            "externo": "EXTERNOS",
             "externos": "EXTERNOS",
         }
-        return mapping.get(raw, str(value).strip().upper())
+
+        normalized = mapping.get(raw, str(value).strip().upper())
+        try:
+            return TypeStament(normalized)
+        except ValueError as exc:
+            raise ValueError(
+                "type_stament inválido. Use: DOCENTES, ESTUDIANTES, "
+                "ADMINISTRATIVOS, TRABAJADORES, EXTERNOS"
+            ) from exc
 
 
 class AccountBase(BaseModel):
@@ -88,7 +112,6 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
     dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
     password: str = Field(..., min_length=8, max_length=64)
 
-    # Validar el rol
     @field_validator("role", mode="before")
     @classmethod
     def _parse_role(cls, value: Any) -> Role:
@@ -117,8 +140,6 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
 
 class AdminUpdateUserRequest(PersonBase):
     """Datos para actualizar un usuario existente."""
-
-    # id: int = Field(..., gt=0, description="ID del usuario a actualizar")
 
 
 class CreatePersonInMSRequest(PersonBase):
