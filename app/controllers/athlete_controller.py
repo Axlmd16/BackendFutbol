@@ -48,16 +48,23 @@ class AthleteController:
         if self.athlete_dao.exists(db, "dni", dni):
             raise AlreadyExistsException("El DNI ya existe en el club.")
 
+        # Normalizar type_identification y type_stament
+        type_identification = (data.type_identification or "CEDULA").upper()
+        if type_identification == "DNI":
+            type_identification = "CEDULA"
+        
+        type_stament = (data.type_stament or "ESTUDIANTES").upper()
+
         # Crear o recuperar persona en MS de usuarios
         external_person_id = await self.person_ms_service.create_or_get_person(
             CreatePersonInMSRequest(
                 first_name=first_name,
                 last_name=last_name,
                 dni=dni,
-                direction="",
-                phone=data.phone or "",
-                type_identification="CEDULA",
-                type_stament="DOCENTES",
+                direction=(data.direction or "").strip(),
+                phone=(data.phone or "").strip(),
+                type_identification=type_identification,
+                type_stament=type_stament,
             )
         )
 
@@ -74,17 +81,28 @@ class AthleteController:
                     "Formato de fecha inválido. Use YYYY-MM-DD"
                 ) from e
 
+        # Convertir sex
+        sex = Sex.MALE  # Valor por defecto
+        if data.sex:
+            sex_value = data.sex.upper()
+            if sex_value not in ["MALE", "FEMALE"]:
+                raise ValidationException("El sexo debe ser MALE o FEMALE")
+            sex = Sex.MALE if sex_value == "MALE" else Sex.FEMALE
+
+        # Normalizar type_athlete
+        type_athlete = (data.type_athlete or "UNL").upper()
+
         athlete = self.athlete_dao.create(
             db,
             {
                 "external_person_id": external_person_id,
                 "full_name": full_name,
                 "dni": dni,
-                "type_athlete": "UNL",
+                "type_athlete": type_athlete,
                 "date_of_birth": date_of_birth,
                 "height": float(data.height) if data.height else None,
                 "weight": float(data.weight) if data.weight else None,
-                "sex": Sex.MALE,
+                "sex": sex,
             },
         )
 
