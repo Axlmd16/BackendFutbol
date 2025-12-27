@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import settings
@@ -75,8 +76,14 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Middlewares
-    # setup_cors(app)
+    # CORS para permitir front-end en dev/prod
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS or ["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     # app.add_middleware(ErrorHandlerMiddleware)
     # app.add_middleware(LoggingMiddleware)
 

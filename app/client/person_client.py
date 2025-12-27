@@ -33,7 +33,27 @@ class PersonClient:
             if resp.status_code >= 400:
                 try:
                     error_data = resp.json()
-                    error_message = error_data.get("message", "Error desconocido")
+                    if isinstance(error_data, dict):
+                        error_message = (
+                            error_data.get("message")
+                            or error_data.get("detail")
+                            or error_data.get("error")
+                            or "Error desconocido"
+                        )
+                    elif isinstance(error_data, list) and error_data:
+                        # FastAPI/Pydantic suele devolver una lista de errores.
+                        first = error_data[0]
+                        if isinstance(first, dict):
+                            error_message = (
+                                first.get("message")
+                                or first.get("detail")
+                                or first.get("msg")
+                                or "Error desconocido"
+                            )
+                        else:
+                            error_message = str(first)
+                    else:
+                        error_message = "Error desconocido"
                 except Exception:
                     error_message = resp.text or f"Error {resp.status_code}"
 
