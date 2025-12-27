@@ -50,7 +50,6 @@ class AccountController:
             expires_in=settings.TOKEN_EXPIRES,
         )
 
-
     def generate_jwt(self, account: Account) -> str:
         """Generar un JWT de acceso para la cuenta.
 
@@ -66,7 +65,9 @@ class AccountController:
             extra_claims={"role": account.role.value, "email": account.email},
         )
 
-    def request_password_reset(self, db: Session, payload: PasswordResetRequest) -> None:  # noqa: E501
+    def request_password_reset(
+        self, db: Session, payload: PasswordResetRequest
+    ) -> None:  # noqa: E501
         """Genera y envía un token de restablecimiento si la cuenta existe.
 
         Args:
@@ -79,15 +80,18 @@ class AccountController:
 
         email = payload.email.strip().lower()
         account = self.account_dao.get_by_email(db, email, only_active=True)
- 
+
         if not account:
             return
 
         reset_token = create_reset_token(account.id, account.email)
-        send_reset_email(to_email=account.email, full_name=email,
-                          reset_token=reset_token)
+        send_reset_email(
+            to_email=account.email, full_name=email, reset_token=reset_token
+        )
 
-    def confirm_password_reset(self, db: Session, payload: PasswordResetConfirm) -> None:  # noqa: E501
+    def confirm_password_reset(
+        self, db: Session, payload: PasswordResetConfirm
+    ) -> None:  # noqa: E501
         """Valida el token de reset y actualiza la contraseña.
 
         Args:
