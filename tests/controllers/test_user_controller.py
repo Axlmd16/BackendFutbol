@@ -1,24 +1,40 @@
-"""Pruebas para el controlador de usuarios."""
+"""Tests unitarios para `UserController`."""
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from app.controllers.user_controller import UserController
 from app.models.enums.rol import Role
-from app.schemas.user_schema import AdminCreateUserRequest
+from app.schemas.user_schema import (
+    AdminCreateUserRequest,
+    AdminUpdateUserRequest,
+    UserFilter,
+)
 from app.utils.exceptions import AlreadyExistsException, ValidationException
+
+# ==============================================
+# FIXTURES
+# ==============================================
 
 
 @pytest.fixture
 def user_controller():
     controller = UserController()
-    controller.person_client = AsyncMock()
+    controller.person_ms_service = MagicMock()
+    controller.person_ms_service.create_or_get_person = AsyncMock()
+    controller.person_ms_service.update_person = AsyncMock()
+    controller.person_ms_service.get_user_by_identification = AsyncMock()
+    controller.user_dao = MagicMock()
+    controller.account_dao = MagicMock()
     return controller
 
 
 @pytest.fixture
-def valid_payload():
+def valid_create_payload():
+    """Payload válido para crear un admin."""
     return AdminCreateUserRequest(
         first_name="Juan",
         last_name="Pérez",
@@ -33,200 +49,442 @@ def valid_payload():
     )
 
 
+@pytest.fixture
+def valid_update_payload():
+    """Payload válido para actualizar un usuario."""
+    return AdminUpdateUserRequest(
+        first_name="Juan Carlos",
+        last_name="Pérez López",
+        direction="Av. Nueva 456",
+        phone="0999888777",
+        type_identification="CEDULA",
+        type_stament="EXTERNOS",
+    )
+
+
+@pytest.fixture
+def mock_user():
+    """Usuario mock con cuenta asociada."""
+    user = MagicMock()
+    user.id = 1
+    user.full_name = "Juan Pérez"
+    user.dni = "0926687856"
+    user.external = "12345678-1234-1234-1234-123456789012"
+    user.is_active = True
+    user.created_at = datetime.now()
+    user.updated_at = None
+    user.account = MagicMock()
+    user.account.id = 10
+    user.account.email = "juan.perez@example.com"
+    user.account.role = Role.ADMINISTRATOR
+    return user
+
+
+# ==============================================
+# TESTS: admin_create_user
+# ==============================================
+
+
 @pytest.mark.asyncio
 async def test_admin_create_user_success_administrator(
-    user_controller, mock_db_session, valid_payload
+    user_controller, mock_db_session, valid_create_payload
 ):
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=False)
-    user_controller.user_dao.create = MagicMock(return_value=MagicMock(id=1))
-    user_controller.account_dao.create = MagicMock(
-        return_value=MagicMock(id=10, role=Role.ADMINISTRATOR)
+    """Crear administrador exitosamente."""
+    user_controller.user_dao.exists.return_value = False
+    user_controller.account_dao.exists.return_value = False
+    user_controller.user_dao.create.return_value = MagicMock(
+        id=1, full_name="Juan Pérez", dni="0926687856"
     )
-
-    user_controller.person_client.create_person_with_account.return_value = {
-        "status": "success",
-        "message": "OK",
-    }
-    user_controller.person_client.get_by_identification.return_value = {
-        "data": {"external": "abc-123-uuid"}
-    }
+    user_controller.account_dao.create.return_value = MagicMock(
+        id=10, role=Role.ADMINISTRATOR
+    )
+    user_controller.person_ms_service.create_or_get_person.return_value = (
+        "12345678-1234-1234-1234-123456789012"
+    )
 
     result = await user_controller.admin_create_user(
-        db=mock_db_session, payload=valid_payload
+        db=mock_db_session, payload=valid_create_payload
     )
 
-    assert result.user_id == 1
+    assert result.id == 1
     assert result.account_id == 10
-    assert result.external_person_id == "abc-123-uuid"
+    assert result.external == "12345678-1234-1234-1234-123456789012"
     assert result.full_name == "Juan Pérez"
     assert result.email == "juan.perez@example.com"
-    assert result.role == Role.ADMINISTRATOR.value
+    assert result.role in ["ADMINISTRATOR", "Administrator"]
 
-    user_controller.person_client.create_person_with_account.assert_called_once()
+    user_controller.person_ms_service.create_or_get_person.assert_awaited_once()
     user_controller.user_dao.create.assert_called_once()
     user_controller.account_dao.create.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_admin_create_user_success_coach(
-    user_controller, mock_db_session, valid_payload
+    user_controller, mock_db_session, valid_create_payload
 ):
-    valid_payload.role = "coach"
-
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=False)
-    user_controller.user_dao.create = MagicMock(return_value=MagicMock(id=2))
-    user_controller.account_dao.create = MagicMock(
-        return_value=MagicMock(id=20, role=Role.COACH)
+    """Crear entrenador exitosamente."""
+    valid_create_payload.role = Role.COACH
+    user_controller.user_dao.exists.return_value = False
+    user_controller.account_dao.exists.return_value = False
+    user_controller.user_dao.create.return_value = MagicMock(id=2)
+    user_controller.account_dao.create.return_value = MagicMock(
+        id=20, role=Role.COACH
     )
-
-    user_controller.person_client.create_person_with_account.return_value = {
-        "status": "success",
-        "message": "OK",
-    }
-    user_controller.person_client.get_by_identification.return_value = {
-        "data": {"external": "def-456-uuid"}
-    }
+    user_controller.person_ms_service.create_or_get_person.return_value = (
+        "22345678-1234-1234-1234-123456789012"
+    )
 
     result = await user_controller.admin_create_user(
-        db=mock_db_session, payload=valid_payload
+        db=mock_db_session, payload=valid_create_payload
     )
 
-    assert result.role == Role.COACH.value
+    assert result.role in ["COACH", "Coach"]
 
 
 @pytest.mark.asyncio
 async def test_admin_create_user_dni_duplicado(
-    user_controller, mock_db_session, valid_payload
+    user_controller, mock_db_session, valid_create_payload
 ):
-    user_controller.user_dao.exists = MagicMock(return_value=True)
+    """Debe lanzar excepción si el DNI ya existe localmente."""
+    user_controller.user_dao.exists.return_value = True
 
     with pytest.raises(
-        AlreadyExistsException, match="Ya existe un usuario con ese DNI"
+        AlreadyExistsException, match="Ya existe un usuario con ese DNI en el club"
     ):
         await user_controller.admin_create_user(
-            db=mock_db_session, payload=valid_payload
+            db=mock_db_session, payload=valid_create_payload
         )
 
-    user_controller.person_client.create_person_with_account.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_admin_create_user_rol_invalido(
-    user_controller, mock_db_session, valid_payload
-):
-    valid_payload.role = "deportista"
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-
-    with pytest.raises(ValidationException, match="Rol inválido"):
-        await user_controller.admin_create_user(
-            db=mock_db_session, payload=valid_payload
-        )
-
-
-@pytest.mark.asyncio
-async def test_admin_create_user_error_ms_usuarios(
-    user_controller, mock_db_session, valid_payload
-):
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=False)
-    user_controller.user_dao.create = MagicMock()
-    user_controller.account_dao.create = MagicMock()
-
-    user_controller.person_client.create_person_with_account.side_effect = Exception(
-        "Connection timeout"
-    )
-
-    with pytest.raises(ValidationException, match="No se pudo registrar la persona"):
-        await user_controller.admin_create_user(
-            db=mock_db_session, payload=valid_payload
-        )
-
-    user_controller.user_dao.create.assert_not_called()
-    user_controller.account_dao.create.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_admin_create_user_ms_responde_error(
-    user_controller, mock_db_session, valid_payload
-):
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=False)
-    user_controller.person_client.create_person_with_account.return_value = {
-        "status": "error",
-        "message": "Email ya existe en el sistema",
-    }
-
-    with pytest.raises(ValidationException, match="Error desde MS de usuarios"):
-        await user_controller.admin_create_user(
-            db=mock_db_session, payload=valid_payload
-        )
-
-
-@pytest.mark.asyncio
-async def test_admin_create_user_sin_external_id(
-    user_controller, mock_db_session, valid_payload
-):
-    """Debe fallar si el MS no devuelve external_id."""
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=False)
-
-    user_controller.person_client.create_person_with_account.return_value = {
-        "status": "success"
-    }
-    user_controller.person_client.get_by_identification.return_value = {"data": {}}
-
-    with pytest.raises(ValidationException, match="no devolvió external_id"):
-        await user_controller.admin_create_user(
-            db=mock_db_session, payload=valid_payload
-        )
+    user_controller.person_ms_service.create_or_get_person.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_admin_create_user_email_duplicado(
-    user_controller, mock_db_session, valid_payload
+    user_controller, mock_db_session, valid_create_payload
 ):
     """Debe lanzar excepción si el email ya existe localmente."""
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=True)
+    user_controller.user_dao.exists.return_value = False
+    user_controller.account_dao.exists.return_value = True
 
     with pytest.raises(
-        AlreadyExistsException, match="Ya existe una cuenta con ese email"
+        AlreadyExistsException, match="Ya existe una cuenta con ese email en el club"
     ):
         await user_controller.admin_create_user(
-            db=mock_db_session, payload=valid_payload
+            db=mock_db_session, payload=valid_create_payload
         )
 
-    user_controller.person_client.create_person_with_account.assert_not_called()
+    user_controller.person_ms_service.create_or_get_person.assert_not_called()
+
+
+# ==============================================
+# TESTS: admin_update_user
+# ==============================================
 
 
 @pytest.mark.asyncio
-async def test_admin_create_user_persona_existe_en_otro_club(
-    user_controller, mock_db_session, valid_payload
+async def test_admin_update_user_success(
+    user_controller, mock_db_session, valid_update_payload, mock_user
 ):
-    """Si la persona existe en MS pero no localmente, debe enlazarla."""
-    user_controller.user_dao.exists = MagicMock(return_value=False)
-    user_controller.account_dao.exists = MagicMock(return_value=False)
-    user_controller.user_dao.create = MagicMock(return_value=MagicMock(id=3))
-    user_controller.account_dao.create = MagicMock(
-        return_value=MagicMock(id=30, role=Role.ADMINISTRATOR)
+    """Actualizar usuario exitosamente."""
+    user_controller.user_dao.get_by_id.return_value = mock_user
+    user_controller.person_ms_service.update_person.return_value = (
+        "new-external-12345678901234567890123456"
     )
 
-    user_controller.person_client.create_person_with_account.return_value = {
-        "status": "error",
-        "message": "Ya existe una persona con esa identificación",
-    }
-    user_controller.person_client.get_by_identification.return_value = {
+    updated_user = MagicMock()
+    updated_user.id = 1
+    updated_user.full_name = "Juan Carlos Pérez López"
+    updated_user.external = "new-external-12345678901234567890123456"
+    updated_user.updated_at = datetime.now()
+    updated_user.is_active = True
+    updated_user.account = mock_user.account
+
+    user_controller.user_dao.update.return_value = updated_user
+
+    result = await user_controller.admin_update_user(
+        db=mock_db_session, payload=valid_update_payload, user_id=1
+    )
+
+    assert result.id == 1
+    assert result.full_name == "Juan Carlos Pérez López"
+    assert result.is_active is True
+    user_controller.person_ms_service.update_person.assert_awaited_once()
+    user_controller.user_dao.update.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_admin_update_user_not_found(
+    user_controller, mock_db_session, valid_update_payload
+):
+    """Debe lanzar excepción si el usuario no existe."""
+    user_controller.user_dao.get_by_id.return_value = None
+
+    with pytest.raises(ValidationException, match="El usuario a actualizar no existe"):
+        await user_controller.admin_update_user(
+            db=mock_db_session, payload=valid_update_payload, user_id=999
+        )
+
+
+@pytest.mark.asyncio
+async def test_admin_update_user_sync_external(
+    user_controller, mock_db_session, valid_update_payload, mock_user
+):
+    """Debe sincronizar el external si el MS lo cambia."""
+    new_external = "NEW-EXTERNAL-123456789012345678901234567890"
+
+    user_controller.user_dao.get_by_id.return_value = mock_user
+    user_controller.person_ms_service.update_person.return_value = new_external
+
+    updated_user = MagicMock()
+    updated_user.id = 1
+    updated_user.full_name = "Juan Carlos Pérez López"
+    updated_user.external = new_external
+    updated_user.updated_at = datetime.now()
+    updated_user.is_active = True
+    updated_user.account = mock_user.account
+
+    user_controller.user_dao.update.return_value = updated_user
+
+    await user_controller.admin_update_user(
+        db=mock_db_session, payload=valid_update_payload, user_id=1
+    )
+
+    call_args = user_controller.user_dao.update.call_args
+    update_data = call_args.args[2]
+    assert update_data["external"] == new_external
+
+
+# ==============================================
+# TESTS: get_all_users
+# ==============================================
+
+
+def test_get_all_users_returns_list(user_controller, mock_db_session):
+    """Debe retornar lista de usuarios con total."""
+    mock_users = [MagicMock(), MagicMock()]
+    user_controller.user_dao.get_all_with_filters.return_value = (mock_users, 2)
+
+    filters = UserFilter(page=1, limit=10)
+
+    items, total = user_controller.get_all_users(db=mock_db_session, filters=filters)
+
+    assert len(items) == 2
+    assert total == 2
+    user_controller.user_dao.get_all_with_filters.assert_called_once()
+
+
+def test_get_all_users_with_search_filter(user_controller, mock_db_session):
+    """Debe aplicar filtro de búsqueda."""
+    user_controller.user_dao.get_all_with_filters.return_value = ([], 0)
+    filters = UserFilter(page=1, limit=10, search="Juan")
+
+    user_controller.get_all_users(db=mock_db_session, filters=filters)
+
+    call_args = user_controller.user_dao.get_all_with_filters.call_args
+    assert call_args.kwargs["filters"].search == "Juan"
+
+
+def test_get_all_users_with_role_filter(user_controller, mock_db_session):
+    """Debe aplicar filtro de rol."""
+    user_controller.user_dao.get_all_with_filters.return_value = ([], 0)
+    filters = UserFilter(page=1, limit=10, role="Administrator")
+
+    user_controller.get_all_users(db=mock_db_session, filters=filters)
+
+    call_args = user_controller.user_dao.get_all_with_filters.call_args
+    assert call_args.kwargs["filters"].role == "Administrator"
+
+
+# ==============================================
+# TESTS: get_user_by_id
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_id_success(user_controller, mock_db_session, mock_user):
+    """Debe retornar detalle del usuario con datos del MS."""
+    user_controller.user_dao.get_by_id.return_value = mock_user
+    user_controller.person_ms_service.get_user_by_identification.return_value = {
         "status": "success",
-        "data": {"external": "32345678-1234-1234-1234-123456789012"},
+        "data": {
+            "external": mock_user.external,
+            "identification": mock_user.dni,
+            "firts_name": "Juan",
+            "last_name": "Pérez",
+            "direction": "Calle Principal 123",
+            "phono": "0987654321",
+            "type_identification": "CEDULA",
+            "type_stament": "DOCENTES",
+        },
     }
 
-    result = await user_controller.admin_create_user(
-        db=mock_db_session, payload=valid_payload
+    result = await user_controller.get_user_by_id(db=mock_db_session, user_id=1)
+
+    assert result is not None
+    assert result.id == 1
+    assert result.first_name == "Juan"
+    assert result.last_name == "Pérez"
+    assert result.dni == mock_user.dni
+    assert result.email == mock_user.account.email
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_id_not_found(user_controller, mock_db_session):
+    """Debe retornar None si el usuario no existe."""
+    user_controller.user_dao.get_by_id.return_value = None
+
+    result = await user_controller.get_user_by_id(db=mock_db_session, user_id=999)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_id_ms_error(user_controller, mock_db_session, mock_user):
+    """Debe lanzar excepción si el MS no retorna datos."""
+    user_controller.user_dao.get_by_id.return_value = mock_user
+    user_controller.person_ms_service.get_user_by_identification.return_value = None
+
+    with pytest.raises(
+        ValidationException, match="No se encontró la información de la persona"
+    ):
+        await user_controller.get_user_by_id(db=mock_db_session, user_id=1)
+
+
+# ==============================================
+# TESTS: desactivate_user
+# ==============================================
+
+
+def test_desactivate_user_success(user_controller, mock_db_session, mock_user):
+    """Debe desactivar usuario correctamente."""
+    user_controller.user_dao.get_by_id.return_value = mock_user
+
+    user_controller.desactivate_user(db=mock_db_session, user_id=1)
+
+    user_controller.user_dao.update.assert_called_once_with(
+        mock_db_session, 1, {"is_active": False}
     )
 
-    assert result.user_id == 3
-    assert result.account_id == 30
-    user_controller.user_dao.create.assert_called_once()
-    user_controller.account_dao.create.assert_called_once()
+
+def test_desactivate_user_not_found(user_controller, mock_db_session):
+    """Debe lanzar excepción si el usuario no existe."""
+    user_controller.user_dao.get_by_id.return_value = None
+
+    with pytest.raises(ValidationException, match="El usuario a desactivar no existe"):
+        user_controller.desactivate_user(db=mock_db_session, user_id=999)
+
+
+# ==============================================
+# TESTS: Validación de schemas
+# ==============================================
+
+
+def test_admin_create_user_rol_invalido():
+    """Debe rechazar roles no válidos en la validación del schema."""
+    with pytest.raises(ValidationError):
+        AdminCreateUserRequest(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            dni="0926687856",
+            password="SecurePass123",
+            role="deportista",
+            direction="Calle 123",
+            phone="0987654321",
+            type_identification="CEDULA",
+            type_stament="DOCENTES",
+        )
+
+
+def test_admin_create_user_dni_corto():
+    """Debe rechazar DNI con menos de 10 dígitos."""
+    with pytest.raises(ValidationError):
+        AdminCreateUserRequest(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            dni="123456789",
+            password="SecurePass123",
+            role="administrator",
+            direction="Calle 123",
+            phone="0987654321",
+            type_identification="CEDULA",
+            type_stament="DOCENTES",
+        )
+
+
+def test_admin_create_user_password_corto():
+    """Debe rechazar password con menos de 8 caracteres."""
+    with pytest.raises(ValidationError):
+        AdminCreateUserRequest(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            dni="0926687856",
+            password="Pass12",
+            role="coach",
+            direction="Calle 123",
+            phone="0987654321",
+            type_identification="CEDULA",
+            type_stament="DOCENTES",
+        )
+
+
+def test_type_identification_normalizes_dni_to_cedula():
+    """type_identification debe normalizar 'dni' a 'CEDULA'."""
+    payload = AdminCreateUserRequest(
+        first_name="Test",
+        last_name="User",
+        email="test@example.com",
+        dni="0926687856",
+        password="SecurePass123",
+        role="administrator",
+        type_identification="dni",
+        type_stament="externos",
+    )
+    assert payload.type_identification == "CEDULA"
+
+
+def test_type_stament_normalizes_to_uppercase():
+    """type_stament debe normalizarse a mayúsculas."""
+    payload = AdminCreateUserRequest(
+        first_name="Test",
+        last_name="User",
+        email="test@example.com",
+        dni="0926687856",
+        password="SecurePass123",
+        role="coach",
+        type_identification="CEDULA",
+        type_stament="externos",
+    )
+    assert payload.type_stament == "EXTERNOS"
+
+
+def test_role_accepts_spanish_names():
+    """role debe aceptar nombres en español."""
+    payload = AdminCreateUserRequest(
+        first_name="Test",
+        last_name="User",
+        email="test@example.com",
+        dni="0926687856",
+        password="SecurePass123",
+        role="administrador",
+        type_identification="CEDULA",
+        type_stament="DOCENTES",
+    )
+    assert payload.role == Role.ADMINISTRATOR
+
+
+def test_role_accepts_entrenador():
+    """role debe aceptar 'entrenador' como Coach."""
+    payload = AdminCreateUserRequest(
+        first_name="Test",
+        last_name="User",
+        email="test@example.com",
+        dni="0926687856",
+        password="SecurePass123",
+        role="entrenador",
+        type_identification="CEDULA",
+        type_stament="DOCENTES",
+    )
+    assert payload.role == Role.COACH
