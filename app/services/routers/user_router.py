@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.controllers.user_controller import UserController
 from app.core.database import get_db
-from app.models.enums.rol import Role
+from app.models.account import Account
 from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
@@ -16,6 +16,7 @@ from app.schemas.user_schema import (
     UserResponse,
 )
 from app.utils.exceptions import AppException
+from app.utils.security import get_current_account, get_current_admin
 
 router = APIRouter(prefix="/users", tags=["Users"])
 user_controller = UserController()
@@ -26,14 +27,12 @@ user_controller = UserController()
     response_model=ResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Crear usuario administrador/entrenador",
-    description=(
-        "Crea un usuario administrador o entrenador en el club y en el sistema "
-        "institucional."
-    ),
+    description="Crea un usuario administrador o entrenador. Solo admin.",
 )
 async def admin_create_user(
     payload: AdminCreateUserRequest,
-    db: Session = Depends(get_db),  # noqa: B008 (FastAPI dependency pattern)
+    db: Annotated[Session, Depends(get_db)],
+    current_admin: Annotated[Account, Depends(get_current_admin)],
 ) -> ResponseSchema:
     """Solo el administrador puede crear usuarios administradores o entrenadores."""
 
@@ -62,13 +61,13 @@ async def admin_create_user(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Actualizar usuario administrador/entrenador",
-    description="Actualiza un usuario administrador o entrenador ",
+    description="Actualiza un usuario administrador o entrenador. Solo admin.",
 )
 async def admin_update_user(
     payload: AdminUpdateUserRequest,
     db: Annotated[Session, Depends(get_db)],
     user_id: int,
-    # TODO: agregar dependencia de autenticación
+    current_admin: Annotated[Account, Depends(get_current_admin)],
 ) -> ResponseSchema:
     """Solo el administrador puede actualizar usuarios administradores o entrenadores"""
     try:
@@ -108,17 +107,18 @@ async def admin_update_user(
     "/all",
     response_model=ResponseSchema[PaginatedResponse[UserResponse]],
     status_code=status.HTTP_200_OK,
-    summary="Obtener todos los usuarios",
-    description="Lista paginada de usuarios con filtros opcionales",
+    summary="Obtener todos los usuarios con paginación",
+    description=(
+        "Obtiene una lista paginada de todos los usuarios, "
+        "con opción de búsqueda y filtrado por rol. Requiere autenticación."
+    ),
 )
-async def get_all_users(
-    page: int = 1,
-    limit: int = 10,
-    search: str | None = None,
-    role: Role | None = None,
-    db: Annotated[Session, Depends(get_db)] = None,
-) -> ResponseSchema:
-    filters = UserFilter(page=page, limit=limit, search=search, role=role)
+def get_all_users(
+    db: Annotated[Session, Depends(get_db)],
+    filters: Annotated[UserFilter, Depends()],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    items, total = user_controller.get_all_users(db=db, filters=filters)
 
     try:
         items, total = user_controller.get_all_users(db=db, filters=filters)
@@ -160,12 +160,13 @@ async def get_all_users(
     response_model=ResponseSchema[UserDetailResponse],
     status_code=status.HTTP_200_OK,
     summary="Obtener usuario por ID",
-    description="Obtiene un usuario específico por su ID",
+    description="Obtiene los detalles de un usuario por su ID. Requiere autenticación.",
 )
-async def get_user_by_id(
+async def get_by_id(
     user_id: int,
-    db: Annotated[Session, Depends(get_db)] = None,
-) -> ResponseSchema:
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
     try:
         user = await user_controller.get_user_by_id(db=db, user_id=user_id)
 
@@ -212,12 +213,14 @@ async def get_user_by_id(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Desactivar usuario",
-    description="Desactiva un usuario (soft delete)",
+    description="Desactiva un usuario. Solo Administradores.",
 )
 async def desactivate_user(
     user_id: int,
-    db: Annotated[Session, Depends(get_db)] = None,
-) -> ResponseSchema:
+    db: Annotated[Session, Depends(get_db)],
+    current_admin: Annotated[Account, Depends(get_current_admin)],
+):
+    """Desactiva un usuario (soft delete)"""
     try:
         user_controller.desactivate_user(db=db, user_id=user_id)
         return ResponseSchema(

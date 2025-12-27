@@ -30,6 +30,7 @@ from app.services.routers import (
     user_router,
     yoyo_test_router,
 )
+from app.utils.exceptions import AppException
 
 # Configuración de logging
 logging.basicConfig(
@@ -120,6 +121,19 @@ def create_application() -> FastAPI:
                 "message": "Error de validación. Revisa los campos enviados.",
                 "data": None,
                 "errors": error_map,
+            },
+        )
+
+    # Manejo de excepciones de aplicación (AppException y subclases)
+    @app.exception_handler(AppException)
+    async def app_exception_handler(request: Request, exc: AppException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "status": "error",
+                "message": exc.message,
+                "data": None,
+                "errors": None,
             },
         )
 
