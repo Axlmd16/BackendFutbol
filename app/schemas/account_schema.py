@@ -65,7 +65,7 @@ class PasswordResetConfirm(BaseModel):
             raise ValueError("La contraseña debe contener al menos un número")
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
             raise ValueError(
-                'La contraseña debe contener al menos un carácter especial '
+                "La contraseña debe contener al menos un carácter especial "
                 '(!@#$%^&*(),.?":{}|<>)'
             )
         return v
