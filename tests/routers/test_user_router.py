@@ -34,7 +34,7 @@ def mock_person_client():
 
 
 @pytest.mark.asyncio
-async def test_create_user_success_administrator(client, mock_person_client):
+async def test_create_user_success_administrator(admin_client, mock_person_client):
     """POST /users/create debe crear administrador exitosamente."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_result = MagicMock()
@@ -50,7 +50,7 @@ async def test_create_user_success_administrator(client, mock_person_client):
 
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "Ana",
@@ -74,7 +74,7 @@ async def test_create_user_success_administrator(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_success_coach(client, mock_person_client):
+async def test_create_user_success_coach(admin_client, mock_person_client):
     """POST /users/create debe crear entrenador exitosamente."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_result = MagicMock()
@@ -90,7 +90,7 @@ async def test_create_user_success_coach(client, mock_person_client):
 
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "Carlos",
@@ -113,9 +113,9 @@ async def test_create_user_success_coach(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_validation_dni_invalid(client):
+async def test_create_user_validation_dni_invalid(admin_client):
     """Debe rechazar DNI que no tenga 10 dígitos."""
-    response = await client.post(
+    response = await admin_client.post(
         "/api/v1/users/create",
         json={
             "first_name": "Carlos",
@@ -142,9 +142,9 @@ async def test_create_user_validation_dni_invalid(client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_validation_password_short(client):
+async def test_create_user_validation_password_short(admin_client):
     """Debe rechazar password menor a 8 caracteres."""
-    response = await client.post(
+    response = await admin_client.post(
         "/api/v1/users/create",
         json={
             "first_name": "Test",
@@ -170,7 +170,7 @@ async def test_create_user_validation_password_short(client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_dni_duplicate(client, mock_person_client):
+async def test_create_user_dni_duplicate(admin_client, mock_person_client):
     """Debe rechazar DNI duplicado con código 409."""
     from app.utils.exceptions import AlreadyExistsException
 
@@ -179,7 +179,7 @@ async def test_create_user_dni_duplicate(client, mock_person_client):
             side_effect=AlreadyExistsException("Ya existe un usuario con ese DNI")
         )
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "Luis",
@@ -202,7 +202,7 @@ async def test_create_user_dni_duplicate(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_email_duplicate(client, mock_person_client):
+async def test_create_user_email_duplicate(admin_client, mock_person_client):
     """Debe rechazar email duplicado con código 409."""
     from app.utils.exceptions import AlreadyExistsException
 
@@ -211,7 +211,7 @@ async def test_create_user_email_duplicate(client, mock_person_client):
             side_effect=AlreadyExistsException("Ya existe una cuenta con ese email")
         )
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "María",
@@ -234,7 +234,7 @@ async def test_create_user_email_duplicate(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_ms_error(client, mock_person_client):
+async def test_create_user_ms_error(admin_client, mock_person_client):
     """Debe manejar error del MS de usuarios."""
     from app.utils.exceptions import ValidationException
 
@@ -245,7 +245,7 @@ async def test_create_user_ms_error(client, mock_person_client):
             )
         )
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "María",
@@ -268,14 +268,14 @@ async def test_create_user_ms_error(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_generic_error(client, mock_person_client):
+async def test_create_user_generic_error(admin_client, mock_person_client):
     """Debe manejar errores genéricos con status 500."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_controller.admin_create_user = AsyncMock(
             side_effect=Exception("Error inesperado del sistema")
         )
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "Roberto",
@@ -303,7 +303,7 @@ async def test_create_user_generic_error(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_update_user_success(client, mock_person_client):
+async def test_update_user_success(admin_client, mock_person_client):
     """PUT /users/update/{user_id} debe actualizar usuario exitosamente."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_result = MagicMock()
@@ -317,7 +317,7 @@ async def test_update_user_success(client, mock_person_client):
 
         mock_controller.admin_update_user = AsyncMock(return_value=mock_result)
 
-        response = await client.put(
+        response = await admin_client.put(
             "/api/v1/users/update/1",
             json={
                 "first_name": "Juan Carlos",
@@ -337,7 +337,7 @@ async def test_update_user_success(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_update_user_not_found(client, mock_person_client):
+async def test_update_user_not_found(admin_client, mock_person_client):
     """Debe retornar 422 si el usuario a actualizar no existe."""
     from app.utils.exceptions import ValidationException
 
@@ -346,7 +346,7 @@ async def test_update_user_not_found(client, mock_person_client):
             side_effect=ValidationException("El usuario a actualizar no existe")
         )
 
-        response = await client.put(
+        response = await admin_client.put(
             "/api/v1/users/update/999",
             json={
                 "first_name": "Test",
@@ -365,14 +365,14 @@ async def test_update_user_not_found(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_update_user_generic_error(client, mock_person_client):
+async def test_update_user_generic_error(admin_client, mock_person_client):
     """PUT /users/update/{user_id} debe manejar errores inesperados."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_controller.admin_update_user = AsyncMock(
             side_effect=Exception("Error de base de datos")
         )
 
-        response = await client.put(
+        response = await admin_client.put(
             "/api/v1/users/update/1",
             json={
                 "first_name": "Test",
@@ -396,7 +396,7 @@ async def test_update_user_generic_error(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_get_all_users_success(client):
+async def test_get_all_users_success(admin_client):
     """GET /users/all debe devolver lista paginada de usuarios."""
     from app.schemas.user_schema import UserResponse
 
@@ -424,7 +424,7 @@ async def test_get_all_users_success(client):
         ]
         mock_controller.get_all_users.return_value = (mock_users, 2)
 
-        response = await client.get("/api/v1/users/all")
+        response = await admin_client.get("/api/v1/users/all")
 
         assert response.status_code == 200
         data = response.json()
@@ -436,12 +436,12 @@ async def test_get_all_users_success(client):
 
 
 @pytest.mark.asyncio
-async def test_get_all_users_empty(client):
+async def test_get_all_users_empty(admin_client):
     """GET /users/all debe retornar lista vacía si no hay usuarios."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_controller.get_all_users.return_value = ([], 0)
 
-        response = await client.get("/api/v1/users/all")
+        response = await admin_client.get("/api/v1/users/all")
 
         assert response.status_code == 200
         data = response.json()
@@ -451,12 +451,12 @@ async def test_get_all_users_empty(client):
 
 
 @pytest.mark.asyncio
-async def test_get_all_users_with_filters(client):
+async def test_get_all_users_with_filters(admin_client):
     """GET /users/all debe aplicar filtros de búsqueda y rol."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_controller.get_all_users.return_value = ([], 0)
 
-        response = await client.get(
+        response = await admin_client.get(
             "/api/v1/users/all?search=Juan&role=Administrator&page=1&limit=10"
         )
 
@@ -477,7 +477,7 @@ async def test_get_all_users_with_filters(client):
 
 
 @pytest.mark.asyncio
-async def test_get_user_by_id_success(client, mock_person_client):
+async def test_get_user_by_id_success(admin_client, mock_person_client):
     """GET /users/{user_id} debe retornar detalle del usuario."""
     from datetime import datetime
 
@@ -505,7 +505,7 @@ async def test_get_user_by_id_success(client, mock_person_client):
 
         mock_controller.get_user_by_id = AsyncMock(return_value=mock_result)
 
-        response = await client.get("/api/v1/users/1")
+        response = await admin_client.get("/api/v1/users/1")
 
         assert response.status_code == 200
         data = response.json()
@@ -517,12 +517,12 @@ async def test_get_user_by_id_success(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_get_user_by_id_not_found(client, mock_person_client):
+async def test_get_user_by_id_not_found(admin_client, mock_person_client):
     """GET /users/{user_id} debe retornar 404 si no existe."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_controller.get_user_by_id = AsyncMock(return_value=None)
 
-        response = await client.get("/api/v1/users/999")
+        response = await admin_client.get("/api/v1/users/999")
 
         assert response.status_code == 404
         data = response.json()
@@ -536,12 +536,12 @@ async def test_get_user_by_id_not_found(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_desactivate_user_success(client, mock_person_client):
+async def test_desactivate_user_success(admin_client, mock_person_client):
     """PATCH /users/desactivate/{user_id} debe desactivar usuario."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_controller.desactivate_user = MagicMock(return_value=None)
 
-        response = await client.patch("/api/v1/users/desactivate/1")
+        response = await admin_client.patch("/api/v1/users/desactivate/1")
 
         assert response.status_code == 200
         data = response.json()
@@ -551,7 +551,7 @@ async def test_desactivate_user_success(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_desactivate_user_not_found(client, mock_person_client):
+async def test_desactivate_user_not_found(admin_client, mock_person_client):
     """PATCH /users/desactivate/{user_id} debe fallar si no existe."""
     from app.utils.exceptions import ValidationException
 
@@ -560,7 +560,7 @@ async def test_desactivate_user_not_found(client, mock_person_client):
             side_effect=ValidationException("El usuario a desactivar no existe")
         )
 
-        response = await client.patch("/api/v1/users/desactivate/999")
+        response = await admin_client.patch("/api/v1/users/desactivate/999")
 
         assert response.status_code == 422
         data = response.json()
@@ -574,9 +574,9 @@ async def test_desactivate_user_not_found(client, mock_person_client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_missing_required_fields(client):
+async def test_create_user_missing_required_fields(admin_client):
     """Debe rechazar request sin campos requeridos."""
-    response = await client.post(
+    response = await admin_client.post(
         "/api/v1/users/create",
         json={
             "first_name": "Test",
@@ -591,9 +591,9 @@ async def test_create_user_missing_required_fields(client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_invalid_email_format(client):
+async def test_create_user_invalid_email_format(admin_client):
     """Debe rechazar email con formato inválido."""
-    response = await client.post(
+    response = await admin_client.post(
         "/api/v1/users/create",
         json={
             "first_name": "Test",
@@ -616,7 +616,9 @@ async def test_create_user_invalid_email_format(client):
 
 
 @pytest.mark.asyncio
-async def test_create_user_normalizes_type_identification(client, mock_person_client):
+async def test_create_user_normalizes_type_identification(
+    admin_client, mock_person_client
+):
     """Debe normalizar 'dni' a 'CEDULA' en type_identification."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_result = MagicMock()
@@ -624,7 +626,7 @@ async def test_create_user_normalizes_type_identification(client, mock_person_cl
 
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
-        await client.post(
+        await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "Test",
@@ -648,7 +650,7 @@ async def test_create_user_normalizes_type_identification(client, mock_person_cl
 
 
 @pytest.mark.asyncio
-async def test_create_user_accepts_spanish_role_names(client, mock_person_client):
+async def test_create_user_accepts_spanish_role_names(admin_client, mock_person_client):
     """Debe aceptar nombres de rol en español."""
     with patch("app.services.routers.user_router.user_controller") as mock_controller:
         mock_result = MagicMock()
@@ -656,7 +658,7 @@ async def test_create_user_accepts_spanish_role_names(client, mock_person_client
 
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
-        response = await client.post(
+        response = await admin_client.post(
             "/api/v1/users/create",
             json={
                 "first_name": "Test",

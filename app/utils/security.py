@@ -2,9 +2,9 @@
 
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Optional
+from typing import Callable, Iterable, List, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -14,10 +14,14 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.dao.account_dao import AccountDAO
 from app.models.account import Account
+from app.models.enums.rol import Role
 from app.utils.exceptions import UnauthorizedException, ValidationException
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/accounts/login")
+
+_DB_DEP = Depends(get_db)
+_TOKEN_DEP = Depends(oauth2_scheme)
 
 
 def validate_ec_dni(value: str) -> str:
@@ -214,8 +218,8 @@ def validate_reset_token(token: str) -> dict:
 
 
 def get_current_account(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),  # noqa: B008
+    token: str = _TOKEN_DEP,
+    db: Session = _DB_DEP,
 ) -> Account:
     """Dependencia para obtener la cuenta autenticada desde el JWT.
 
@@ -230,23 +234,107 @@ def get_current_account(
         (``sub``) contenido en el token.
 
     Raises:
-        HTTPException: Se lanza con estado HTTP 401 si el token es
-        inválido (no contiene ``sub``) o si la cuenta asociada no existe
-        o se encuentra inactiva.
+        UnauthorizedException: Si el token es inválido, no contiene ``sub``,
+            o si la cuenta asociada no existe o se encuentra inactiva.
     """
-    payload = decode_token(token)
+    try:
+        payload = decode_token(token)
+    except UnauthorizedException as exc:
+        raise exc
+
     sub = payload.get("sub")
     if sub is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido",
-        )
+        raise UnauthorizedException("Token inválido: falta identificador")
 
     account = AccountDAO().get_by_id(db, int(sub), only_active=True)
     if not account:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Cuenta no encontrada o inactiva",
-        )
+        raise UnauthorizedException("Cuenta no encontrada o inactiva")
 
+    return account
+
+
+_CURRENT_ACCOUNT_DEP = Depends(get_current_account)
+
+
+# DEPENDENCIAS DE AUTORIZACIÓN POR ROL
+
+
+def require_roles(allowed_roles: List[Role]) -> Callable:
+    """Factory de dependencia para requerir roles específicos.
+
+    Args:
+        allowed_roles: Lista de roles permitidos para acceder al endpoint.
+
+    Returns:
+        Callable: Dependencia de FastAPI que valida el rol del usuario.
+
+    Example:
+        ```python
+        @router.get("/admin-only")
+        def admin_endpoint(
+            account: Account = Depends(require_roles([Role.ADMINISTRATOR]))
+        ):
+            return {"message": "Bienvenido admin"}
+        ```
+    """
+
+    def role_checker(
+        account: Account = _CURRENT_ACCOUNT_DEP,
+    ) -> Account:
+        if account.role not in allowed_roles:
+            role_names = [r.value for r in allowed_roles]
+            raise UnauthorizedException(
+                f"Acceso denegado. Se requiere rol: {', '.join(role_names)}"
+            )
+        return account
+
+    return role_checker
+
+
+# Dependencias pre-configuradas para roles comunes
+def get_current_admin(
+    account: Account = _CURRENT_ACCOUNT_DEP,
+) -> Account:
+    """Dependencia que requiere rol de Administrador.
+
+    Uso:
+        ```python
+        @router.delete("/users/{user_id}")
+        def delete_user(
+            user_id: int,
+            admin: Account = Depends(get_current_admin)
+        ):
+            # Solo admins pueden ejecutar esto
+        ```
+    """
+    if account.role != Role.ADMINISTRATOR:
+        raise UnauthorizedException("Acceso denegado. Se requiere rol de Administrador")
+    return account
+
+
+def get_current_coach(
+    account: Account = _CURRENT_ACCOUNT_DEP,
+) -> Account:
+    """Dependencia que requiere rol de Entrenador o superior.
+
+    Permite acceso a: Administrator, Coach
+    """
+    allowed = [Role.ADMINISTRATOR, Role.COACH]
+    if account.role not in allowed:
+        raise UnauthorizedException(
+            "Acceso denegado. Se requiere rol de Entrenador o superior"
+        )
+    return account
+
+
+def get_current_staff(
+    account: Account = _CURRENT_ACCOUNT_DEP,
+) -> Account:
+    """Dependencia que requiere ser parte del staff (cualquier rol autenticado).
+
+    Permite acceso a: Administrator, Coach, Intern
+    """
+    allowed = [Role.ADMINISTRATOR, Role.COACH, Role.INTERN]
+    if account.role not in allowed:
+        raise UnauthorizedException("Acceso denegado. Se requiere ser parte del staff")
     return account
