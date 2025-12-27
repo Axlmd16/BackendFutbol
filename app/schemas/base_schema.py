@@ -1,8 +1,9 @@
 """Esquemas base compartidos para respuestas y mapeo ORM."""
 
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 class BaseSchema(BaseModel):
@@ -12,7 +13,7 @@ class BaseSchema(BaseModel):
 
 
 class BaseResponseSchema(BaseSchema):
-    """Incluye identificador, timestamps y flag de actividad para respuestas estándar."""
+    """Incluye identificador, timestamps y flag de actividad para respuestas estándar"""
 
     id: int
     created_at: datetime

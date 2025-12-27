@@ -1,7 +1,10 @@
 # app/clients/person_auth.py
-import httpx
 from typing import Optional
+
+import httpx
+
 from app.core.config import settings
+
 
 class PersonAuthService:
     def __init__(self):
@@ -21,6 +24,6 @@ class PersonAuthService:
             resp = await client.post("/api/person/login", json=payload)
             resp.raise_for_status()
             body = resp.json()
-            token = body["data"]["token"]          # viene con el prefijo 'Bearer ...'
+            token = body["data"]["token"]  # viene con el prefijo 'Bearer ...'
             self._token = token
             return token

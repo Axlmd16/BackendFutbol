@@ -1,10 +1,7 @@
-import asyncio
-from datetime import datetime, timedelta
-import secrets
-from typing import Dict
+from typing import Annotated
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.client.person_auth import PersonAuthService
@@ -13,13 +10,9 @@ from app.core import auth
 from app.core.config import settings
 from app.core.database import get_db
 from app.schemas.account_schema import (
-	AccountResponse,
-	ForgotPasswordRequest,
-	LoginRequest,
-	LoginResponse,
-	RefreshRequest,
-	RefreshResponse,
-	ResetPasswordRequest,
+    LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
 )
 from app.schemas.response import ResponseSchema
 from app.utils.exceptions import AppException
@@ -32,166 +25,123 @@ reset_tokens_store: Dict[str, Dict[str, str | datetime]] = {}
 person_auth_service = PersonAuthService()
 
 
-def _purge_reset_tokens() -> None:
-	"""Purgar tokens de restablecimiento expirados."""
-	now = datetime.utcnow()
-	expired = [token for token, data in reset_tokens_store.items() if data["expires_at"] < now]
-	for token in expired:
-		reset_tokens_store.pop(token, None)
+@router.post(
+    "/login",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Iniciar sesión",
+    description="Valida credenciales y devuelve un token JWT.",
+)
+def login(
+    payload: LoginRequest, db: Annotated[Session, Depends(get_db)]
+) -> ResponseSchema:
+    """Endpoint para iniciar sesión y obtener un token JWT."""
+    try:
+        result = account_controller.login(db, payload)
+        return ResponseSchema(
+            status="success",
+            message="Inicio de sesión exitoso",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
-def _role_value(role_obj) -> str:
-	"""Obtiene el valor de rol como cadena."""
-	return role_obj.value if hasattr(role_obj, "value") else str(role_obj)
+@router.post(
+    "/password-reset/request",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Solicitar restablecimiento de contraseña",
+    description="Genera un token de reset.",
+)
+def request_password_reset(
+    payload: PasswordResetRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> ResponseSchema:
+    """Genera un token de restablecimiento de contraseña y lo envía por correo."""
+    try:
+        account_controller.request_password_reset(db, payload)
+        return ResponseSchema(
+            status="success",
+            message="Si el correo existe, se ha enviado un enlace de restablecimiento",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
-def _handle_app_exception(exc: AppException) -> None:
-	"""Maneja excepciones de la aplicación."""
-	raise HTTPException(status_code=exc.status_code, detail=exc.message)
-
-
-
-@router.post("/login", response_model=ResponseSchema)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-	"""Endpoint para login de usuario."""
-	print("Login endpoint called with:", payload.email)
-	try:
-		resp = httpx.post(
-			f"{settings.PERSON_MS_BASE_URL}/api/person/login",
-			json={
-				"email": payload.email,
-				"password": payload.password.get_secret_value(),
-			},
-			timeout=10.0,
-		)
-		resp.raise_for_status()
-		body = resp.json()
-		external = body["data"]["external"]
-		ms_token = body["data"]["token"]
-	except httpx.HTTPStatusError:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
-	except Exception:
-		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al comunicarse con el servicio de personas")
-
-	account = account_controller.get_by_external(db, external)
-	if not account:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no enlazada")
-
-	role = _role_value(account.role)
-	access_token = auth.create_access_token(subject=str(account.id), role=role)
-	refresh_token = auth.create_refresh_token(subject=str(account.id), role=role)
-	login_response = LoginResponse(
-		access_token=access_token,
-		refresh_token=refresh_token,
-		role=role,
-	)
-	return ResponseSchema(
-		status="success",
-		message="Login exitoso",
-		data={
-			**login_response.model_dump(),
-			"external_account_id": external,
-			"person_ms_token": ms_token,
-		},
-	)
-
-
-@router.post("/refresh", response_model=ResponseSchema)
-def refresh_tokens(payload: RefreshRequest):
-	"""Genera un nuevo access y refresh token a partir de un refresh válido."""
-	claims = auth.decode_and_validate_token(payload.refresh_token, expected_type="refresh")
-	account_id = str(claims["sub"])
-	role = claims["role"]
-
-	new_access = auth.create_access_token(subject=account_id, role=role)
-	new_refresh = auth.create_refresh_token(subject=account_id, role=role)
-	refresh_response = RefreshResponse(
-		access_token=new_access,
-		refresh_token=new_refresh,
-		token_type="bearer",
-	)
-	return ResponseSchema(
-		status="success",
-		message="Tokens refrescados",
-		data={**refresh_response.model_dump(), "role": role},
-	)
-
-
-@router.post("/logout", response_model=ResponseSchema)
-def logout():
-	"""Cierra sesión a nivel lógico; el cliente debe descartar tokens."""
-	return ResponseSchema(
-		status="success",
-		message="Logout exitoso. Tokens limpiados en cliente.",
-		data={"revoked": True},
-	)
-
-
-@router.post("/forgot-password", response_model=ResponseSchema)
-def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
-	"""Solicitud para iniciar proceso de recuperación de contraseña"""
-	account = account_controller.get_account(db, payload.account_id)
-	if not account:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
-
-	_purge_reset_tokens()
-	token = secrets.token_urlsafe(32)
-	reset_tokens_store[token] = {
-		"external": account.external_account_id,
-		"expires_at": datetime.utcnow() + timedelta(hours=1),
-	}
-	return ResponseSchema(
-		status="success",
-		message="Token de recuperación generado",
-		data={"reset_token": token},
-	)
-
-
-@router.post("/reset-password", response_model=ResponseSchema)
-def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
-	"""Restablece la contraseña en el MS de personas usando el external guardado."""
-	try:
-		payload.validate_passwords()
-	except ValueError as exc:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-	_purge_reset_tokens()
-	token_data = reset_tokens_store.get(payload.token)
-	if not token_data:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token inválido o expirado")
-
-	if token_data["expires_at"] < datetime.utcnow():
-		reset_tokens_store.pop(payload.token, None)
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token expirado")
-
-	# Actualiza la contraseña en el MS de personas
-	try:
-		token = person_auth_service.token or asyncio.run(person_auth_service.login())
-		resp = httpx.post(
-			f"{settings.PERSON_MS_BASE_URL}/api/person/update-account",
-			headers={"Authorization": token},
-			json={
-				"external": token_data["external"],
-				"password": payload.new_password.get_secret_value(),
-			},
-			timeout=10.0,
-		)
-		resp.raise_for_status()
-	except httpx.HTTPStatusError as exc:
-		reset_tokens_store.pop(payload.token, None)
-		msg = exc.response.text if exc.response is not None else "No se pudo actualizar la contraseña en el servicio externo"
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-	except Exception as exc:
-		reset_tokens_store.pop(payload.token, None)
-		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error al comunicarse con el servicio de personas: {exc}")
-
-	reset_tokens_store.pop(payload.token, None)
-	return ResponseSchema(
-		status="success",
-		message="Contraseña restablecida correctamente",
-		data={"external": token_data["external"]},
-	)
-
-
-
-
+@router.post(
+    "/password-reset/confirm",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Confirmar restablecimiento de contraseña",
+    description="Valida el token de reset y actualiza la contraseña.",
+)
+def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    db: Annotated[Session, Depends(get_db)],
+) -> ResponseSchema:
+    """Confirma el restablecimiento de contraseña usando el token proporcionado."""
+    try:
+        account_controller.confirm_password_reset(db, payload)
+        return ResponseSchema(
+            status="success",
+            message="Contraseña actualizada",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )

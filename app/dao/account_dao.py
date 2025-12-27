@@ -12,13 +12,17 @@ class AccountDAO(BaseDAO[Account]):
     def __init__(self) -> None:
         super().__init__(Account)
 
-    def get_by_external(
-        self,
-        db: Session,
-        external_account_id: str,
-        *,
-        only_active: bool = True,
-    ) -> Optional[Account]:
-        """Obtiene una cuenta por su external_account_id."""
-        return self.get_by_field(db, "external_account_id", external_account_id, only_active)
-   
+    def get_by_email(
+        self, db: Session, email: str, only_active: bool = True
+    ) -> Optional[Account]:  # noqa: E501
+        """Obtener una cuenta por email.
+
+        Args:
+            db: Sesión de SQLAlchemy para realizar la consulta.
+            email: Correo electrónico de la cuenta a buscar.
+            only_active: Si es True, limita la búsqueda a cuentas activas.
+
+        Returns:
+            Account | None: Cuenta encontrada o None si no existe/coincide el filtro.
+        """
+        return self.get_by_field(db, "email", email, only_active=only_active)

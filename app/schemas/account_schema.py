@@ -1,56 +1,71 @@
-#Esquemas Pydantic para la gestión de cuentas de usuario
+import re
 
-from typing import Optional
-
-from pydantic import BaseModel, EmailStr, Field, SecretStr
-
-from app.schemas.base_schema import BaseResponseSchema
-
-
-class AccountResponse(BaseResponseSchema):
-    """Respuesta de cuenta de usuario."""
-    role: str
-    user_id: int
-    external_account_id: str
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
-    """Solicitud de inicio de sesión."""
+    """Datos solicitados para iniciar sesión.
+
+    Reglas de validación:
+    - `email` debe tener un formato de correo válido.
+    - `password` debe tener entre 8 y 64 caracteres.
+
+    Nota: No se valida la complejidad en login para no bloquear
+    contraseñas antiguas y evitar filtrar políticas a atacantes.
+    """
+
     email: EmailStr
-    password: SecretStr = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=64)
 
 
 class LoginResponse(BaseModel):
-    """Respuesta de inicio de sesión."""
+    """Datos respuesta al iniciar sesión.
+
+    Attributes:
+        access_token: Token JWT generado tras autenticación correcta.
+        token_type: Esquema de autenticación, típicamente "bearer".
+        expires_in: Tiempo de vida del token (segundos) desde su emisión.
+    """
+
     access_token: str
-    refresh_token: Optional[str] = None
     token_type: str = "bearer"
-    role: str
+    expires_in: int
 
 
-class RefreshRequest(BaseModel):
-    """Solicitud para refrescar tokens."""
-    refresh_token: str = Field(..., min_length=10)
+class PasswordResetRequest(BaseModel):
+    """Datos para solicitar restablecimiento de contraseña.
+
+    Reglas:
+    - `email` debe ser un correo válido.
+    """
+
+    email: EmailStr
 
 
-class RefreshResponse(BaseModel):
-    """Respuesta de refresco de tokens."""
-    access_token: str
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
+class PasswordResetConfirm(BaseModel):
+    """Datos para confirmar restablecimiento de contraseña.
 
+    Attributes:
+        token: Token de restablecimiento recibido por correo.
+        new_password: Nueva contraseña (8-64 caracteres).
+    """
 
-class ForgotPasswordRequest(BaseModel):
-    """Solicitud para iniciar proceso de recuperación de contraseña"""
-    account_id: int = Field(..., ge=1, description="Identificador local de la cuenta")
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=64)
 
-
-class ResetPasswordRequest(BaseModel):
-    """Restablece la contraseña usando un token de recuperación."""
-    token: str = Field(..., min_length=32)
-    new_password: SecretStr = Field(..., min_length=8)
-    confirm_password: SecretStr = Field(..., min_length=8)
-
-    def validate_passwords(self) -> None:
-        if self.new_password.get_secret_value() != self.confirm_password.get_secret_value():
-            raise ValueError("Las contraseñas no coinciden")
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Valida la complejidad de la contraseña."""
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra mayúscula")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra minúscula")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError(
+                "La contraseña debe contener al menos un carácter especial "
+                '(!@#$%^&*(),.?":{}|<>)'
+            )
+        return v

@@ -1,9 +1,10 @@
 # tests/conftest.py
-import pytest
 from unittest.mock import MagicMock
-from httpx import AsyncClient, ASGITransport
 
-from app.utils.security import CurrentUser
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.models.enums.rol import Role
 
 
 @pytest.fixture
@@ -14,10 +15,43 @@ def mock_db_session():
 
 
 @pytest.fixture
+def mock_admin_account():
+    """Mock de una cuenta de administrador para autenticación."""
+    account = MagicMock()
+    account.id = 1
+    account.email = "admin@test.com"
+    account.role = Role.ADMINISTRATOR
+    account.user_id = 1
+    return account
+
+
+@pytest.fixture
+def mock_coach_account():
+    """Mock de una cuenta de entrenador para autenticación."""
+    account = MagicMock()
+    account.id = 2
+    account.email = "coach@test.com"
+    account.role = Role.COACH
+    account.user_id = 2
+    return account
+
+
+@pytest.fixture
+def mock_intern_account():
+    """Mock de una cuenta de pasante para autenticación."""
+    account = MagicMock()
+    account.id = 3
+    account.email = "intern@test.com"
+    account.role = Role.INTERN
+    account.user_id = 3
+    return account
+
+
+@pytest.fixture
 async def client(mock_db_session):
-    """Cliente HTTP asíncrono con override de dependencia get_db."""
-    from main import app
+    """Cliente HTTP asíncrono sin autenticación (para tests públicos)."""
     from app.core.database import get_db
+    from main import app
 
     async def override_get_db():
         yield mock_db_session
@@ -33,42 +67,81 @@ async def client(mock_db_session):
 
 
 @pytest.fixture
-def mock_current_user():
-    """
-    Mock de usuario autenticado para inyectar en dependencias.
-    
-    Simula un usuario con rol ADMIN que pasó autenticación JWT.
-    """
-    return CurrentUser(
-        id=1,
-        email="test@test.com",
-        role="ADMIN",
-        external_id="ext-test-123",
-        is_active=True
-    )
+async def admin_client(mock_db_session, mock_admin_account):
+    """Cliente HTTP autenticado como administrador."""
+    from app.core.database import get_db
+    from app.utils.security import get_current_account, get_current_admin
+    from main import app
+
+    async def override_get_db():
+        yield mock_db_session
+
+    def override_get_current_account():
+        return mock_admin_account
+
+    def override_get_current_admin():
+        return mock_admin_account
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_account] = override_get_current_account
+    app.dependency_overrides[get_current_admin] = override_get_current_admin
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def override_authentication(mock_current_user):
-    """
-    Fixture para sobreescribir la autenticación en pruebas.
-    
-    Uso:
-        def test_protected_endpoint(client, override_authentication):
-            # El endpoint estará autenticado automáticamente
-            response = await client.get("/protected-route")
-    """
+async def coach_client(mock_db_session, mock_coach_account):
+    """Cliente HTTP autenticado como entrenador."""
+    from app.core.database import get_db
+    from app.utils.security import get_current_account, get_current_coach
     from main import app
-    # Nota: get_current_user debe ser implementado en un módulo de autenticación
-    # Por ahora, este es un placeholder para futuras implementaciones
-    
-    # async def _override_auth():
-    #     return mock_current_user
-    
-    # app.dependency_overrides[get_current_user] = _override_auth
-    
-    yield
-    
-    # Cleanup
-    # if get_current_user in app.dependency_overrides:
-    #     del app.dependency_overrides[get_current_user]
+
+    async def override_get_db():
+        yield mock_db_session
+
+    def override_get_current_account():
+        return mock_coach_account
+
+    def override_get_current_coach():
+        return mock_coach_account
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_account] = override_get_current_account
+    app.dependency_overrides[get_current_coach] = override_get_current_coach
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def intern_client(mock_db_session, mock_intern_account):
+    """Cliente HTTP autenticado como pasante."""
+    from app.core.database import get_db
+    from app.utils.security import get_current_account, get_current_staff
+    from main import app
+
+    async def override_get_db():
+        yield mock_db_session
+
+    def override_get_current_account():
+        return mock_intern_account
+
+    def override_get_current_staff():
+        return mock_intern_account
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_account] = override_get_current_account
+    app.dependency_overrides[get_current_staff] = override_get_current_staff
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
