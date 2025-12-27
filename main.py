@@ -79,8 +79,14 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Middlewares
-    # setup_cors(app)
+    # CORS para permitir front-end en dev/prod
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS or ["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     # app.add_middleware(ErrorHandlerMiddleware)
     # app.add_middleware(LoggingMiddleware)
 
