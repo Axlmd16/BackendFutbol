@@ -47,7 +47,6 @@ async def test_create_user_success_administrator(admin_client, mock_person_clien
             "external": "12345678-1234-1234-1234-123456789012",
             "is_active": True,
         }
-
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
         response = await admin_client.post(
@@ -87,7 +86,6 @@ async def test_create_user_success_coach(admin_client, mock_person_client):
             "external": "22345678-1234-1234-1234-123456789012",
             "is_active": True,
         }
-
         mock_controller.admin_create_user = AsyncMock(return_value=mock_result)
 
         response = await admin_client.post(
@@ -151,7 +149,7 @@ async def test_create_user_validation_password_short(admin_client):
             "last_name": "User",
             "email": "test@test.com",
             "dni": "1234567890",
-            "password": "Pass12",  # Solo 6 caracteres
+            "password": "Pass12",
             "role": "coach",
             "direction": "Calle 123",
             "phone": "0999999999",
