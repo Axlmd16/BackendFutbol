@@ -109,7 +109,7 @@ class AthleteController:
                 minor_full_name = minor_person_data["full_name"]
                 
                 logger.info(
-                    f"✅ Persona MENOR creada en MS - "
+                    f"Persona MENOR creada en MS - "
                     f"External ID: {minor_external_id}, DNI: {minor_data.dni}"
                 )
             except ValidationException as e:
@@ -135,7 +135,7 @@ class AthleteController:
                     guardian_full_name = guardian_person_data["full_name"]
                     
                     logger.info(
-                        f"✅ Persona REPRESENTANTE creada en MS - "
+                        f"Persona REPRESENTANTE creada en MS - "
                         f"External ID: {guardian_external_id}, DNI: {minor_data.representative.dni}"
                     )
                     
@@ -178,7 +178,7 @@ class AthleteController:
             
             # AUDITORÍA: Registrar la acción en logs
             logger.info(
-                f"✅ Deportista menor registrado exitosamente - "
+                f"Deportista menor registrado exitosamente - "
                 f"Atleta ID: {athlete.id}, DNI: {athlete.dni}, External ID: {minor_external_id}, "
                 f"Representante ID: {representative.id}, DNI: {representative.dni}, "
                 f"Edad: {age} años"
