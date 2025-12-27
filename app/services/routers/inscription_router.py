@@ -23,7 +23,7 @@ athlete_controller = AthleteController()
     "/deportista",
     response_model=ResponseSchema,
     status_code=status.HTTP_201_CREATED,
-    summary="Registrar deportista UNL"
+    summary="Registrar deportista UNL",
 )
 def register_athlete(
     inscription_data: AthleteInscriptionDTO,
@@ -39,8 +39,8 @@ def register_athlete(
                 "statistic_id": result.statistic_id,
                 "first_name": result.first_name,
                 "last_name": result.last_name,
-                "institutional_email": result.institutional_email
-            }
+                "institutional_email": result.institutional_email,
+            },
         )
     except ValidationException as exc:
         return JSONResponse(

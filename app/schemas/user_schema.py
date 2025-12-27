@@ -8,6 +8,7 @@ from app.models.enums.rol import Role
 # ==========================================
 # BASES (Reutilizables)
 
+
 class PersonBase(BaseModel):
     """Campos comunes de información personal."""
 

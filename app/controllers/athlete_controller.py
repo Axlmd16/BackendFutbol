@@ -30,9 +30,7 @@ class AthleteController:
 
         if self.athlete_dao.exists(db, "dni", dni):
             raise AlreadyExistsException("El DNI ya existe en el sistema.")
-        if self.athlete_dao.exists(
-            db, "institutional_email", data.institutional_email
-        ):
+        if self.athlete_dao.exists(db, "institutional_email", data.institutional_email):
             raise AlreadyExistsException(
                 "El email institucional ya existe en el sistema."
             )

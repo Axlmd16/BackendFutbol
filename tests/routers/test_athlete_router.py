@@ -15,27 +15,29 @@ async def test_register_athlete_endpoint_success(client):
             last_name="Pérez",
             institutional_email="juan.perez@unl.edu.ar",
         )
-        mock_result.model_dump = MagicMock(return_value={
-            "athlete_id": 1,
-            "statistic_id": 10,
-            "first_name": "Juan",
-            "last_name": "Pérez",
-            "institutional_email": "juan.perez@unl.edu.ar",
-        })
+        mock_result.model_dump = MagicMock(
+            return_value={
+                "athlete_id": 1,
+                "statistic_id": 10,
+                "first_name": "Juan",
+                "last_name": "Pérez",
+                "institutional_email": "juan.perez@unl.edu.ar",
+            }
+        )
         mock_controller.register_athlete_unl = MagicMock(return_value=mock_result)
 
         resp = await client.post(
             "/api/v1/inscription/deportista",
             json={
-            "first_name": "Juan",
-            "last_name": "Pérez",
-            "dni": "12345678",
-            "phone": "3424123456",
-            "birth_date": "1998-05-15",
-            "institutional_email": "juan.perez@unl.edu.ar",
-            "university_role": "student",
-            "weight": "75.5",
-            "height": "180",
+                "first_name": "Juan",
+                "last_name": "Pérez",
+                "dni": "12345678",
+                "phone": "3424123456",
+                "birth_date": "1998-05-15",
+                "institutional_email": "juan.perez@unl.edu.ar",
+                "university_role": "student",
+                "weight": "75.5",
+                "height": "180",
             },
         )
 
@@ -58,15 +60,15 @@ async def test_register_athlete_endpoint_rol_invalido(client):
                 "Rol inválido. Debe ser uno de: STUDENT, TEACHER, ADMIN, WORKER"
             )
         )
-        
+
         resp = await client.post(
             "/api/v1/inscription/deportista",
             json={
-            "first_name": "Ana",
-            "last_name": "López",
-            "dni": "12345678",
-            "institutional_email": "ana@test.com",
-            "university_role": "deportista",
+                "first_name": "Ana",
+                "last_name": "López",
+                "dni": "12345678",
+                "institutional_email": "ana@test.com",
+                "university_role": "deportista",
             },
         )
 
@@ -90,11 +92,11 @@ async def test_register_athlete_endpoint_dni_duplicado(client):
         resp = await client.post(
             "/api/v1/inscription/deportista",
             json={
-            "first_name": "Luis",
-            "last_name": "Martínez",
-            "dni": "12345678",
-            "institutional_email": "luis@test.com",
-            "university_role": "student",
+                "first_name": "Luis",
+                "last_name": "Martínez",
+                "dni": "12345678",
+                "institutional_email": "luis@test.com",
+                "university_role": "student",
             },
         )
 
@@ -119,11 +121,11 @@ async def test_register_athlete_endpoint_email_duplicado(client):
         resp = await client.post(
             "/api/v1/inscription/deportista",
             json={
-            "first_name": "Roberto",
-            "last_name": "Silva",
-            "dni": "87654321",
-            "institutional_email": "roberto@test.com",
-            "university_role": "student",
+                "first_name": "Roberto",
+                "last_name": "Silva",
+                "dni": "87654321",
+                "institutional_email": "roberto@test.com",
+                "university_role": "student",
             },
         )
 
@@ -139,10 +141,10 @@ async def test_register_athlete_endpoint_validacion_formato(client):
     resp = await client.post(
         "/api/v1/inscription/deportista",
         json={
-        "first_name": "Test",
-        "last_name": "User",
-        "dni": "1234",
-        "university_role": "student",
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1234",
+            "university_role": "student",
         },
     )
     assert resp.status_code == 422

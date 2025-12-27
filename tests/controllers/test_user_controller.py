@@ -127,9 +127,7 @@ async def test_admin_create_user_success_coach(
     user_controller.user_dao.exists.return_value = False
     user_controller.account_dao.exists.return_value = False
     user_controller.user_dao.create.return_value = MagicMock(id=2)
-    user_controller.account_dao.create.return_value = MagicMock(
-        id=20, role=Role.COACH
-    )
+    user_controller.account_dao.create.return_value = MagicMock(id=20, role=Role.COACH)
     user_controller.person_ms_service.create_or_get_person.return_value = (
         "22345678-1234-1234-1234-123456789012"
     )

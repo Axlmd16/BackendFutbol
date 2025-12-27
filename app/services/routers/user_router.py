@@ -45,8 +45,7 @@ async def admin_create_user(
         return ResponseSchema(
             status="success",
             message=(
-                "Usuario creado correctamente en el club y en el sistema "
-                "institucional"
+                "Usuario creado correctamente en el club y en el sistema institucional"
             ),
             data=result.model_dump(),
         )

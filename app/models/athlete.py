@@ -21,9 +21,7 @@ class Athlete(BaseModel):
     weight = Column(String(20), nullable=True)
     height = Column(String(20), nullable=True)
 
-    tests = relationship(
-        "Test", back_populates="athlete", cascade="all, delete-orphan"
-    )
+    tests = relationship("Test", back_populates="athlete", cascade="all, delete-orphan")
     attendances = relationship(
         "Attendance", back_populates="athlete", cascade="all, delete-orphan"
     )

@@ -9,6 +9,7 @@ Cubre:
 - GET /users/{user_id}: Obtener detalle de usuario
 - PATCH /users/desactivate/{user_id}: Desactivar usuario
 """
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
