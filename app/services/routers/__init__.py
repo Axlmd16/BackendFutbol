@@ -1,7 +1,6 @@
 from app.services.routers.account_router import router as account_router
 from app.services.routers.athlete_router import router as athlete_router
 from app.services.routers.attendance_router import router as attendance_router
-from app.services.routers.auth_router import router as auth_router
 from app.services.routers.endurance_test_router import router as endurance_test_router
 from app.services.routers.evaluation_router import router as evaluation_router
 from app.services.routers.sprint_test_router import router as sprint_test_router
@@ -16,7 +15,6 @@ from app.services.routers.yoyo_test_router import router as yoyo_test_router
 __all__ = [
     "athlete_router",
     "attendance_router",
-    "auth_router",
     "evaluator_router",
     "evaluation_router",
     "test_router",

@@ -21,7 +21,6 @@ from app.services.routers import (
     account_router,
     athlete_router,
     attendance_router,
-    auth_router,
     endurance_test_router,
     evaluation_router,
     sprint_test_router,
@@ -128,7 +127,7 @@ def create_application() -> FastAPI:
         request: Request, exc: StarletteHTTPException
     ):
         # Preserva comportamiento estándar para endpoints que no usan ResponseSchema,
-        # pero envuelve el payload cuando sea posible para que el frontend tenga message.
+        # pero envuelve el payload cuando sea posible para que el frontend tenga mssg.
         if isinstance(exc.detail, (dict, list)):
             # Si ya es un objeto estructurado, dejamos que FastAPI lo renderice.
             return await http_exception_handler(request, exc)
@@ -146,7 +145,6 @@ def create_application() -> FastAPI:
     # Routers
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
-    app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(test_router, prefix=API_PREFIX)
     app.include_router(evaluation_router, prefix=API_PREFIX)
     app.include_router(attendance_router, prefix=API_PREFIX)
