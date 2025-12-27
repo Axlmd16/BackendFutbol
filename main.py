@@ -23,7 +23,6 @@ from app.services.routers import (
     attendance_router,
     endurance_test_router,
     evaluation_router,
-    inscription_router,
     sprint_test_router,
     statistic_router,
     technical_assessment_router,
@@ -146,7 +145,6 @@ def create_application() -> FastAPI:
 
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
-    app.include_router(inscription_router, prefix=API_PREFIX)
     app.include_router(user_router, prefix=API_PREFIX)
     app.include_router(account_router, prefix=API_PREFIX)
     app.include_router(test_router, prefix=API_PREFIX)

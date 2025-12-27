@@ -1,11 +1,12 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.controllers.athlete_controller import AthleteController
 from app.schemas.athlete_schema import AthleteInscriptionDTO
-from app.utils.exceptions import AlreadyExistsException, ValidationException
+from app.utils.exceptions import AlreadyExistsException
 
 
 @pytest.fixture
@@ -86,12 +87,16 @@ async def test_register_athlete_unl_invalid_dni(
     controller, mock_db_session, valid_data
 ):
     """Test con DNI inválido."""
-    valid_data.dni = "invalid"
-
-    with pytest.raises(ValidationException) as exc:
-        await controller.register_athlete_unl(mock_db_session, valid_data)
-
-    assert "dni" in str(exc.value).lower()
+    with pytest.raises(ValidationError):
+        AthleteInscriptionDTO(
+            first_name=valid_data.first_name,
+            last_name=valid_data.last_name,
+            dni="invalid",
+            phone=valid_data.phone,
+            birth_date=valid_data.birth_date,
+            weight=valid_data.weight,
+            height=valid_data.height,
+        )
 
 
 @pytest.mark.asyncio
@@ -99,8 +104,15 @@ async def test_register_athlete_unl_invalid_date(
     controller, mock_db_session, valid_data
 ):
     """Test con fecha de nacimiento inválida."""
-    valid_data.birth_date = "invalid-date"
     controller.athlete_dao.exists.return_value = False
 
-    with pytest.raises(ValidationException):
-        await controller.register_athlete_unl(mock_db_session, valid_data)
+    with pytest.raises(ValidationError):
+        AthleteInscriptionDTO(
+            first_name=valid_data.first_name,
+            last_name=valid_data.last_name,
+            dni=valid_data.dni,
+            phone=valid_data.phone,
+            birth_date="invalid-date",
+            weight=valid_data.weight,
+            height=valid_data.height,
+        )
