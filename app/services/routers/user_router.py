@@ -142,14 +142,43 @@ def get_all_users(
     description="Obtiene los detalles de un usuario específico por su ID.",
 )
 async def get_by_id(user_id: int, db: Annotated[Session, Depends(get_db)]):
-    user = await user_controller.get_user_by_id(db=db, user_id=user_id)
-    if not user:
-        raise AppException(status_code=404, message="Usuario no encontrado")
-    return ResponseSchema(
-        status="success",
-        message="Usuario obtenido correctamente",
-        data=user.model_dump(),
-    )
+    try:
+        user = await user_controller.get_user_by_id(db=db, user_id=user_id)
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content=ResponseSchema(
+                    status="error",
+                    message="Usuario no encontrado",
+                    data=None,
+                    errors=None,
+                ).model_dump(),
+            )
+        return ResponseSchema(
+            status="success",
+            message="Usuario obtenido correctamente",
+            data=user.model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.patch(
@@ -164,9 +193,30 @@ def desactivate_user(
     db: Annotated[Session, Depends(get_db)],
 ):
     """Desactiva un usuario (soft delete)"""
-    user_controller.desactivate_user(db=db, user_id=user_id)
-    return ResponseSchema(
-        status="success",
-        message="Usuario desactivado correctamente",
-        data=None,
-    )
+    try:
+        user_controller.desactivate_user(db=db, user_id=user_id)
+        return ResponseSchema(
+            status="success",
+            message="Usuario desactivado correctamente",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
