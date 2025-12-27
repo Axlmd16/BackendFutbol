@@ -74,7 +74,8 @@ class PersonBase(BaseModel):
             return TypeStament(normalized)
         except ValueError as exc:
             raise ValueError(
-                "type_stament inválido. Use: DOCENTES, ESTUDIANTES, ADMINISTRATIVOS, TRABAJADORES, EXTERNOS"
+                "type_stament inválido. Use: DOCENTES, ESTUDIANTES, "
+                "ADMINISTRATIVOS, TRABAJADORES, EXTERNOS"
             ) from exc
 
 
