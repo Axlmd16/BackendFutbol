@@ -12,8 +12,9 @@ class AccountDAO(BaseDAO[Account]):
     def __init__(self) -> None:
         super().__init__(Account)
 
-    
-    def get_by_email(self, db: Session, email: str, only_active: bool = True) -> Optional[Account]:  # noqa: E501
+    def get_by_email(
+        self, db: Session, email: str, only_active: bool = True
+    ) -> Optional[Account]:  # noqa: E501
         """Obtener una cuenta por email.
 
         Args:

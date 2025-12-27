@@ -92,9 +92,11 @@ def test_request_password_reset_success(monkeypatch, controller):
         lambda *args, **kwargs: "reset123",
     )
     sent = {"called": False, "args": None}
+
     def _send_reset_email(**kwargs):
         sent["called"] = True
         sent["args"] = kwargs
+
     monkeypatch.setattr(
         "app.controllers.account_controller.send_reset_email",
         _send_reset_email,

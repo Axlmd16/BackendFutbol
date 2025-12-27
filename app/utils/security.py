@@ -30,8 +30,8 @@ def validate_ec_dni(value: str) -> str:
         str: DNI validado conteniendo solo los 10 dígitos numéricos.
 
     Raises:
-        ValidationException: Si el DNI es None, no tiene 10 dígitos, 
-            la provincia es inválida, el formato es incorrecto, 
+        ValidationException: Si el DNI es None, no tiene 10 dígitos,
+            la provincia es inválida, el formato es incorrecto,
             o el dígito verificador no coincide.
     """
 
@@ -74,7 +74,7 @@ def is_email_allowed(
         (ej: ['gmail.com', 'unl.edu.ec']).
 
     Returns:
-        bool: True si el email tiene formato válido y pertenece a un dominio permitido 
+        bool: True si el email tiene formato válido y pertenece a un dominio permitido
             (si se especificó), False en caso contrario.
     """
     pattern = r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$"
@@ -128,7 +128,7 @@ def create_access_token(
 
     Args:
         subject: Identificador del sujeto (generalmente ID de cuenta).
-        expires_seconds: Tiempo de expiración en segundos. 
+        expires_seconds: Tiempo de expiración en segundos.
         Si es None, usa TOKEN_EXPIRES de configuración.
         extra_claims: Diccionario opcional con claims adicionales
         para incluir en el payload.
@@ -156,7 +156,7 @@ def create_reset_token(account_id: int, email: str, expires_seconds: int = 900) 
     Args:
         account_id: ID de la cuenta para la cual se genera el token.
         email: Correo electrónico de la cuenta.
-        expires_seconds: Tiempo de expiración en segundos 
+        expires_seconds: Tiempo de expiración en segundos
         (por defecto 900 = 15 minutos).
 
     Returns:
@@ -203,7 +203,7 @@ def validate_reset_token(token: str) -> dict:
         dict: Payload del token si es válido y tiene action='reset_password'.
 
     Raises:
-        UnauthorizedException: Si el token es inválido, 
+        UnauthorizedException: Si el token es inválido,
         expirado, o no tiene action='reset_password'.
     """
 
