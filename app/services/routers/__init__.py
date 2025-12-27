@@ -18,6 +18,7 @@ __all__ = [
     "attendance_router",
     "evaluator_router",
     "evaluation_router",
+    "inscription_router",
     "test_router",
     "statistic_router",
     "sprint_test_router",

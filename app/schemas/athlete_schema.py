@@ -1,10 +1,12 @@
 """Esquemas de validación para deportistas y representantes legales."""
 
-from pydantic import BaseModel, Field, field_validator, EmailStr
-from typing import Optional
-from datetime import date
-from app.schemas.base_schema import BaseResponseSchema
 import re
+from datetime import date
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.schemas.base_schema import BaseResponseSchema
 
 
 class RepresentativeCreateSchema(BaseModel):
@@ -179,10 +181,15 @@ class MinorAthleteCreateSchema(BaseModel):
         """
         from datetime import date as date_type
         today = date_type.today()
-        age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+        age = today.year - value.year - (
+            (today.month, today.day) < (value.month, value.day)
+        )
         
         if age >= 18:
-            raise ValueError('El deportista debe ser menor de 18 años para usar este registro')
+            raise ValueError(
+                'El deportista debe ser menor de 18 años '
+                'para usar este registro'
+            )
         
         if age < 5:
             raise ValueError('El deportista debe tener al menos 5 años')
@@ -197,7 +204,10 @@ class MinorAthleteCreateSchema(BaseModel):
         Este es un requisito legal obligatorio para menores.
         """
         if not value:
-            raise ValueError('Se requiere autorización parental explícita para registrar menores de edad')
+            raise ValueError(
+                'Se requiere autorización parental explícita '
+                'para registrar menores de edad'
+            )
         return value
 
 

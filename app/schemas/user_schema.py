@@ -125,6 +125,10 @@ class CreatePersonInMSRequest(PersonBase):
     """DTO para microservicio de usuarios."""
 
     dni: str = Field(..., min_length=10, max_length=10)
+    email: Optional[EmailStr] = Field(
+        default=None,
+        description="Email real (opcional). Si no se provee, se genera uno dummy",
+    )
 
 
 class CreateLocalUserAccountRequest(AccountBase):

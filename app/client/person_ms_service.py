@@ -125,7 +125,19 @@ class PersonMSService:
     # Metodos privados
 
     def _build_person_payload(self, data: CreatePersonInMSRequest) -> dict:
-        """Construye el payload para crear persona en el MS."""
+        """
+        Construye el payload para crear persona en el MS.
+
+        Si el CreatePersonInMSRequest trae un email, lo usa.
+        Si no, genera credenciales dummy aleatorias.
+        """
+        # Usar email real si viene, sino generar dummy
+        email = (
+            data.email
+            if data.email
+            else f"user{random.randint(10000, 99999)}@example.com"
+        )
+
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
@@ -134,7 +146,7 @@ class PersonMSService:
             "type_stament": data.type_stament,
             "direction": data.direction or "S/N",
             "phono": data.phone or "S/N",
-            "email": f"user{random.randint(10000, 99999)}@example.com",
+            "email": email,
             "password": f"Pass{random.randint(10000, 99999)}!",
         }
 
