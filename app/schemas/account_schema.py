@@ -53,16 +53,19 @@ class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8, max_length=64)
 
-    @field_validator('new_password')
+    @field_validator("new_password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """Valida la complejidad de la contraseña."""
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('La contraseña debe contener al menos una letra mayúscula')
-        if not re.search(r'[a-z]', v):
-            raise ValueError('La contraseña debe contener al menos una letra minúscula')
-        if not re.search(r'[0-9]', v):
-            raise ValueError('La contraseña debe contener al menos un número')
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra mayúscula")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra minúscula")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("La contraseña debe contener al menos un número")
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
-            raise ValueError('La contraseña debe contener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)')  # noqa: E501
+            raise ValueError(
+                "La contraseña debe contener al menos un carácter especial "
+                '(!@#$%^&*(),.?":{}|<>)'
+            )
         return v

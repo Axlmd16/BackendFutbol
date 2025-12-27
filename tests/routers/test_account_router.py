@@ -41,7 +41,8 @@ async def test_login_invalid_credentials(client):
 
         assert response.status_code == 401
         data = response.json()
-        assert "Credenciales inválidas" in data["detail"]
+        assert data["status"] == "error"
+        assert "Credenciales inválidas" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -110,7 +111,8 @@ async def test_password_reset_confirm_invalid_token(client):
 
         assert response.status_code == 401
         data = response.json()
-        assert "Token inválido" in data["detail"]
+        assert data["status"] == "error"
+        assert "Token inválido" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -139,4 +141,5 @@ async def test_password_reset_confirm_unexpected_error(client):
 
         assert response.status_code == 500
         data = response.json()
-        assert "Error inesperado" in data["detail"]
+        assert data["status"] == "error"
+        assert "Error inesperado" in data["message"]

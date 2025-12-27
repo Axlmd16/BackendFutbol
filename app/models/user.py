@@ -31,6 +31,10 @@ class User(BaseModel):
     def role(self):
         return self.account.role if self.account else None
 
+    @property
+    def email(self):
+        return self.account.email if self.account else None
+
     def __repr__(self):
         return (
             f"<User id={self.id} dni={self.dni} "

@@ -3,9 +3,11 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.core.database import Base, engine
@@ -90,25 +92,53 @@ def create_application() -> FastAPI:
     # Scalar docs
     setup_scalar_docs(app)
 
+    # CORS (necesario para frontend en http://localhost:5173)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     # Manejo de validación
     @app.exception_handler(RequestValidationError)
     async def validation_handler(request: Request, exc: RequestValidationError):
-        errors = [
-            {
-                "field": " -> ".join(str(x) for x in error["loc"]),
-                "message": error["msg"],
-                "type": error["type"],
-            }
-            for error in exc.errors()
-        ]
+        error_map: dict[str, list[str]] = {}
+        for error in exc.errors():
+            # loc típico: ('body', 'field') o ('query', 'page')
+            loc = error.get("loc") or ()
+            field = ".".join(str(x) for x in loc) if loc else "__root__"
+            msg = error.get("msg") or "Valor inválido"
+            error_map.setdefault(field, []).append(str(msg))
 
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "status": "error",
-                "message": "Error de validación",
+                "message": "Error de validación. Revisa los campos enviados.",
                 "data": None,
-                "errors": errors,
+                "errors": error_map,
+            },
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler_wrapped(
+        request: Request, exc: StarletteHTTPException
+    ):
+        # Preserva comportamiento estándar para endpoints que no usan ResponseSchema,
+        # pero envuelve el payload cuando sea posible para que el frontend tenga mssg.
+        if isinstance(exc.detail, (dict, list)):
+            # Si ya es un objeto estructurado, dejamos que FastAPI lo renderice.
+            return await http_exception_handler(request, exc)
+
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "status": "error",
+                "message": str(exc.detail) if exc.detail else "Error",
+                "data": None,
+                "errors": None,
             },
         )
 

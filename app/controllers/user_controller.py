@@ -1,248 +1,239 @@
-# app/controllers/user_controller.py
+"""Controlador de usuarios - maneja la lógica de negocio de usuarios del club."""
+
 import logging
-import random
 
 from sqlalchemy.orm import Session
 
-from app.client.person_client import PersonClient
+from app.client.person_ms_service import PersonMSService
 from app.dao.account_dao import AccountDAO
 from app.dao.user_dao import UserDAO
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
     AdminCreateUserResponse,
-    CreateLocalUserAccountRequest,
+    AdminUpdateUserRequest,
+    AdminUpdateUserResponse,
     CreatePersonInMSRequest,
+    UserDetailResponse,
+    UserFilter,
 )
-from app.utils.exceptions import (
-    AlreadyExistsException,
-    DatabaseException,
-    ValidationException,
-)
+from app.utils.exceptions import AlreadyExistsException, ValidationException
 from app.utils.security import hash_password, validate_ec_dni
 
 logger = logging.getLogger(__name__)
 
 
 class UserController:
-    """Controlador de usuarios del sistema (club)."""
+    """
+    Controlador de usuarios del sistema (club).
+    """
 
     def __init__(self) -> None:
         self.user_dao = UserDAO()
         self.account_dao = AccountDAO()
-        self.person_client = PersonClient()
-
-    async def create_person_in_users_ms(
-        self,
-        data: CreatePersonInMSRequest,
-    ) -> str:
-        """Crea la persona en el MS de usuarios.
-
-        Es idempotente: si la persona ya existe, no falla.
-        """
-
-        def _is_duplicate_message(raw_message: str) -> bool:
-            msg = (raw_message or "").strip().lower()
-            return (
-                "la persona ya esta registrada con esa identificacion" in msg
-                or "la persona ya está registrada con esa identificacion" in msg
-                or ("ya existe una persona" in msg and "identific" in msg)
-                or "already exists" in msg
-                or "duplicad" in msg
-            )
-
-        def _extract_external(resp: object) -> str | None:
-            if not isinstance(resp, dict):
-                return None
-            data_block = resp.get("data")
-            if isinstance(data_block, dict):
-                external = data_block.get("external")
-                return str(external) if external else None
-            if isinstance(data_block, list) and data_block:
-                first = data_block[0]
-                if isinstance(first, dict):
-                    external = first.get("external")
-                    return str(external) if external else None
-            external = resp.get("external")
-            return str(external) if external else None
-
-        async def _get_existing_external_by_dni(dni: str) -> str:
-            try:
-                existing = await self.person_client.get_by_identification(dni)
-            except Exception as e:
-                logger.error(
-                    f"No se pudo consultar persona existente en MS usuarios "
-                    f"por DNI {dni}: {e}"
-                )
-                raise ValidationException(
-                    (
-                        "La persona ya existe en el módulo de usuarios, "
-                        "pero no se pudo recuperar su identificador externo"
-                    )
-                ) from e
-
-            external = _extract_external(existing)
-            if not external:
-                raise ValidationException(
-                    "La persona ya existe en el módulo de usuarios, pero,"
-                    "la respuesta no contiene el identificador externo"
-                )
-            return external
-
-        person_payload = {
-            "first_name": data.first_name,
-            "last_name": data.last_name,
-            "identification": data.dni,
-            "type_identification": data.type_identification,
-            "type_stament": data.type_stament,
-            "direction": data.direction or "S/N",
-            "phono": data.phone or "S/N",
-            "email": f"user{random.randint(10000, 99999)}@example.com",
-            "password": f"Pass{random.randint(10000, 99999)}!",
-        }
-
-        try:
-            save_resp = await self.person_client.create_person_with_account(
-                person_payload
-            )
-        except ValidationException as e:
-            if _is_duplicate_message(getattr(e, "message", "") or str(e)):
-                logger.info(
-                    f"Persona con DNI {data.dni} ya existe en MS usuarios, continuando."
-                )
-                return await _get_existing_external_by_dni(data.dni)
-            raise
-        except Exception as e:
-            logger.error(f"Error inesperado al llamar a MS de usuarios: {e}")
-            raise ValidationException(
-                "Error de comunicación con el módulo de usuarios"
-            ) from e
-
-        status = save_resp.get("status")
-        raw_message = save_resp.get("message") or save_resp.get("detail") or ""
-        message = str(raw_message).lower()
-
-        if status == "success":
-            external = _extract_external(save_resp)
-            if external:
-                return external
-            return await _get_existing_external_by_dni(data.dni)
-
-        if _is_duplicate_message(message):
-            logger.info(
-                f"Persona con DNI {data.dni} ya existe en MS usuarios, continuando..."
-            )
-            return await _get_existing_external_by_dni(data.dni)
-
-        raise ValidationException(
-            save_resp.get("message")
-            or save_resp.get("detail")
-            or "Error desconocido al crear persona"
-        )
-
-    async def create_local_user_account(
-        self,
-        db: Session,
-        data: CreateLocalUserAccountRequest,
-    ):
-        """Crea el usuario y cuenta localmente en este MS."""
-
-        dni = validate_ec_dni(data.dni)
-
-        # Validar unicidad local
-        if self.user_dao.exists(db, "dni", dni):
-            raise AlreadyExistsException("Ya existe un usuario con ese DNI en el club")
-        if self.account_dao.exists(db, "email", data.email):
-            raise AlreadyExistsException(
-                "Ya existe una cuenta con ese email en el club"
-            )
-
-        # Crear usuario
-        new_user = self.user_dao.create(
-            db,
-            {
-                "external": data.external,
-                "full_name": data.full_name,
-                "dni": dni,
-            },
-        )
-
-        # Crear cuenta
-        new_account = self.account_dao.create(
-            db,
-            {
-                "email": data.email,
-                "password_hash": hash_password(data.password),
-                "role": data.role,
-                "user_id": new_user.id,
-            },
-        )
-
-        return new_user, new_account
+        self.person_ms_service = PersonMSService()
 
     async def admin_create_user(
         self,
         db: Session,
         payload: AdminCreateUserRequest,
     ) -> AdminCreateUserResponse:
-        """Crea un admin/entrenador en el MS de usuarios y lo enlaza al club."""
+        """
+        Crea un administrador o entrenador.
 
+        Flujo:
+        1. Validar datos y unicidad local
+        2. Crear persona en MS de usuarios (o recuperar si ya existe)
+        3. Guardar usuario y cuenta localmente
+        """
+        # Normalizar datos
         first_name = payload.first_name.strip()
         last_name = payload.last_name.strip()
         email = payload.email.strip().lower()
         dni = validate_ec_dni(payload.dni)
-        role_enum = payload.role
 
-        # Validar unicidad local
-        if self.user_dao.exists(db, "dni", dni):
-            raise AlreadyExistsException("Ya existe un usuario con ese DNI en el club")
-        if self.account_dao.exists(db, "email", email):
-            raise AlreadyExistsException(
-                "Ya existe una cuenta con ese email en el club"
-            )
+        # Validar unicidad en el club
+        self._validate_user_uniqueness(db, dni=dni, email=email)
 
-        # Crear persona en el MS de usuarios (idempotente)
-        external = await self.create_person_in_users_ms(
+        # Crear o recuperar persona en MS de usuarios
+        external = await self.person_ms_service.create_or_get_person(
             CreatePersonInMSRequest(
                 first_name=first_name,
                 last_name=last_name,
                 dni=dni,
-                direction=payload.direction or "S/N",
-                phone=payload.phone or "S/N",
+                direction=payload.direction,
+                phone=payload.phone,
                 type_identification=payload.type_identification,
                 type_stament=payload.type_stament,
             )
         )
 
-        # Guardar el usuario y cuenta localmente
+        # Crear usuario y cuenta localmente
         full_name = f"{first_name} {last_name}"
-        try:
-            new_user = self.user_dao.create(
-                db,
-                {
-                    "external": external,
-                    "full_name": full_name,
-                    "dni": dni,
-                },
-            )
-
-            new_account = self.account_dao.create(
-                db,
-                {
-                    "email": email,
-                    "password_hash": hash_password(payload.password),
-                    "role": role_enum,
-                    "user_id": new_user.id,
-                },
-            )
-        except DatabaseException as e:
-            logger.error(f"Error al crear registros locales de usuario/cuenta: {e}")
-            raise
+        user, account = self._create_local_user_and_account(
+            db=db,
+            external=external,
+            full_name=full_name,
+            dni=dni,
+            email=email,
+            password=payload.password,
+            role=payload.role,
+        )
 
         return AdminCreateUserResponse(
-            user_id=new_user.id,
-            account_id=new_account.id,
+            id=user.id,
+            account_id=account.id,
             full_name=full_name,
             email=email,
-            role=new_account.role.value,
+            role=account.role.value,
             external=external,
         )
+
+    async def admin_update_user(
+        self,
+        db: Session,
+        payload: AdminUpdateUserRequest,
+        user_id: int,
+    ) -> AdminUpdateUserResponse:
+        """
+        Actualiza un administrador o entrenador.
+
+        Flujo:
+        1. Verificar que el usuario existe
+        2. Actualizar en MS de usuarios
+        3. Actualizar localmente (incluyendo external si cambió)
+        """
+        # Verificar que el usuario existe
+        user = self.user_dao.get_by_id(db=db, id=user_id, only_active=False)
+        if not user:
+            raise ValidationException("El usuario a actualizar no existe")
+
+        # Actualizar en MS de usuarios (puede devolver nuevo external)
+        new_external = await self.person_ms_service.update_person(
+            external=user.external,
+            first_name=payload.first_name.strip(),
+            last_name=payload.last_name.strip(),
+            dni=user.dni,
+            direction=payload.direction,
+            phone=payload.phone,
+            type_identification=payload.type_identification,
+            type_stament=payload.type_stament,
+        )
+
+        # Actualizar localmente
+        update_data = {
+            "full_name": f"{payload.first_name.strip()} {payload.last_name.strip()}",
+            "external": new_external,
+        }
+
+        updated_user = self.user_dao.update(db, user.id, update_data)
+        if not updated_user:
+            raise ValidationException("Error al actualizar el usuario")
+
+        return AdminUpdateUserResponse(
+            id=updated_user.id,
+            full_name=updated_user.full_name,
+            email=updated_user.account.email,
+            role=updated_user.account.role.value,
+            updated_at=updated_user.updated_at,
+            is_active=updated_user.is_active,
+        )
+
+    def _validate_user_uniqueness(self, db: Session, dni: str, email: str) -> None:
+        """
+        Valida que DNI y email no existan en el club.
+        """
+        if self.user_dao.exists(db, "dni", dni):
+            raise AlreadyExistsException("Ya existe un usuario con ese DNI en el club")
+
+        if self.account_dao.exists(db, "email", email):
+            raise AlreadyExistsException(
+                "Ya existe una cuenta con ese email en el club"
+            )
+
+    def _create_local_user_and_account(
+        self,
+        db: Session,
+        external: str,
+        full_name: str,
+        dni: str,
+        email: str,
+        password: str,
+        role,
+    ):
+        """
+        Crea usuario y cuenta en la base de datos local.
+        """
+        new_user = self.user_dao.create(
+            db,
+            {
+                "external": external,
+                "full_name": full_name,
+                "dni": dni,
+            },
+        )
+
+        new_account = self.account_dao.create(
+            db,
+            {
+                "email": email,
+                "password_hash": hash_password(password),
+                "role": role,
+                "user_id": new_user.id,
+            },
+        )
+
+        return new_user, new_account
+
+    def get_all_users(self, db: Session, filters: UserFilter):
+        """
+        Obtiene usuarios aplicando los filtros recibidos.
+        """
+        return self.user_dao.get_all_with_filters(db, filters=filters)
+
+    async def get_user_by_id(
+        self, db: Session, user_id: int
+    ) -> UserDetailResponse | None:
+        """
+        Obtiene la informacion personal de un uusario
+        """
+        user = self.user_dao.get_by_id(db=db, id=user_id)
+        if not user:
+            return None
+
+        # Obtener datos desde MS de personas
+        person_data = await self.person_ms_service.get_user_by_identification(user.dni)
+        if not person_data:
+            raise ValidationException("No se encontró la información de la persona")
+
+        print("PERSON DATA:", person_data)
+        nombre = person_data["data"]["firts_name"]
+
+        print(f"nombre: {nombre}")
+
+        return UserDetailResponse(
+            id=user.id,
+            full_name=user.full_name,
+            role=user.account.role.value,
+            dni=user.dni,
+            email=user.account.email,
+            external=user.external,
+            is_active=user.is_active,
+            first_name=person_data["data"]["firts_name"],
+            last_name=person_data["data"]["last_name"],
+            direction=person_data["data"]["direction"],
+            phone=person_data["data"]["phono"],
+            type_identification=person_data["data"]["type_identification"],
+            type_stament=person_data["data"]["type_stament"],
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
+
+    def desactivate_user(self, db: Session, user_id: int) -> None:
+        """
+        Desactiva un usuario (soft delete).
+        """
+        user = self.user_dao.get_by_id(db=db, id=user_id)
+        if not user:
+            raise ValidationException("El usuario a desactivar no existe")
+
+        self.user_dao.update(db, user_id, {"is_active": False})
