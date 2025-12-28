@@ -95,3 +95,45 @@ class AthleteController:
             full_name=athlete.full_name,
             dni=athlete.dni,
         )
+
+    def get_all_athletes(self, db: Session, filters):
+        """
+        Obtiene atletas aplicando los filtros recibidos.
+        """
+        return self.athlete_dao.get_all_with_filters(db, filters=filters)
+
+    def get_athlete_by_id(self, db: Session, athlete_id: int):
+        """
+        Obtiene un atleta por su ID.
+        """
+        return self.athlete_dao.get_by_id(db=db, id=athlete_id)
+
+    def update_athlete(self, db: Session, athlete_id: int, update_data: dict):
+        """
+        Actualiza los datos básicos de un atleta.
+        """
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        if not athlete:
+            return None
+
+        return self.athlete_dao.update(db, athlete_id, update_data)
+
+    def desactivate_athlete(self, db: Session, athlete_id: int) -> None:
+        """
+        Desactiva un atleta (soft delete).
+        """
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        if not athlete:
+            return None
+
+        self.athlete_dao.update(db, athlete_id, {"is_active": False})
+
+    def activate_athlete(self, db: Session, athlete_id: int) -> None:
+        """
+        Activa un atleta (revierte soft delete).
+        """
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        if not athlete:
+            return None
+
+        self.athlete_dao.update(db, athlete_id, {"is_active": True})
