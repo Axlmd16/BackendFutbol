@@ -76,6 +76,10 @@ def get_all_athletes(
                 "type_athlete": athlete.type_athlete,
                 "sex": getattr(athlete.sex, "value", str(athlete.sex)),
                 "is_active": athlete.is_active,
+                "height": getattr(athlete, "height", None),
+                "weight": getattr(athlete, "weight", None),
+                "created_at": getattr(athlete, "created_at", None).isoformat() if getattr(athlete, "created_at", None) else None,
+                "updated_at": getattr(athlete, "updated_at", None).isoformat() if getattr(athlete, "updated_at", None) else None,
             }
             for athlete in items
         ]

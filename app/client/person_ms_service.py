@@ -20,16 +20,14 @@ class PersonMSService:
 
     async def create_or_get_person(self, data: CreatePersonInMSRequest) -> str:
         """
-        Crea una persona en el MS de usuarios o retorna su external si ya existe.
-        Es idempotente: si la persona ya existe con ese DNI, valida identidad y
-        retorna external.
+        Crea una persona en el MS de usuarios SIN cuenta, o retorna su external si ya existe.
+        Es idempotente: si la persona ya existe con ese DNI, valida identidad y retorna external.
         """
         person_payload = self._build_person_payload(data)
 
         try:
-            save_resp = await self.person_client.create_person_with_account(
-                person_payload
-            )
+            # NO crear cuenta para el atleta; solo la persona en el MS
+            save_resp = await self.person_client.create_person(person_payload)
             return await self._handle_create_response(save_resp, data)
         except ValidationException as e:
             if self._is_duplicate_error(e):
@@ -68,6 +66,9 @@ class PersonMSService:
             phone: Teléfono (opcional)
             type_identification: Tipo de identificación
             type_stament: Tipo de declaración
+            
+        Returns:
+            El external ID de la persona, o el existente si el MS no está disponible
         """
         person_payload = {
             "first_name": first_name,
@@ -89,10 +90,9 @@ class PersonMSService:
             return await self._get_external_by_dni(dni)
 
         except Exception as e:
-            logger.error(f"Error al actualizar persona en MS de usuarios: {e}")
-            raise ValidationException(
-                "Error de comunicación con el módulo de usuarios"
-            ) from e
+            logger.warning(f"No se pudo actualizar persona en MS de usuarios: {e}. Retornando external actual.")
+            # En lugar de fallar, retorna el external actual para permitir actualización local
+            return external
 
     async def get_all_users(self):
         """
@@ -125,7 +125,7 @@ class PersonMSService:
     # Metodos privados
 
     def _build_person_payload(self, data: CreatePersonInMSRequest) -> dict:
-        """Construye el payload para crear persona en el MS."""
+        """Construye el payload para crear persona en el MS (sin cuenta)."""
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
@@ -134,8 +134,6 @@ class PersonMSService:
             "type_stament": data.type_stament,
             "direction": data.direction or "S/N",
             "phono": data.phone or "S/N",
-            "email": f"user{random.randint(10000, 99999)}@example.com",
-            "password": f"Pass{random.randint(10000, 99999)}!",
         }
 
     async def _handle_create_response(

@@ -56,17 +56,21 @@ class AthleteDAO(BaseDAO[Athlete]):
             if sex_enum:
                 query = query.filter(self.model.sex == sex_enum)
 
-        # Filtro por estado activo
-        if filters.is_active is not None:
-            query = query.filter(self.model.is_active == filters.is_active)
+        # Filtro por estado activo (tolerante si atributo no existe)
+        is_active = getattr(filters, "is_active", None)
+        if is_active is not None:
+            query = query.filter(self.model.is_active == is_active)
 
         total = query.count()
 
         # Paginación
+        # Paginación con tolerancia si no existen propiedades
+        skip = getattr(filters, "skip", 0)
+        limit = getattr(filters, "limit", 10)
         items = (
             query.order_by(self.model.id.desc())
-            .offset(filters.skip)
-            .limit(filters.limit)
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 

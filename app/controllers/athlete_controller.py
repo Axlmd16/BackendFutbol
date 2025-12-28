@@ -137,8 +137,6 @@ class AthleteController:
                 dni=athlete.dni,
                 direction=direction,
                 phone=phone,
-                type_identification=None,
-                type_stament=None,
             )
 
         # Actualizar external_person_id si cambió
