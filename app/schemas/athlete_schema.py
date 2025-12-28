@@ -1,4 +1,4 @@
-"""Esquemas Pydantic para atletas (inscripción/creación/edición/búsqueda)."""
+﻿"""Esquemas Pydantic para atletas (inscripciÃ³n/creaciÃ³n/ediciÃ³n/bÃºsqueda)."""
 
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ class AthleteInscriptionDTO(PersonBase):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
+    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dÃ­gitos)")
 
-    # Datos específicos del atleta
+    # Datos especÃ­ficos del atleta
     birth_date: Optional[date] = Field(
         default=None,
         description="Fecha de nacimiento (YYYY-MM-DD)",
@@ -85,12 +85,23 @@ class AthleteUpdateRequest(BaseModel):
     height: Optional[float] = Field(default=None, ge=0)
 
 
+
+class AthleteUpdateDTO(BaseModel):
+    """Datos para actualizar un atleta incluyendo datos del MS de personas."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    height: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(default=None, ge=0)
+    direction: Optional[str] = Field(default=None, description="Dirección")
+    phone: Optional[str] = Field(default=None, description="Teléfono")
+
 class AthleteFilter(BaseModel):
-    """Filtros para búsqueda/paginación de atletas."""
+    """Filtros para bÃºsqueda/paginaciÃ³n de atletas."""
 
     page: int = Field(1, ge=1)
     limit: int = Field(10, ge=1, le=100)
-    search: Optional[str] = Field(None, description="Búsqueda por nombre o DNI")
+    search: Optional[str] = Field(None, description="BÃºsqueda por nombre o DNI")
     type_athlete: Optional[TypeStament] = None
     sex: Optional[SexInput] = None
 

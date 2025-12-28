@@ -14,7 +14,7 @@ from app.schemas.athlete_schema import (
     StatisticCreateDB,
 )
 from app.schemas.user_schema import CreatePersonInMSRequest
-from app.utils.exceptions import AlreadyExistsException
+from app.utils.exceptions import AlreadyExistsException, ValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -106,17 +106,51 @@ class AthleteController:
         """
         Obtiene un atleta por su ID.
         """
-        return self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        if not athlete:
+            raise ValidationException("Atleta no encontrado")
+        return athlete
 
-    def update_athlete(self, db: Session, athlete_id: int, update_data: dict):
+    async def update_athlete(self, db: Session, athlete_id: int, update_data: dict):
         """
-        Actualiza los datos básicos de un atleta.
+        Actualiza los datos básicos de un atleta y sincroniza con MS de personas.
         """
         athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
         if not athlete:
-            return None
+            raise ValidationException("Atleta no encontrado")
 
-        return self.athlete_dao.update(db, athlete_id, update_data)
+        # Extraer campos para MS (direction y phone)
+        direction = update_data.pop('direction', None)
+        phone = update_data.pop('phone', None)
+
+        # Actualizar en MS de personas si hay datos de dirección o teléfono
+        new_external_person_id = athlete.external_person_id
+        if direction is not None or phone is not None:
+            names = athlete.full_name.split(' ', 1)
+            first_name = names[0] if names else athlete.full_name
+            last_name = names[1] if len(names) > 1 else ''
+            
+            new_external_person_id = await self.person_ms_service.update_person(
+                external=athlete.external_person_id,
+                first_name=first_name,
+                last_name=last_name,
+                dni=athlete.dni,
+                direction=direction,
+                phone=phone,
+                type_identification=None,
+                type_stament=None,
+            )
+
+        # Actualizar external_person_id si cambió
+        if new_external_person_id != athlete.external_person_id:
+            update_data['external_person_id'] = new_external_person_id
+
+        # Actualizar datos locales del atleta
+        updated_athlete = self.athlete_dao.update(db, athlete_id, update_data)
+        if not updated_athlete:
+            raise ValidationException("Error al actualizar el atleta")
+
+        return updated_athlete
 
     def desactivate_athlete(self, db: Session, athlete_id: int) -> None:
         """
@@ -124,7 +158,7 @@ class AthleteController:
         """
         athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
         if not athlete:
-            return None
+            raise ValidationException("Atleta no encontrado")
 
         self.athlete_dao.update(db, athlete_id, {"is_active": False})
 
@@ -134,6 +168,6 @@ class AthleteController:
         """
         athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
         if not athlete:
-            return None
+            raise ValidationException("Atleta no encontrado")
 
         self.athlete_dao.update(db, athlete_id, {"is_active": True})

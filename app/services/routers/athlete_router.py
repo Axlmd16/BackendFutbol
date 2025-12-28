@@ -11,7 +11,7 @@ from app.schemas.athlete_schema import (
     AthleteFilter,
     AthleteInscriptionDTO,
     AthleteInscriptionResponseDTO,
-    AthleteUpdateRequest,
+    AthleteUpdateDTO,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.utils.exceptions import AppException
@@ -128,17 +128,6 @@ def get_by_id(
     try:
         athlete = athlete_controller.get_athlete_by_id(db=db, athlete_id=athlete_id)
 
-        if athlete is None:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content=ResponseSchema(
-                    status="error",
-                    message="Atleta no encontrado",
-                    data=None,
-                    errors=None,
-                ).model_dump(),
-            )
-
         athlete_response = {
             "id": athlete.id,
             "external_person_id": athlete.external_person_id,
@@ -161,7 +150,7 @@ def get_by_id(
         return ResponseSchema(
             status="success",
             message="Atleta obtenido correctamente",
-            data=athlete_response.model_dump(),
+            data=athlete_response,
         )
     except AppException as exc:
         return JSONResponse(
@@ -192,9 +181,9 @@ def get_by_id(
     summary="Actualizar atleta",
     description="Actualiza los datos básicos de un atleta. Requiere autenticación.",
 )
-def update_athlete(
+async def update_athlete(
     athlete_id: int,
-    payload: AthleteUpdateRequest,
+    payload: AthleteUpdateDTO,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_account)],
 ):
@@ -202,20 +191,9 @@ def update_athlete(
     try:
         update_data = payload.model_dump(exclude_unset=True)
 
-        updated_athlete = athlete_controller.update_athlete(
+        updated_athlete = await athlete_controller.update_athlete(
             db=db, athlete_id=athlete_id, update_data=update_data
         )
-
-        if not updated_athlete:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content=ResponseSchema(
-                    status="error",
-                    message="Atleta no encontrado",
-                    data=None,
-                    errors=None,
-                ).model_dump(),
-            )
 
         return ResponseSchema(
             status="success",
