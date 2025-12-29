@@ -66,9 +66,6 @@ class PersonMSService:
             phone: Teléfono (opcional)
             type_identification: Tipo de identificación
             type_stament: Tipo de declaración
-            
-        Returns:
-            El external ID de la persona, o el existente si el MS no está disponible
         """
         person_payload = {
             "first_name": first_name,
@@ -90,9 +87,10 @@ class PersonMSService:
             return await self._get_external_by_dni(dni)
 
         except Exception as e:
-            logger.warning(f"No se pudo actualizar persona en MS de usuarios: {e}. Retornando external actual.")
-            # En lugar de fallar, retorna el external actual para permitir actualización local
-            return external
+            logger.error(f"Error al actualizar persona en MS de usuarios: {e}")
+            raise ValidationException(
+                "Error de comunicación con el módulo de usuarios"
+            ) from e
 
     async def get_all_users(self):
         """

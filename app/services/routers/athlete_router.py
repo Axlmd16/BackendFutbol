@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,7 @@ from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/athletes", tags=["Athletes"])
 athlete_controller = AthleteController()
 
@@ -121,17 +123,18 @@ def get_all_athletes(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Obtener atleta por ID",
-    description="Obtiene los detalles de un atleta por su ID. Requiere autenticación.",
+    description="Obtiene los detalles completos de un atleta por su ID con información local y del MS de usuarios. Requiere autenticación.",
 )
-def get_by_id(
+async def get_by_id(
     athlete_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_account)],
 ):
-    """Obtiene un atleta por su ID."""
+    """Obtiene un atleta por su ID con toda la información disponible."""
     try:
         athlete = athlete_controller.get_athlete_by_id(db=db, athlete_id=athlete_id)
 
+        # Datos locales del atleta
         athlete_response = {
             "id": athlete.id,
             "external_person_id": athlete.external_person_id,
@@ -149,7 +152,20 @@ def get_by_id(
             "updated_at": (
                 athlete.updated_at.isoformat() if athlete.updated_at else None
             ),
+            # Información del MS de usuarios (puede ser None si no está disponible)
+            "ms_person_data": None,
         }
+
+        # Intentar obtener información del MS de usuarios
+        try:
+            from app.client.person_ms_service import PersonMSService
+            person_ms_service = PersonMSService()
+            person_data = await person_ms_service.get_user_by_identification(athlete.dni)
+            if person_data:
+                athlete_response["ms_person_data"] = person_data
+        except Exception as ms_error:
+            # Si el MS no está disponible, continuar sin esa información
+            logger.warning(f"No se pudo obtener información del MS para atleta {athlete_id}: {ms_error}")
 
         return ResponseSchema(
             status="success",
