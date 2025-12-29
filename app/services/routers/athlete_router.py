@@ -132,45 +132,13 @@ async def get_by_id(
 ):
     """Obtiene un atleta por su ID con toda la información disponible."""
     try:
-        athlete = athlete_controller.get_athlete_by_id(db=db, athlete_id=athlete_id)
-
-        # Datos locales del atleta
-        athlete_response = {
-            "id": athlete.id,
-            "external_person_id": athlete.external_person_id,
-            "full_name": athlete.full_name,
-            "dni": athlete.dni,
-            "type_athlete": athlete.type_athlete,
-            "date_of_birth": (
-                athlete.date_of_birth.isoformat() if athlete.date_of_birth else None
-            ),
-            "height": athlete.height,
-            "weight": athlete.weight,
-            "sex": getattr(athlete.sex, "value", str(athlete.sex)),
-            "is_active": athlete.is_active,
-            "created_at": athlete.created_at.isoformat(),
-            "updated_at": (
-                athlete.updated_at.isoformat() if athlete.updated_at else None
-            ),
-            # Información del MS de usuarios (puede ser None si no está disponible)
-            "ms_person_data": None,
-        }
-
-        # Intentar obtener información del MS de usuarios
-        try:
-            from app.client.person_ms_service import PersonMSService
-            person_ms_service = PersonMSService()
-            person_data = await person_ms_service.get_user_by_identification(athlete.dni)
-            if person_data:
-                athlete_response["ms_person_data"] = person_data
-        except Exception as ms_error:
-            # Si el MS no está disponible, continuar sin esa información
-            logger.warning(f"No se pudo obtener información del MS para atleta {athlete_id}: {ms_error}")
-
+        athlete_data = await athlete_controller.get_athlete_with_ms_info(
+            db=db, athlete_id=athlete_id
+        )
         return ResponseSchema(
             status="success",
             message="Atleta obtenido correctamente",
-            data=athlete_response,
+            data=athlete_data,
         )
     except AppException as exc:
         return JSONResponse(
@@ -192,6 +160,7 @@ async def get_by_id(
                 errors=None,
             ).model_dump(),
         )
+
 
 
 @router.put(

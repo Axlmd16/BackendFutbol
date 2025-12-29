@@ -169,3 +169,44 @@ class AthleteController:
             raise ValidationException("Atleta no encontrado")
 
         self.athlete_dao.update(db, athlete_id, {"is_active": True})
+
+    async def get_athlete_with_ms_info(self, db: Session, athlete_id: int) -> dict:
+        """
+        Obtiene un atleta con toda la información local y del MS de usuarios.
+        """
+        athlete = self.get_athlete_by_id(db=db, athlete_id=athlete_id)
+
+        athlete_data = {
+            "id": athlete.id,
+            "external_person_id": athlete.external_person_id,
+            "full_name": athlete.full_name,
+            "dni": athlete.dni,
+            "type_athlete": athlete.type_athlete,
+            "date_of_birth": (
+                athlete.date_of_birth.isoformat() if athlete.date_of_birth else None
+            ),
+            "height": athlete.height,
+            "weight": athlete.weight,
+            "sex": getattr(athlete.sex, "value", str(athlete.sex)),
+            "is_active": athlete.is_active,
+            "created_at": athlete.created_at.isoformat(),
+            "updated_at": (
+                athlete.updated_at.isoformat() if athlete.updated_at else None
+            ),
+            "ms_person_data": None,
+        }
+
+        # Intentar obtener información del MS de usuarios
+        try:
+            person_data = await self.person_ms_service.get_user_by_identification(
+                athlete.dni
+            )
+            if person_data:
+                athlete_data["ms_person_data"] = person_data
+        except Exception as ms_error:
+            # Si el MS no está disponible, continuar sin esa información
+            logger.warning(
+                f"No se pudo obtener información del MS para atleta {athlete_id}: {ms_error}"
+            )
+
+        return athlete_data

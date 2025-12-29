@@ -20,14 +20,16 @@ class PersonMSService:
 
     async def create_or_get_person(self, data: CreatePersonInMSRequest) -> str:
         """
-        Crea una persona en el MS de usuarios SIN cuenta, o retorna su external si ya existe.
-        Es idempotente: si la persona ya existe con ese DNI, valida identidad y retorna external.
+        Crea una persona en el MS de usuarios o retorna su external si ya existe.
+        Es idempotente: si la persona ya existe con ese DNI, valida identidad y
+        retorna external.
         """
         person_payload = self._build_person_payload(data)
 
         try:
-            # NO crear cuenta para el atleta; solo la persona en el MS
-            save_resp = await self.person_client.create_person(person_payload)
+            save_resp = await self.person_client.create_person_with_account(
+                person_payload
+            )
             return await self._handle_create_response(save_resp, data)
         except ValidationException as e:
             if self._is_duplicate_error(e):
@@ -123,7 +125,7 @@ class PersonMSService:
     # Metodos privados
 
     def _build_person_payload(self, data: CreatePersonInMSRequest) -> dict:
-        """Construye el payload para crear persona en el MS (sin cuenta)."""
+        """Construye el payload para crear persona en el MS."""
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
@@ -132,6 +134,8 @@ class PersonMSService:
             "type_stament": data.type_stament,
             "direction": data.direction or "S/N",
             "phono": data.phone or "S/N",
+            "email": f"user{random.randint(10000, 99999)}@example.com",
+            "password": f"Pass{random.randint(10000, 99999)}!",
         }
 
     async def _handle_create_response(
