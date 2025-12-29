@@ -1,12 +1,27 @@
-"""Esquemas para Evaluations y Tests."""
+"""Esquemas para Evaluations."""
 
-import enum
 from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 from app.schemas.base_schema import BaseResponseSchema
+from app.schemas.endurance_test_schema import (
+    CreateEnduranceTestSchema,
+    EnduranceTestResponseSchema,
+)
+from app.schemas.sprint_test_schema import (
+    CreateSprintTestSchema,
+    SprintTestResponseSchema,
+)
+from app.schemas.technical_assessment_schema import (
+    CreateTechnicalAssessmentSchema,
+    TechnicalAssessmentResponseSchema,
+)
+from app.schemas.yoyo_test_schema import (
+    CreateYoyoTestSchema,
+    YoyoTestResponseSchema,
+)
 
 # ==========================================
 # EVALUATION SCHEMAS
@@ -49,129 +64,6 @@ class EvaluationResponseSchema(BaseResponseSchema):
 
 
 # ==========================================
-# TEST SCHEMAS (Base)
-
-
-class CreateTestBaseSchema(BaseModel):
-    """Base para crear cualquier tipo de test."""
-
-    date: datetime = Field(..., description="Fecha del test")
-    observations: Optional[str] = None
-    athlete_id: int = Field(..., description="ID del atleta que realiza el test")
-    evaluation_id: int = Field(
-        ..., description="ID de la evaluación a la que pertenece"
-    )
-
-
-# ==========================================
-# SPRINT TEST SCHEMAS
-
-
-class CreateSprintTestSchema(CreateTestBaseSchema):
-    """Schema para crear un Sprint Test (velocidad)."""
-
-    distance_meters: float = Field(..., gt=0, description="Distancia en metros")
-    time_0_10_s: float = Field(..., gt=0, description="Tiempo 0-10 metros")
-    time_0_30_s: float = Field(..., gt=0, description="Tiempo 0-30 metros")
-
-
-class SprintTestResponseSchema(BaseResponseSchema):
-    """Schema de respuesta para Sprint Test."""
-
-    date: datetime
-    observations: Optional[str]
-    athlete_id: int
-    evaluation_id: int
-    distance_meters: float
-    time_0_10_s: float
-    time_0_30_s: float
-
-
-# ==========================================
-# YOYO TEST SCHEMAS
-
-
-class CreateYoyoTestSchema(CreateTestBaseSchema):
-    """Schema para crear un Yoyo Test (resistencia aerobia)."""
-
-    shuttle_count: int = Field(..., gt=0, description="Número de shuttles completados")
-    final_level: str = Field(..., description="Nivel final alcanzado (ej: 16.3, 18.2)")
-    failures: int = Field(..., ge=0, description="Número de fallos")
-
-
-class YoyoTestResponseSchema(BaseResponseSchema):
-    """Schema de respuesta para Yoyo Test."""
-
-    date: datetime
-    observations: Optional[str]
-    athlete_id: int
-    evaluation_id: int
-    shuttle_count: int
-    final_level: str
-    failures: int
-
-
-# ==========================================
-# ENDURANCE TEST SCHEMAS
-
-
-class CreateEnduranceTestSchema(CreateTestBaseSchema):
-    """Schema para crear un Endurance Test (resistencia general)."""
-
-    min_duration: int = Field(..., gt=0, description="Duración en minutos")
-    total_distance_m: float = Field(..., gt=0, description="Distancia total en metros")
-
-
-class EnduranceTestResponseSchema(BaseResponseSchema):
-    """Schema de respuesta para Endurance Test."""
-
-    date: datetime
-    observations: Optional[str]
-    athlete_id: int
-    evaluation_id: int
-    min_duration: int
-    total_distance_m: float
-
-
-# ==========================================
-# TECHNICAL ASSESSMENT SCHEMAS
-
-
-class ScaleEnum(str, enum.Enum):
-    """Escala de valoración técnica."""
-
-    VERY_LOW = "MUY_BAJO"
-    LOW = "BAJO"
-    MEDIUM = "MEDIO"
-    HIGH = "ALTO"
-    VERY_HIGH = "MUY_ALTO"
-
-
-class CreateTechnicalAssessmentSchema(CreateTestBaseSchema):
-    """Schema para crear una Technical Assessment (evaluación técnica)."""
-
-    ball_control: Optional[ScaleEnum] = None
-    short_pass: Optional[ScaleEnum] = None
-    long_pass: Optional[ScaleEnum] = None
-    shooting: Optional[ScaleEnum] = None
-    dribbling: Optional[ScaleEnum] = None
-
-
-class TechnicalAssessmentResponseSchema(BaseResponseSchema):
-    """Schema de respuesta para Technical Assessment."""
-
-    date: datetime
-    observations: Optional[str]
-    athlete_id: int
-    evaluation_id: int
-    ball_control: Optional[str]
-    short_pass: Optional[str]
-    long_pass: Optional[str]
-    shooting: Optional[str]
-    dribbling: Optional[str]
-
-
-# ==========================================
 # GENERIC TEST RESPONSE (para listar)
 
 
@@ -196,3 +88,21 @@ class EvaluationDetailSchema(EvaluationResponseSchema):
     """Evaluación con lista detallada de tests."""
 
     tests: List[TestResponseSchema] = []
+
+
+__all__ = [
+    "CreateEvaluationSchema",
+    "UpdateEvaluationSchema",
+    "EvaluationResponseSchema",
+    "EvaluationDetailSchema",
+    "TestResponseSchema",
+    # Importados desde módulos específicos
+    "CreateSprintTestSchema",
+    "SprintTestResponseSchema",
+    "CreateYoyoTestSchema",
+    "YoyoTestResponseSchema",
+    "CreateEnduranceTestSchema",
+    "EnduranceTestResponseSchema",
+    "CreateTechnicalAssessmentSchema",
+    "TechnicalAssessmentResponseSchema",
+]

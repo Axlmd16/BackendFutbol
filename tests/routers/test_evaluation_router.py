@@ -347,7 +347,7 @@ async def test_delete_evaluation_not_found(admin_client):
 async def test_add_sprint_test_success(admin_client, mock_sprint_test_data):
     """POST /evaluations/{id}/sprint-tests debe agregar un Sprint Test."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.sprint_test_controller"
     ) as mock_controller:
         mock_test = MagicMock()
         mock_test.id = 1
@@ -359,7 +359,7 @@ async def test_add_sprint_test_success(admin_client, mock_sprint_test_data):
         mock_test.time_0_10_s = 1.85
         mock_test.time_0_30_s = 3.95
         mock_test.observations = None
-        mock_controller.add_sprint_test.return_value = mock_test
+        mock_controller.add_test.return_value = mock_test
 
         response = await admin_client.post(
             "/api/v1/evaluations/1/sprint-tests",
@@ -376,13 +376,11 @@ async def test_add_sprint_test_success(admin_client, mock_sprint_test_data):
 async def test_add_sprint_test_athlete_not_found(admin_client):
     """POST /evaluations/{id}/sprint-tests debe validar atleta."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.sprint_test_controller"
     ) as mock_controller:
         from app.utils.exceptions import DatabaseException
 
-        mock_controller.add_sprint_test.side_effect = DatabaseException(
-            "Atleta 999 no existe"
-        )
+        mock_controller.add_test.side_effect = DatabaseException("Atleta 999 no existe")
 
         response = await admin_client.post(
             "/api/v1/evaluations/1/sprint-tests",
@@ -408,7 +406,7 @@ async def test_add_sprint_test_athlete_not_found(admin_client):
 async def test_add_yoyo_test_success(admin_client, mock_yoyo_test_data):
     """POST /evaluations/{id}/yoyo-tests debe agregar un Yoyo Test."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.yoyo_test_controller"
     ) as mock_controller:
         mock_test = MagicMock()
         mock_test.id = 2
@@ -420,7 +418,7 @@ async def test_add_yoyo_test_success(admin_client, mock_yoyo_test_data):
         mock_test.final_level = "18.2"
         mock_test.failures = 2
         mock_test.observations = None
-        mock_controller.add_yoyo_test.return_value = mock_test
+        mock_controller.add_test.return_value = mock_test
 
         response = await admin_client.post(
             "/api/v1/evaluations/1/yoyo-tests",
@@ -442,7 +440,7 @@ async def test_add_yoyo_test_success(admin_client, mock_yoyo_test_data):
 async def test_add_endurance_test_success(admin_client, mock_endurance_test_data):
     """POST /evaluations/{id}/endurance-tests debe agregar un Endurance Test."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.endurance_test_controller"
     ) as mock_controller:
         mock_test = MagicMock()
         mock_test.id = 3
@@ -453,7 +451,7 @@ async def test_add_endurance_test_success(admin_client, mock_endurance_test_data
         mock_test.min_duration = 12
         mock_test.total_distance_m = 2500
         mock_test.observations = None
-        mock_controller.add_endurance_test.return_value = mock_test
+        mock_controller.add_test.return_value = mock_test
 
         response = await admin_client.post(
             "/api/v1/evaluations/1/endurance-tests",
@@ -478,7 +476,7 @@ async def test_add_technical_assessment_success(
     """POST /evaluations/{id}/technical-assessments debe agregar
     Technical Assessment."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.technical_assessment_controller"
     ) as mock_controller:
         mock_test = MagicMock()
         mock_test.id = 4
@@ -492,7 +490,7 @@ async def test_add_technical_assessment_success(
         mock_test.shooting = "ALTO"
         mock_test.dribbling = "MUY_ALTO"
         mock_test.observations = None
-        mock_controller.add_technical_assessment.return_value = mock_test
+        mock_controller.add_test.return_value = mock_test
 
         response = await admin_client.post(
             "/api/v1/evaluations/1/technical-assessments",
@@ -514,7 +512,7 @@ async def test_add_technical_assessment_success(
 async def test_list_evaluation_tests_success(admin_client):
     """GET /evaluations/{id}/tests debe listar tests de una evaluación."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.test_controller"
     ) as mock_controller:
         mock_test = MagicMock()
         mock_test.id = 1
@@ -538,7 +536,7 @@ async def test_list_evaluation_tests_success(admin_client):
 async def test_list_evaluation_tests_empty(admin_client):
     """GET /evaluations/{id}/tests debe retornar lista vacía."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.test_controller"
     ) as mock_controller:
         mock_controller.list_tests_by_evaluation.return_value = []
 
@@ -559,7 +557,7 @@ async def test_list_evaluation_tests_empty(admin_client):
 async def test_delete_test_success(admin_client):
     """DELETE /evaluations/tests/{id} debe eliminar un test."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.test_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = True
 
@@ -575,7 +573,7 @@ async def test_delete_test_success(admin_client):
 async def test_delete_test_not_found(admin_client):
     """DELETE /evaluations/tests/{id} debe retornar 404 si no existe."""
     with patch(
-        "app.services.routers.evaluation_router.evaluation_controller"
+        "app.services.routers.evaluation_router.test_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = False
 
