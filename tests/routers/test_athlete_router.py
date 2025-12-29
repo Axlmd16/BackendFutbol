@@ -1,9 +1,9 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.utils.exceptions import AlreadyExistsException
-from types import SimpleNamespace
 
 
 def _mock_athlete(**kwargs):
@@ -66,7 +66,6 @@ async def test_register_athlete_unl_success(client):
         assert body["data"]["statistic_id"] == 10
         assert body["data"]["full_name"] == "Juan Pérez"
 
-
     @pytest.mark.asyncio
     async def test_get_all_athletes_success(admin_client):
         """Lista de atletas con filtros y paginación OK."""
@@ -93,7 +92,6 @@ async def test_register_athlete_unl_success(client):
             assert len(data["items"]) == 2
             assert data["page"] == 1 and data["limit"] == 10
 
-
     @pytest.mark.asyncio
     async def test_get_athlete_by_id_found(admin_client):
         """Detalle de atleta encontrado."""
@@ -108,7 +106,6 @@ async def test_register_athlete_unl_success(client):
             assert body["data"]["id"] == 3
             assert body["data"]["dni"] == "1710034065"
 
-
     @pytest.mark.asyncio
     async def test_get_athlete_by_id_not_found(admin_client):
         """Detalle de atleta no encontrado."""
@@ -120,7 +117,6 @@ async def test_register_athlete_unl_success(client):
             resp = await admin_client.get("/api/v1/athletes/999")
             assert resp.status_code == 404
             assert resp.json()["status"] == "error"
-
 
     @pytest.mark.asyncio
     async def test_update_athlete_success(admin_client):
@@ -140,7 +136,6 @@ async def test_register_athlete_unl_success(client):
             assert body["data"]["height"] == 182.0
             assert body["data"]["weight"] == 76.0
 
-
     @pytest.mark.asyncio
     async def test_update_athlete_not_found(admin_client):
         """Actualización cuando atleta no existe."""
@@ -155,7 +150,6 @@ async def test_register_athlete_unl_success(client):
             )
             assert resp.status_code == 404
 
-
     @pytest.mark.asyncio
     async def test_desactivate_athlete_success(admin_client):
         """Desactivación exitosa (soft delete)."""
@@ -167,7 +161,6 @@ async def test_register_athlete_unl_success(client):
             resp = await admin_client.patch("/api/v1/athletes/desactivate/1")
             assert resp.status_code == 200
             assert resp.json()["message"].startswith("Atleta desactivado")
-
 
     @pytest.mark.asyncio
     async def test_activate_athlete_success(admin_client):

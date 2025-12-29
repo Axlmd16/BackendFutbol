@@ -9,10 +9,12 @@ from app.controllers.athlete_controller import AthleteController
 from app.core.database import get_db
 from app.models.account import Account
 from app.schemas.athlete_schema import (
+    AthleteDetailResponse,
     AthleteFilter,
     AthleteInscriptionDTO,
     AthleteInscriptionResponseDTO,
     AthleteUpdateDTO,
+    AthleteUpdateResponse,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.utils.exceptions import AppException
@@ -40,7 +42,7 @@ async def register_athlete_unl(
         return ResponseSchema(
             status="success",
             message="Deportista registrado exitosamente",
-            data=result,
+            data=result.model_dump(),
         )
     except AppException as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
@@ -52,7 +54,7 @@ async def register_athlete_unl(
 
 @router.get(
     "/all",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[PaginatedResponse],
     status_code=status.HTTP_200_OK,
     summary="Obtener todos los atletas con paginación",
     description=(
@@ -67,34 +69,11 @@ def get_all_athletes(
 ):
     """Obtiene todos los atletas con filtros y paginación."""
     try:
-        items, total = athlete_controller.get_all_athletes(db=db, filters=filters)
-
-        # Convertir items a dicts simples para respuesta
-        athlete_responses = [
-            {
-                "id": athlete.id,
-                "full_name": athlete.full_name,
-                "dni": athlete.dni,
-                "type_athlete": athlete.type_athlete,
-                "sex": getattr(athlete.sex, "value", str(athlete.sex)),
-                "is_active": athlete.is_active,
-                "height": getattr(athlete, "height", None),
-                "weight": getattr(athlete, "weight", None),
-                "created_at": getattr(athlete, "created_at", None).isoformat() if getattr(athlete, "created_at", None) else None,
-                "updated_at": getattr(athlete, "updated_at", None).isoformat() if getattr(athlete, "updated_at", None) else None,
-            }
-            for athlete in items
-        ]
-
+        result = athlete_controller.get_all_athletes(db=db, filters=filters)
         return ResponseSchema(
             status="success",
             message="Atletas obtenidos correctamente",
-            data=PaginatedResponse(
-                items=athlete_responses,
-                total=total,
-                page=filters.page,
-                limit=filters.limit,
-            ).model_dump(),
+            data=result.model_dump(),
         )
     except AppException as exc:
         return JSONResponse(
@@ -120,10 +99,11 @@ def get_all_athletes(
 
 @router.get(
     "/{athlete_id}",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[AthleteDetailResponse],
     status_code=status.HTTP_200_OK,
     summary="Obtener atleta por ID",
-    description="Obtiene los detalles completos de un atleta por su ID con información local y del MS de usuarios. Requiere autenticación.",
+    description="Obtiene los detalles completos de un atleta por su ID con información"
+    "local y del MS de usuarios. Requiere autenticación.",
 )
 async def get_by_id(
     athlete_id: int,
@@ -132,13 +112,13 @@ async def get_by_id(
 ):
     """Obtiene un atleta por su ID con toda la información disponible."""
     try:
-        athlete_data = await athlete_controller.get_athlete_with_ms_info(
+        result = await athlete_controller.get_athlete_with_ms_info(
             db=db, athlete_id=athlete_id
         )
         return ResponseSchema(
             status="success",
             message="Atleta obtenido correctamente",
-            data=athlete_data,
+            data=result.model_dump(),
         )
     except AppException as exc:
         return JSONResponse(
@@ -162,10 +142,9 @@ async def get_by_id(
         )
 
 
-
 @router.put(
     "/update/{athlete_id}",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[AthleteUpdateResponse],
     status_code=status.HTTP_200_OK,
     summary="Actualizar atleta",
     description="Actualiza los datos básicos de un atleta. Requiere autenticación.",
@@ -179,25 +158,13 @@ async def update_athlete(
     """Actualiza los datos básicos de un atleta."""
     try:
         update_data = payload.model_dump(exclude_unset=True)
-
-        updated_athlete = await athlete_controller.update_athlete(
+        result = await athlete_controller.update_athlete(
             db=db, athlete_id=athlete_id, update_data=update_data
         )
-
         return ResponseSchema(
             status="success",
             message="Atleta actualizado correctamente",
-            data={
-                "id": updated_athlete.id,
-                "full_name": updated_athlete.full_name,
-                "height": updated_athlete.height,
-                "weight": updated_athlete.weight,
-                "updated_at": (
-                    updated_athlete.updated_at.isoformat()
-                    if updated_athlete.updated_at
-                    else None
-                ),
-            },
+            data=result.model_dump(),
         )
     except AppException as exc:
         return JSONResponse(

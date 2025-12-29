@@ -2,10 +2,10 @@ from typing import List, Tuple
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from app.models.enums.sex import Sex
 
 from app.dao.base import BaseDAO
 from app.models.athlete import Athlete
+from app.models.enums.sex import Sex
 
 
 class AthleteDAO(BaseDAO[Athlete]):
@@ -16,9 +16,7 @@ class AthleteDAO(BaseDAO[Athlete]):
     def __init__(self):
         super().__init__(Athlete)
 
-    def get_all_with_filters(
-        self, db: Session, filters
-    ) -> Tuple[List[Athlete], int]:
+    def get_all_with_filters(self, db: Session, filters) -> Tuple[List[Athlete], int]:
         """
         Obtiene atletas con filtros y paginación.
         """
@@ -67,11 +65,6 @@ class AthleteDAO(BaseDAO[Athlete]):
         # Paginación con tolerancia si no existen propiedades
         skip = getattr(filters, "skip", 0)
         limit = getattr(filters, "limit", 10)
-        items = (
-            query.order_by(self.model.id.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        items = query.order_by(self.model.id.desc()).offset(skip).limit(limit).all()
 
         return items, total
