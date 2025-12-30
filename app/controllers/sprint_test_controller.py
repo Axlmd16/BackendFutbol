@@ -46,3 +46,24 @@ class SprintTestController:
             time_0_30_s=time_0_30_s,
             observations=observations,
         )
+
+    def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
+        """Actualizar un SprintTest existente."""
+        if "evaluation_id" in fields and fields["evaluation_id"] is not None:
+            if not self.evaluation_dao.get_by_id(db, fields["evaluation_id"]):
+                raise DatabaseException(
+                    f"Evaluación {fields['evaluation_id']} no existe"
+                )
+
+        if "athlete_id" in fields and fields["athlete_id"] is not None:
+            if not self.athlete_dao.get_by_id(db, fields["athlete_id"]):
+                raise DatabaseException(f"Atleta {fields['athlete_id']} no existe")
+
+        existing = self.sprint_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return None
+
+        if not fields:
+            return existing
+
+        return self.sprint_test_dao.update(db, test_id, fields)

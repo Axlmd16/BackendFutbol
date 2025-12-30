@@ -50,3 +50,26 @@ class TechnicalAssessmentController:
             dribbling=dribbling,
             observations=observations,
         )
+
+    def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
+        """Actualizar un TechnicalAssessment existente."""
+        if "evaluation_id" in fields and fields["evaluation_id"] is not None:
+            if not self.evaluation_dao.get_by_id(db, fields["evaluation_id"]):
+                raise DatabaseException(
+                    f"Evaluación {fields['evaluation_id']} no existe"
+                )
+
+        if "athlete_id" in fields and fields["athlete_id"] is not None:
+            if not self.athlete_dao.get_by_id(db, fields["athlete_id"]):
+                raise DatabaseException(f"Atleta {fields['athlete_id']} no existe")
+
+        existing = self.technical_assessment_dao.get_by_id(
+            db, test_id, only_active=True
+        )
+        if not existing:
+            return None
+
+        if not fields:
+            return existing
+
+        return self.technical_assessment_dao.update(db, test_id, fields)

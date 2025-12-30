@@ -11,10 +11,12 @@ from app.controllers.technical_assessment_controller import (
 from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
+from app.models.technical_assessment import TechnicalAssessment
 from app.schemas.response import ResponseSchema
 from app.schemas.technical_assessment_schema import (
     CreateTechnicalAssessmentSchema,
     TechnicalAssessmentResponseSchema,
+    UpdateTechnicalAssessmentSchema,
 )
 from app.utils.exceptions import DatabaseException
 from app.utils.security import get_current_account
@@ -67,20 +69,36 @@ async def create_technical_assessment(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Listar Technical Assessments",
-    description="Obtiene lista de Technical Assessments con paginación.",
+    description="Obtiene lista de Technical Assessments con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
 )
 async def list_technical_assessments(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    evaluation_id: int = Query(
+        None, description="Filtrar por evaluation_id (opcional)"
+    ),
 ) -> ResponseSchema:
     """Listar todos los Technical Assessments."""
     try:
-        from app.dao.test_dao import TestDAO
-
-        dao = TestDAO()
-        tests = dao.list_tests(db, skip, limit, test_type="technical_assessment")
+        if evaluation_id:
+            # Filtrar por evaluación y tipo específico de test
+            tests = (
+                db.query(TechnicalAssessment)
+                .filter(TechnicalAssessment.evaluation_id == evaluation_id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+        else:
+            tests = (
+                db.query(TechnicalAssessment)
+                .filter(TechnicalAssessment.is_active)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )  # noqa: E501
 
         return ResponseSchema(
             status="success",
@@ -120,6 +138,47 @@ async def get_technical_assessment(
             message="Technical Assessment obtenido correctamente",
             data=TechnicalAssessmentResponseSchema.model_validate(test),
         )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{test_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar Technical Assessment",
+    description="Actualiza los datos de un Technical Assessment existente.",
+)
+async def update_technical_assessment(
+    test_id: int,
+    payload: UpdateTechnicalAssessmentSchema,
+    db: Annotated[Session, Depends(get_db)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Actualizar un Technical Assessment."""
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+    try:
+        updated = technical_assessment_controller.update_test(
+            db=db, test_id=test_id, **data
+        )
+
+        if not updated:
+            raise HTTPException(
+                status_code=404, detail="Technical Assessment no encontrado"
+            )
+
+        return ResponseSchema(
+            status="success",
+            message="Technical Assessment actualizado correctamente",
+            data=TechnicalAssessmentResponseSchema.model_validate(updated),
+        )
+    except DatabaseException as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
     except HTTPException:
         raise
     except Exception as exc:
