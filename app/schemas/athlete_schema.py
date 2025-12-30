@@ -1,4 +1,4 @@
-﻿"""Esquemas Pydantic para atletas (inscripciÃ³n/creaciÃ³n/ediciÃ³n/bÃºsqueda)."""
+"""Esquemas Pydantic para atletas (inscripciÃ³n/creaciÃ³n/ediciÃ³n/bÃºsqueda)."""
 
 from __future__ import annotations
 
