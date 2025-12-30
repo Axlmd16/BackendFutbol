@@ -138,9 +138,7 @@ def test_add_sprint_test_athlete_not_found(
 # ==============================================
 
 
-def test_update_sprint_test_success(
-    sprint_test_controller, mock_db, mock_sprint_test
-):
+def test_update_sprint_test_success(sprint_test_controller, mock_db, mock_sprint_test):
     """Actualizar campos de un Sprint Test existente."""
     sprint_test_controller.sprint_test_dao.get_by_id.return_value = mock_sprint_test
     updated = Mock()
