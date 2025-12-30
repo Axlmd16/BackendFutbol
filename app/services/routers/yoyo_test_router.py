@@ -13,6 +13,7 @@ from app.models.yoyo_test import YoyoTest
 from app.schemas.response import ResponseSchema
 from app.schemas.yoyo_test_schema import (
     CreateYoyoTestSchema,
+    UpdateYoyoTestSchema,
     YoyoTestResponseSchema,
 )
 from app.utils.exceptions import DatabaseException
@@ -131,6 +132,43 @@ async def get_yoyo_test(
             message="Yoyo Test obtenido correctamente",
             data=YoyoTestResponseSchema.model_validate(test),
         )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{test_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar Yoyo Test",
+    description="Actualiza los datos de un Yoyo Test existente.",
+)
+async def update_yoyo_test(
+    test_id: int,
+    payload: UpdateYoyoTestSchema,
+    db: Annotated[Session, Depends(get_db)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Actualizar un Yoyo Test."""
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+    try:
+        updated = yoyo_test_controller.update_test(db=db, test_id=test_id, **data)
+
+        if not updated:
+            raise HTTPException(status_code=404, detail="Yoyo Test no encontrado")
+
+        return ResponseSchema(
+            status="success",
+            message="Yoyo Test actualizado correctamente",
+            data=YoyoTestResponseSchema.model_validate(updated),
+        )
+    except DatabaseException as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
     except HTTPException:
         raise
     except Exception as exc:

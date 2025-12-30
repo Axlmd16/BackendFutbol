@@ -13,6 +13,7 @@ from app.models.endurance_test import EnduranceTest
 from app.schemas.endurance_test_schema import (
     CreateEnduranceTestSchema,
     EnduranceTestResponseSchema,
+    UpdateEnduranceTestSchema,
 )
 from app.schemas.response import ResponseSchema
 from app.utils.exceptions import DatabaseException
@@ -130,6 +131,43 @@ async def get_endurance_test(
             message="Endurance Test obtenido correctamente",
             data=EnduranceTestResponseSchema.model_validate(test),
         )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{test_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar Endurance Test",
+    description="Actualiza los datos de un Endurance Test existente.",
+)
+async def update_endurance_test(
+    test_id: int,
+    payload: UpdateEnduranceTestSchema,
+    db: Annotated[Session, Depends(get_db)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Actualizar un Endurance Test."""
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+    try:
+        updated = endurance_test_controller.update_test(db=db, test_id=test_id, **data)
+
+        if not updated:
+            raise HTTPException(status_code=404, detail="Endurance Test no encontrado")
+
+        return ResponseSchema(
+            status="success",
+            message="Endurance Test actualizado correctamente",
+            data=EnduranceTestResponseSchema.model_validate(updated),
+        )
+    except DatabaseException as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
     except HTTPException:
         raise
     except Exception as exc:

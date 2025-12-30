@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
@@ -15,6 +15,22 @@ class CreateYoyoTestSchema(CreateTestBaseSchema):
     shuttle_count: int = Field(..., gt=0, description="Número de shuttles completados")
     final_level: str = Field(..., description="Nivel final alcanzado (ej: 16.3, 18.2)")
     failures: int = Field(..., ge=0, description="Número de fallos")
+
+
+class UpdateYoyoTestSchema(BaseModel):
+    """Schema para actualizar un Yoyo Test."""
+
+    date: Optional[datetime] = None
+    observations: Optional[str] = None
+    athlete_id: Optional[int] = Field(None, gt=0, description="ID del atleta")
+    evaluation_id: Optional[int] = Field(None, gt=0, description="ID de la evaluación")
+    shuttle_count: Optional[int] = Field(
+        None, gt=0, description="Número de shuttles completados"
+    )
+    final_level: Optional[str] = Field(
+        None, description="Nivel final alcanzado (ej: 16.3, 18.2)"
+    )
+    failures: Optional[int] = Field(None, ge=0, description="Número de fallos")
 
 
 class YoyoTestResponseSchema(BaseResponseSchema):

@@ -16,6 +16,7 @@ from app.schemas.response import ResponseSchema
 from app.schemas.technical_assessment_schema import (
     CreateTechnicalAssessmentSchema,
     TechnicalAssessmentResponseSchema,
+    UpdateTechnicalAssessmentSchema,
 )
 from app.utils.exceptions import DatabaseException
 from app.utils.security import get_current_account
@@ -137,6 +138,47 @@ async def get_technical_assessment(
             message="Technical Assessment obtenido correctamente",
             data=TechnicalAssessmentResponseSchema.model_validate(test),
         )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{test_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar Technical Assessment",
+    description="Actualiza los datos de un Technical Assessment existente.",
+)
+async def update_technical_assessment(
+    test_id: int,
+    payload: UpdateTechnicalAssessmentSchema,
+    db: Annotated[Session, Depends(get_db)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Actualizar un Technical Assessment."""
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+    try:
+        updated = technical_assessment_controller.update_test(
+            db=db, test_id=test_id, **data
+        )
+
+        if not updated:
+            raise HTTPException(
+                status_code=404, detail="Technical Assessment no encontrado"
+            )
+
+        return ResponseSchema(
+            status="success",
+            message="Technical Assessment actualizado correctamente",
+            data=TechnicalAssessmentResponseSchema.model_validate(updated),
+        )
+    except DatabaseException as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
     except HTTPException:
         raise
     except Exception as exc:

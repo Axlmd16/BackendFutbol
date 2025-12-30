@@ -14,6 +14,7 @@ from app.schemas.response import ResponseSchema
 from app.schemas.sprint_test_schema import (
     CreateSprintTestSchema,
     SprintTestResponseSchema,
+    UpdateSprintTestSchema,
 )
 from app.utils.exceptions import DatabaseException
 from app.utils.security import get_current_account
@@ -131,6 +132,43 @@ async def get_sprint_test(
             message="Sprint Test obtenido correctamente",
             data=SprintTestResponseSchema.model_validate(test),
         )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{test_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar Sprint Test",
+    description="Actualiza los datos de un Sprint Test existente.",
+)
+async def update_sprint_test(
+    test_id: int,
+    payload: UpdateSprintTestSchema,
+    db: Annotated[Session, Depends(get_db)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Actualizar un Sprint Test."""
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+    try:
+        updated = sprint_test_controller.update_test(db=db, test_id=test_id, **data)
+
+        if not updated:
+            raise HTTPException(status_code=404, detail="Sprint Test no encontrado")
+
+        return ResponseSchema(
+            status="success",
+            message="Sprint Test actualizado correctamente",
+            data=SprintTestResponseSchema.model_validate(updated),
+        )
+    except DatabaseException as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
     except HTTPException:
         raise
     except Exception as exc:
