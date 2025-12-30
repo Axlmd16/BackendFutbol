@@ -34,9 +34,9 @@ class AthleteDAO(BaseDAO[Athlete]):
 
         # Filtro por tipo de atleta
         if filters.type_athlete:
-            query = query.filter(
-                self.model.type_athlete.ilike(f"%{filters.type_athlete}%")
-            )
+            # Extraer valor del enum si es necesario
+            type_value = getattr(filters.type_athlete, "value", filters.type_athlete)
+            query = query.filter(self.model.type_athlete.ilike(f"%{type_value}%"))
 
         # Filtro por sexo (acepta enum, string o alias)
         if getattr(filters, "sex", None):
