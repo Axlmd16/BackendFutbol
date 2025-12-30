@@ -3,9 +3,9 @@
 from datetime import datetime
 from typing import Optional
 
+from app.models.enums.scale import Scale
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
-from app.models.enums.scale import Scale
 
 
 class CreateTechnicalAssessmentSchema(CreateTestBaseSchema):

@@ -10,7 +10,6 @@ from app.core.database import get_db
 from app.models.account import Account
 from app.schemas.evaluation_schema import (
     CreateEvaluationSchema,
-    EvaluationDetailSchema,
     EvaluationResponseSchema,
     UpdateEvaluationSchema,
 )

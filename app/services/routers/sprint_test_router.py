@@ -64,24 +64,36 @@ async def create_sprint_test(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Listar Sprint Tests",
-    description="Obtiene lista de Sprint Tests con paginación. Opcionalmente filtrada por evaluación.",
+    description="Obtiene lista de Sprint Tests con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
 )
 async def list_sprint_tests(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    evaluation_id: int = Query(None, description="Filtrar por evaluation_id (opcional)"),
+    evaluation_id: int = Query(
+        None, description="Filtrar por evaluation_id (opcional)"
+    ),
 ) -> ResponseSchema:
     """Listar todos los Sprint Tests."""
     try:
         if evaluation_id:
             # Filtrar por evaluación y tipo específico de test
-            tests = db.query(SprintTest).filter(
-                SprintTest.evaluation_id == evaluation_id
-            ).offset(skip).limit(limit).all()
+            tests = (
+                db.query(SprintTest)
+                .filter(SprintTest.evaluation_id == evaluation_id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
         else:
-            tests = db.query(SprintTest).filter(SprintTest.is_active).offset(skip).limit(limit).all()
+            tests = (
+                db.query(SprintTest)
+                .filter(SprintTest.is_active)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
 
         return ResponseSchema(
             status="success",

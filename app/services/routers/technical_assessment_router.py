@@ -68,24 +68,36 @@ async def create_technical_assessment(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Listar Technical Assessments",
-    description="Obtiene lista de Technical Assessments con paginación. Opcionalmente filtrada por evaluación.",
+    description="Obtiene lista de Technical Assessments con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
 )
 async def list_technical_assessments(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    evaluation_id: int = Query(None, description="Filtrar por evaluation_id (opcional)"),
+    evaluation_id: int = Query(
+        None, description="Filtrar por evaluation_id (opcional)"
+    ),
 ) -> ResponseSchema:
     """Listar todos los Technical Assessments."""
     try:
         if evaluation_id:
             # Filtrar por evaluación y tipo específico de test
-            tests = db.query(TechnicalAssessment).filter(
-                TechnicalAssessment.evaluation_id == evaluation_id
-            ).offset(skip).limit(limit).all()
+            tests = (
+                db.query(TechnicalAssessment)
+                .filter(TechnicalAssessment.evaluation_id == evaluation_id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
         else:
-            tests = db.query(TechnicalAssessment).filter(TechnicalAssessment.is_active).offset(skip).limit(limit).all()
+            tests = (
+                db.query(TechnicalAssessment)
+                .filter(TechnicalAssessment.is_active)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )  # noqa: E501
 
         return ResponseSchema(
             status="success",
