@@ -156,6 +156,61 @@ def get_all_users(
 
 
 @router.get(
+    "/me",
+    response_model=ResponseSchema[UserDetailResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Obtener perfil del usuario actual",
+    description="Obtiene los detalles del usuario actualmente autenticado.",
+)
+async def get_me(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Obtiene los detalles del usuario logueado actualmente"""
+    try:
+        # El ID del usuario está vinculado al ID de la cuenta (o es el mismo, dependiendo del diseño)
+        # Asumiendo que current_user.id corresponde al user_id
+        user = await user_controller.get_user_by_id(db=db, user_id=current_user.id)
+
+        if user is None:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content=ResponseSchema(
+                    status="error",
+                    message="Usuario no encontrado",
+                    data=None,
+                    errors=None,
+                ).model_dump(),
+            )
+
+        return ResponseSchema(
+            status="success",
+            message="Perfil obtenido correctamente",
+            data=user.model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.get(
     "/{user_id}",
     response_model=ResponseSchema[UserDetailResponse],
     status_code=status.HTTP_200_OK,
@@ -226,6 +281,48 @@ async def desactivate_user(
         return ResponseSchema(
             status="success",
             message="Usuario desactivado correctamente",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.patch(
+    "/activate/{user_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Activar usuario",
+    description="Activa un usuario. Solo Administradores.",
+)
+async def activate_user(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_admin: Annotated[Account, Depends(get_current_admin)],
+):
+    """Activa un usuario (soft delete)"""
+    try:
+        user_controller.activate_user(db=db, user_id=user_id)
+        return ResponseSchema(
+            status="success",
+            message="Usuario activado correctamente",
             data=None,
         )
     except AppException as exc:
