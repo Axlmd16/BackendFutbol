@@ -1,8 +1,29 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.utils.exceptions import AlreadyExistsException
+
+
+def _mock_athlete(**kwargs):
+    """Crea un objeto simple con atributos de atleta para tests."""
+    defaults = dict(
+        id=1,
+        full_name="Juan Pérez",
+        dni="1710034065",
+        type_athlete="UNL",
+        sex=SimpleNamespace(value="MALE"),
+        is_active=True,
+        external_person_id="ext-123",
+        date_of_birth=None,
+        height=180.0,
+        weight=75.0,
+        created_at=SimpleNamespace(isoformat=lambda: "2025-01-01T00:00:00"),
+        updated_at=None,
+    )
+    defaults.update(kwargs)
+    return SimpleNamespace(**defaults)
 
 
 @pytest.mark.asyncio
@@ -44,6 +65,114 @@ async def test_register_athlete_unl_success(client):
         assert body["data"]["athlete_id"] == 1
         assert body["data"]["statistic_id"] == 10
         assert body["data"]["full_name"] == "Juan Pérez"
+
+    @pytest.mark.asyncio
+    async def test_get_all_athletes_success(admin_client):
+        """Lista de atletas con filtros y paginación OK."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            mock_items = [_mock_athlete(id=1), _mock_athlete(id=2, full_name="Ana")]
+            mock_controller.get_all_athletes.return_value = (mock_items, 2)
+
+            resp = await admin_client.get(
+                "/api/v1/athletes/all",
+                params={
+                    "search": "Juan",
+                    "type_athlete": "UNL",
+                    "sex": "MALE",
+                    "is_active": True,
+                    "page": 1,
+                    "limit": 10,
+                },
+            )
+            assert resp.status_code == 200
+            data = resp.json()["data"]
+            assert data["total"] == 2
+            assert len(data["items"]) == 2
+            assert data["page"] == 1 and data["limit"] == 10
+
+    @pytest.mark.asyncio
+    async def test_get_athlete_by_id_found(admin_client):
+        """Detalle de atleta encontrado."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            mock_controller.get_athlete_by_id.return_value = _mock_athlete(id=3)
+
+            resp = await admin_client.get("/api/v1/athletes/3")
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["data"]["id"] == 3
+            assert body["data"]["dni"] == "1710034065"
+
+    @pytest.mark.asyncio
+    async def test_get_athlete_by_id_not_found(admin_client):
+        """Detalle de atleta no encontrado."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            mock_controller.get_athlete_by_id.return_value = None
+
+            resp = await admin_client.get("/api/v1/athletes/999")
+            assert resp.status_code == 404
+            assert resp.json()["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_update_athlete_success(admin_client):
+        """Actualización de datos básicos exitosa."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            updated = _mock_athlete(height=182.0, weight=76.0)
+            mock_controller.update_athlete.return_value = updated
+
+            resp = await admin_client.put(
+                "/api/v1/athletes/update/1",
+                json={"height": 182.0, "weight": 76.0},
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["data"]["height"] == 182.0
+            assert body["data"]["weight"] == 76.0
+
+    @pytest.mark.asyncio
+    async def test_update_athlete_not_found(admin_client):
+        """Actualización cuando atleta no existe."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            mock_controller.update_athlete.return_value = None
+
+            resp = await admin_client.put(
+                "/api/v1/athletes/update/999",
+                json={"height": 170.0},
+            )
+            assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_desactivate_athlete_success(admin_client):
+        """Desactivación exitosa (soft delete)."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            mock_controller.desactivate_athlete.return_value = None
+
+            resp = await admin_client.patch("/api/v1/athletes/desactivate/1")
+            assert resp.status_code == 200
+            assert resp.json()["message"].startswith("Atleta desactivado")
+
+    @pytest.mark.asyncio
+    async def test_activate_athlete_success(admin_client):
+        """Activación exitosa (revierte soft delete)."""
+        with patch(
+            "app.services.routers.athlete_router.athlete_controller"
+        ) as mock_controller:
+            mock_controller.activate_athlete.return_value = None
+
+            resp = await admin_client.patch("/api/v1/athletes/activate/1")
+            assert resp.status_code == 200
+            assert resp.json()["message"].startswith("Atleta activado")
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-"""Esquemas Pydantic para atletas (inscripción/creación/edición/búsqueda)."""
+"""Esquemas Pydantic para atletas (inscripciÃ³n/creaciÃ³n/ediciÃ³n/bÃºsqueda)."""
 
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ class AthleteInscriptionDTO(PersonBase):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
+    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dÃ­gitos)")
 
-    # Datos específicos del atleta
+    # Datos especÃ­ficos del atleta
     birth_date: Optional[date] = Field(
         default=None,
         description="Fecha de nacimiento (YYYY-MM-DD)",
@@ -85,12 +85,23 @@ class AthleteUpdateRequest(BaseModel):
     height: Optional[float] = Field(default=None, ge=0)
 
 
+class AthleteUpdateDTO(BaseModel):
+    """Datos para actualizar un atleta incluyendo datos del MS de personas."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    height: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(default=None, ge=0)
+    direction: Optional[str] = Field(default=None, description="Dirección")
+    phone: Optional[str] = Field(default=None, description="Teléfono")
+
+
 class AthleteFilter(BaseModel):
-    """Filtros para búsqueda/paginación de atletas."""
+    """Filtros para bÃºsqueda/paginaciÃ³n de atletas."""
 
     page: int = Field(1, ge=1)
     limit: int = Field(10, ge=1, le=100)
-    search: Optional[str] = Field(None, description="Búsqueda por nombre o DNI")
+    search: Optional[str] = Field(None, description="BÃºsqueda por nombre o DNI")
     type_athlete: Optional[TypeStament] = None
     sex: Optional[SexInput] = None
 
@@ -125,6 +136,56 @@ class StatisticCreateDB(BaseModel):
     red_cards: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AthleteResponse(BaseSchema):
+    """Respuesta básica de atleta para listados."""
+
+    id: int
+    full_name: str
+    dni: str
+    type_athlete: str
+    sex: str
+    is_active: bool
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class AthleteDetailResponse(BaseSchema):
+    """Respuesta detallada de atleta con datos del MS de personas."""
+
+    id: int
+    external_person_id: str
+    full_name: str
+    dni: str
+    type_athlete: str
+    date_of_birth: Optional[date] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    sex: str
+    is_active: bool
+    created_at: str
+    updated_at: Optional[str] = None
+    # Campos del MS de personas (sin duplicados)
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    direction: Optional[str] = None
+    phone: Optional[str] = None
+    type_identification: Optional[str] = None
+    type_stament: Optional[str] = None
+    photo: Optional[str] = None
+
+
+class AthleteUpdateResponse(BaseSchema):
+    """Respuesta tras actualizar un atleta."""
+
+    id: int
+    full_name: str
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    updated_at: Optional[str] = None
 
 
 class AthleteInscriptionResponseDTO(BaseSchema):
