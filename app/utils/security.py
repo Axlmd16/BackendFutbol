@@ -18,7 +18,7 @@ from app.models.enums.rol import Role
 from app.utils.exceptions import UnauthorizedException, ValidationException
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/accounts/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/accounts/login")
 
 _DB_DEP = Depends(get_db)
 _TOKEN_DEP = Depends(oauth2_scheme)
