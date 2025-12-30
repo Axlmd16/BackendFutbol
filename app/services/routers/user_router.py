@@ -168,8 +168,7 @@ async def get_me(
 ):
     """Obtiene los detalles del usuario logueado actualmente"""
     try:
-        # El ID del usuario está vinculado al ID de la cuenta (o es el mismo, dependiendo del diseño)
-        # Asumiendo que current_user.id corresponde al user_id
+        # El ID del usuario está vinculado al ID de la cuenta
         user = await user_controller.get_user_by_id(db=db, user_id=current_user.id)
 
         if user is None:
