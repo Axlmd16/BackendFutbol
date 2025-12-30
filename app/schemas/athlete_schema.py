@@ -85,7 +85,6 @@ class AthleteUpdateRequest(BaseModel):
     height: Optional[float] = Field(default=None, ge=0)
 
 
-
 class AthleteUpdateDTO(BaseModel):
     """Datos para actualizar un atleta incluyendo datos del MS de personas."""
 
@@ -95,6 +94,7 @@ class AthleteUpdateDTO(BaseModel):
     weight: Optional[float] = Field(default=None, ge=0)
     direction: Optional[str] = Field(default=None, description="Dirección")
     phone: Optional[str] = Field(default=None, description="Teléfono")
+
 
 class AthleteFilter(BaseModel):
     """Filtros para bÃºsqueda/paginaciÃ³n de atletas."""
