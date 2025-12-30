@@ -20,6 +20,7 @@ class CreateYoyoTestSchema(CreateTestBaseSchema):
 class YoyoTestResponseSchema(BaseResponseSchema):
     """Schema de respuesta para Yoyo Test."""
 
+    test_type: str = "yoyo_test"
     date: datetime
     observations: Optional[str]
     athlete_id: int

@@ -19,6 +19,7 @@ class CreateEnduranceTestSchema(CreateTestBaseSchema):
 class EnduranceTestResponseSchema(BaseResponseSchema):
     """Schema de respuesta para Endurance Test."""
 
+    test_type: str = "endurance_test"
     date: datetime
     observations: Optional[str]
     athlete_id: int

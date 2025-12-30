@@ -134,10 +134,25 @@ async def get_evaluation(
         if not evaluation:
             raise HTTPException(status_code=404, detail="Evaluación no encontrada")
 
+        # Convertir evaluación a diccionario manualmente
+        eval_data = {
+            "id": evaluation.id,
+            "name": evaluation.name,
+            "date": evaluation.date,
+            "time": evaluation.time,
+            "location": evaluation.location,
+            "observations": evaluation.observations,
+            "user_id": evaluation.user_id,
+            "created_at": evaluation.created_at,
+            "updated_at": evaluation.updated_at,
+            "is_active": evaluation.is_active,
+            "tests": [],  # Por ahora vacío, puede poblarse con tests si es necesario
+        }
+
         return ResponseSchema(
             status="success",
             message="Evaluación obtenida correctamente",
-            data=EvaluationDetailSchema.model_validate(evaluation),
+            data=eval_data,
         )
     except HTTPException:
         raise

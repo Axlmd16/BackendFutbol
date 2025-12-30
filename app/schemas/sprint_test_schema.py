@@ -20,6 +20,7 @@ class CreateSprintTestSchema(CreateTestBaseSchema):
 class SprintTestResponseSchema(BaseResponseSchema):
     """Schema de respuesta para Sprint Test."""
 
+    test_type: str = "sprint_test"
     date: datetime
     observations: Optional[str]
     athlete_id: int

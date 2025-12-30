@@ -11,6 +11,7 @@ from app.controllers.technical_assessment_controller import (
 from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
+from app.models.technical_assessment import TechnicalAssessment
 from app.schemas.response import ResponseSchema
 from app.schemas.technical_assessment_schema import (
     CreateTechnicalAssessmentSchema,
@@ -67,20 +68,24 @@ async def create_technical_assessment(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Listar Technical Assessments",
-    description="Obtiene lista de Technical Assessments con paginación.",
+    description="Obtiene lista de Technical Assessments con paginación. Opcionalmente filtrada por evaluación.",
 )
 async def list_technical_assessments(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    evaluation_id: int = Query(None, description="Filtrar por evaluation_id (opcional)"),
 ) -> ResponseSchema:
     """Listar todos los Technical Assessments."""
     try:
-        from app.dao.test_dao import TestDAO
-
-        dao = TestDAO()
-        tests = dao.list_tests(db, skip, limit, test_type="technical_assessment")
+        if evaluation_id:
+            # Filtrar por evaluación y tipo específico de test
+            tests = db.query(TechnicalAssessment).filter(
+                TechnicalAssessment.evaluation_id == evaluation_id
+            ).offset(skip).limit(limit).all()
+        else:
+            tests = db.query(TechnicalAssessment).filter(TechnicalAssessment.is_active).offset(skip).limit(limit).all()
 
         return ResponseSchema(
             status="success",

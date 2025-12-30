@@ -1,36 +1,27 @@
 """Esquemas para Technical Assessments."""
 
-import enum
 from datetime import datetime
 from typing import Optional
 
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
-
-
-class ScaleEnum(str, enum.Enum):
-    """Escala de valoración técnica."""
-
-    VERY_LOW = "MUY_BAJO"
-    LOW = "BAJO"
-    MEDIUM = "MEDIO"
-    HIGH = "ALTO"
-    VERY_HIGH = "MUY_ALTO"
+from app.models.enums.scale import Scale
 
 
 class CreateTechnicalAssessmentSchema(CreateTestBaseSchema):
     """Schema para crear una Technical Assessment (evaluación técnica)."""
 
-    ball_control: Optional[ScaleEnum] = None
-    short_pass: Optional[ScaleEnum] = None
-    long_pass: Optional[ScaleEnum] = None
-    shooting: Optional[ScaleEnum] = None
-    dribbling: Optional[ScaleEnum] = None
+    ball_control: Optional[Scale] = None
+    short_pass: Optional[Scale] = None
+    long_pass: Optional[Scale] = None
+    shooting: Optional[Scale] = None
+    dribbling: Optional[Scale] = None
 
 
 class TechnicalAssessmentResponseSchema(BaseResponseSchema):
     """Schema de respuesta para Technical Assessment."""
 
+    test_type: str = "technical_assessment"
     date: datetime
     observations: Optional[str]
     athlete_id: int

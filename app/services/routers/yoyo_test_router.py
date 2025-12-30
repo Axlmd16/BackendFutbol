@@ -9,6 +9,7 @@ from app.controllers.test_controller import TestController
 from app.controllers.yoyo_test_controller import YoyoTestController
 from app.core.database import get_db
 from app.models.account import Account
+from app.models.yoyo_test import YoyoTest
 from app.schemas.response import ResponseSchema
 from app.schemas.yoyo_test_schema import (
     CreateYoyoTestSchema,
@@ -63,20 +64,24 @@ async def create_yoyo_test(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Listar Yoyo Tests",
-    description="Obtiene lista de Yoyo Tests con paginación.",
+    description="Obtiene lista de Yoyo Tests con paginación. Opcionalmente filtrada por evaluación.",
 )
 async def list_yoyo_tests(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    evaluation_id: int = Query(None, description="Filtrar por evaluation_id (opcional)"),
 ) -> ResponseSchema:
     """Listar todos los Yoyo Tests."""
     try:
-        from app.dao.test_dao import TestDAO
-
-        dao = TestDAO()
-        tests = dao.list_tests(db, skip, limit, test_type="yoyo_test")
+        if evaluation_id:
+            # Filtrar por evaluación y tipo específico de test
+            tests = db.query(YoyoTest).filter(
+                YoyoTest.evaluation_id == evaluation_id
+            ).offset(skip).limit(limit).all()
+        else:
+            tests = db.query(YoyoTest).filter(YoyoTest.is_active).offset(skip).limit(limit).all()
 
         return ResponseSchema(
             status="success",
