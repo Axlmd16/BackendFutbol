@@ -8,8 +8,8 @@ from sqlalchemy import and_, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.dao.base import BaseDAO
-from app.models.attendance import Attendance
 from app.models.athlete import Athlete
+from app.models.attendance import Attendance
 from app.utils.exceptions import DatabaseException
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class AttendanceDAO(BaseDAO[Attendance]):
                     and_(
                         Attendance.date >= start_of_day,
                         Attendance.date <= end_of_day,
-                        Attendance.is_active == True,
+                        Attendance.is_active,
                     )
                 )
             )
@@ -113,7 +113,7 @@ class AttendanceDAO(BaseDAO[Attendance]):
                         Attendance.athlete_id == athlete_id,
                         Attendance.date >= start_of_day,
                         Attendance.date <= end_of_day,
-                        Attendance.is_active == True,
+                        Attendance.is_active,
                     )
                 )
                 .first()
@@ -151,6 +151,24 @@ class AttendanceDAO(BaseDAO[Attendance]):
             updated = 0
             attendance_datetime = datetime.combine(target_date, datetime.min.time())
 
+            # Identificar IDs que vienen en el payload
+            payload_athlete_ids = [r["athlete_id"] for r in records]
+
+            # 1. ELIMINAR registros que NO están en el payload para esta fecha
+            # (Si no está en el payload, es porque no está presente)
+            start_of_day = datetime.combine(target_date, datetime.min.time())
+            end_of_day = datetime.combine(target_date, datetime.max.time())
+
+            db.query(Attendance).filter(
+                and_(
+                    Attendance.date >= start_of_day,
+                    Attendance.date <= end_of_day,
+                    Attendance.is_active.is_(True),
+                    Attendance.athlete_id.notin_(payload_athlete_ids),
+                )
+            ).delete(synchronize_session=False)
+
+            # 2. UPSERT de los registros que SI vienen
             for record in records:
                 athlete_id = record["athlete_id"]
                 is_present = record.get("is_present", True)
@@ -191,9 +209,7 @@ class AttendanceDAO(BaseDAO[Attendance]):
             logger.error(f"Error creating/updating bulk attendances: {str(e)}")
             raise DatabaseException("Error al crear asistencias en lote") from e
 
-    def get_attendance_summary_by_date(
-        self, db: Session, target_date: date
-    ) -> dict:
+    def get_attendance_summary_by_date(self, db: Session, target_date: date) -> dict:
         """
         Obtener resumen de asistencia por fecha.
 
@@ -210,7 +226,7 @@ class AttendanceDAO(BaseDAO[Attendance]):
                     and_(
                         Attendance.date >= start_of_day,
                         Attendance.date <= end_of_day,
-                        Attendance.is_active == True,
+                        Attendance.is_active,
                     )
                 )
                 .scalar()
@@ -222,8 +238,8 @@ class AttendanceDAO(BaseDAO[Attendance]):
                     and_(
                         Attendance.date >= start_of_day,
                         Attendance.date <= end_of_day,
-                        Attendance.is_present == True,
-                        Attendance.is_active == True,
+                        Attendance.is_present,
+                        Attendance.is_active,
                     )
                 )
                 .scalar()
@@ -238,3 +254,23 @@ class AttendanceDAO(BaseDAO[Attendance]):
         except Exception as e:
             logger.error(f"Error getting attendance summary: {str(e)}")
             return {"total": 0, "present": 0, "absent": 0}
+
+    def get_existing_dates(self, db: Session) -> List[date]:
+        """
+        Obtener lista de fechas que tienen registros de asistencia.
+
+        Returns:
+            Lista de fechas ordenadas descendente
+        """
+        try:
+            dates = (
+                db.query(Attendance.date)
+                .filter(Attendance.is_active.is_(True))
+                .distinct()
+                .order_by(Attendance.date.desc())
+                .all()
+            )
+            return [d[0].date() for d in dates]
+        except Exception as e:
+            logger.error(f"Error getting existing dates: {str(e)}")
+            raise DatabaseException("Error al obtener fechas de asistencia") from e

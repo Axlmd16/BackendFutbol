@@ -31,21 +31,16 @@ class AttendanceBulkCreate(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    attendance_date: date = Field(..., alias="date", description="Fecha de la asistencia (YYYY-MM-DD)")
+    attendance_date: date = Field(
+        ..., alias="date", description="Fecha de la asistencia (YYYY-MM-DD)"
+    )
     time: str | None = Field(
         default=None,
         pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
-        description="Hora de la asistencia (HH:MM). Si no se envía, se usa la hora actual.",
+        description="Hora de la asistencia (HH:MM). "
+        "Si no se envía, se usa la hora actual.",
     )
     records: list[AttendanceItemCreate]
-
-    @field_validator("records", mode="before")
-    @classmethod
-    def validate_records(cls, value):
-        """Valida que haya al menos un registro."""
-        if not value or len(value) == 0:
-            raise ValueError("Debe proporcionar al menos un registro de asistencia")
-        return value
 
 
 class AttendanceResponse(BaseSchema):
@@ -71,7 +66,9 @@ class AttendanceFilter(BaseModel):
     attendance_date: date = Field(
         ..., alias="date", description="Fecha de la asistencia (YYYY-MM-DD)"
     )
-    type_athlete: str | None = Field(default=None, description="Tipo de atleta para filtrar")
+    type_athlete: str | None = Field(
+        default=None, description="Tipo de atleta para filtrar"
+    )
     search: str | None = Field(default=None, description="Búsqueda por nombre o DNI")
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=50, ge=1, le=100)
@@ -87,4 +84,3 @@ class AttendanceBulkResponse(BaseModel):
 
     created_count: int
     updated_count: int
-    message: str

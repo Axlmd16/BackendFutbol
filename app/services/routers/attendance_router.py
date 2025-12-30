@@ -48,12 +48,54 @@ def create_bulk_attendance(
 
         return ResponseSchema(
             status="success",
-            message=f"Asistencias registradas: {created} creadas, {updated} actualizadas",
+            message="Asistencias procesadas correctamente",
             data=AttendanceBulkResponse(
                 created_count=created,
                 updated_count=updated,
-                message="Asistencias procesadas correctamente",
             ).model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.get(
+    "/dates",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Obtener fechas con registros",
+    description="Obtiene una lista de todas las fechas"
+    "que tienen registros de asistencia.",
+)
+def get_attendance_dates(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Obtiene lista de fechas con asistencia."""
+    try:
+        dates = attendance_controller.get_existing_dates(db)
+
+        return ResponseSchema(
+            status="success",
+            message="Fechas obtenidas correctamente",
+            data=dates,
         )
     except AppException as exc:
         return JSONResponse(

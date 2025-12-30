@@ -47,8 +47,6 @@ class AttendanceController:
                 time_str = datetime.now().strftime("%H:%M")
 
             # Validar que hay registros
-            if not data.records:
-                raise ValidationException("Debe proporcionar al menos un registro")
 
             # Convertir records a lista de diccionarios
             records_data = [
@@ -120,7 +118,9 @@ class AttendanceController:
                         "athlete_id": att.athlete_id,
                         "athlete_name": att.athlete.full_name if att.athlete else None,
                         "athlete_dni": att.athlete.dni if att.athlete else None,
-                        "athlete_type": att.athlete.type_athlete if att.athlete else None,
+                        "athlete_type": att.athlete.type_athlete
+                        if att.athlete
+                        else None,
                         "user_dni": att.user_dni,
                         "created_at": (
                             att.created_at.isoformat() if att.created_at else None
@@ -149,3 +149,19 @@ class AttendanceController:
             Dict con estadísticas de asistencia
         """
         return self.attendance_dao.get_attendance_summary_by_date(db, target_date)
+
+    def get_existing_dates(self, db: Session) -> list:
+        """
+        Obtener lista de fechas con registros.
+
+        Args:
+            db: Sesión de base de datos
+
+        Returns:
+            Lista de fechas
+        """
+        try:
+            return self.attendance_dao.get_existing_dates(db)
+        except Exception as e:
+            logger.error(f"Error getting existing dates: {str(e)}")
+            raise AppException(f"Error al obtener fechas: {str(e)}") from e
