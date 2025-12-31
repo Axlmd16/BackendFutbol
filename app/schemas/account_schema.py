@@ -69,3 +69,31 @@ class PasswordResetConfirm(BaseModel):
                 '(!@#$%^&*(),.?":{}|<>)'
             )
         return v
+
+
+class ChangePasswordRequest(BaseModel):
+    """Datos para cambio de contraseña de usuario autenticado.
+
+    Attributes:
+        current_password: Para validar la autoría.
+        new_password: Nueva contraseña.
+        confirm_password: Para verificar que no hubo error de tipeo.
+    """
+
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=64)
+    confirm_password: str = Field(..., min_length=8, max_length=64)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Valida la complejidad de la contraseña (misma lógica que reset)."""
+        return PasswordResetConfirm.validate_password_strength(v)
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v: str, info: Field) -> str:
+        """Verifica que las contraseñas coincidan."""
+        if "new_password" in info.data and v != info.data["new_password"]:
+            raise ValueError("Las contraseñas no coinciden")
+        return v

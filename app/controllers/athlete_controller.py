@@ -153,25 +153,62 @@ class AthleteController:
         Actualiza los datos básicos de un atleta y sincroniza con MS de personas.
         Retorna AthleteUpdateResponse.
         """
-        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id, only_active=False)
         if not athlete:
             raise ValidationException("Atleta no encontrado")
 
-        # Extraer campos para MS (direction y phone)
+        # Extraer campos para MS de personas (no se guardan localmente)
         direction = update_data.pop("direction", None)
         phone = update_data.pop("phone", None)
+        _type_identification = update_data.pop("type_identification", None)
+        _type_stament = update_data.pop("type_stament", None)
+        _dni = update_data.pop("dni", None)  # No permitimos cambiar DNI localmente
 
-        # Actualizar en MS de personas si hay datos de dirección o teléfono
+        # Extraer nombres para actualizar full_name
+        first_name = update_data.pop("first_name", None)
+        last_name = update_data.pop("last_name", None)
+
+        # Actualizar full_name si se enviaron nombres
+        if first_name or last_name:
+            current_names = athlete.full_name.split(" ", 1)
+            new_first = first_name if first_name else current_names[0]
+            new_last = (
+                last_name
+                if last_name
+                else (current_names[1] if len(current_names) > 1 else "")
+            )
+            update_data["full_name"] = f"{new_first} {new_last}".strip()
+
+        # Convertir birth_date a date_of_birth para el modelo
+        birth_date = update_data.pop("birth_date", None)
+        if birth_date:
+            update_data["date_of_birth"] = birth_date
+
+        # Convertir sex enum si está presente
+        sex = update_data.pop("sex", None)
+        if sex:
+            from app.models.enums.sex import Sex as SexEnum
+
+            sex_mapping = {
+                "MALE": SexEnum.MALE,
+                "FEMALE": SexEnum.FEMALE,
+                "OTHER": SexEnum.OTHER,
+            }
+            sex_value = getattr(sex, "value", str(sex)).upper()
+            if sex_value in sex_mapping:
+                update_data["sex"] = sex_mapping[sex_value]
+
+        # Actualizar en MS de personas si hay datos de contacto
         new_external_person_id = athlete.external_person_id
         if direction is not None or phone is not None:
-            names = athlete.full_name.split(" ", 1)
-            first_name = names[0] if names else athlete.full_name
-            last_name = names[1] if len(names) > 1 else ""
+            names = update_data.get("full_name", athlete.full_name).split(" ", 1)
+            ms_first_name = names[0] if names else athlete.full_name
+            ms_last_name = names[1] if len(names) > 1 else ""
 
             new_external_person_id = await self.person_ms_service.update_person(
                 external=athlete.external_person_id,
-                first_name=first_name,
-                last_name=last_name,
+                first_name=ms_first_name,
+                last_name=ms_last_name,
                 dni=athlete.dni,
                 direction=direction,
                 phone=phone,
@@ -212,7 +249,8 @@ class AthleteController:
         """
         Activa un atleta (revierte soft delete).
         """
-        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        # Buscar incluyendo inactivos para poder reactivarlos
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id, only_active=False)
         if not athlete:
             raise ValidationException("Atleta no encontrado")
 

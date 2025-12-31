@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.dao.account_dao import AccountDAO
 from app.models.account import Account
 from app.schemas.account_schema import (
+    ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
     PasswordResetConfirm,
@@ -88,6 +89,29 @@ class AccountController:
         send_reset_email(
             to_email=account.email, full_name=email, reset_token=reset_token
         )
+
+    def change_password(
+        self, db: Session, user_id: int, payload: ChangePasswordRequest
+    ) -> None:
+        """Cambia la contraseña de un usuario autenticado.
+
+        Args:
+            db: Sesión de base de datos.
+            user_id: ID del usuario autenticado.
+            payload: Datos de cambio de contraseña.
+
+        Raises:
+            UnauthorizedException: Si la contraseña actual es incorrecta.
+        """
+        account = self.account_dao.get_by_id(db, user_id, only_active=True)
+        if not account:
+            raise UnauthorizedException("Cuenta no encontrada")
+
+        if not verify_password(payload.current_password, account.password_hash):
+            raise UnauthorizedException("Contraseña actual incorrecta")
+
+        account.password_hash = hash_password(payload.new_password)
+        db.commit()
 
     def confirm_password_reset(
         self, db: Session, payload: PasswordResetConfirm
