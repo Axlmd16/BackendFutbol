@@ -7,6 +7,7 @@ from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
 from app.dao.yoyo_test_dao import YoyoTestDAO
 from app.models.test import Test
+from app.services.statistic_service import statistic_service
 from app.utils.exceptions import DatabaseException
 
 
@@ -36,7 +37,7 @@ class YoyoTestController:
         if not self.athlete_dao.get_by_id(db, athlete_id):
             raise DatabaseException(f"Atleta {athlete_id} no existe")
 
-        return self.test_dao.create_yoyo_test(
+        test = self.test_dao.create_yoyo_test(
             db=db,
             date=date,
             athlete_id=athlete_id,
@@ -46,6 +47,11 @@ class YoyoTestController:
             failures=failures,
             observations=observations,
         )
+
+        # Actualizar estadísticas del atleta
+        statistic_service.update_athlete_stats(db, athlete_id)
+
+        return test
 
     def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
         """Actualizar un YoyoTest existente."""

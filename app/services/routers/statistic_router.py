@@ -176,3 +176,63 @@ def get_test_performance(
                 errors=None,
             ).model_dump(),
         )
+
+
+@router.get(
+    "/athlete/{athlete_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Obtener estadísticas individuales de un atleta",
+    description=(
+        "Obtiene las estadísticas individuales de un atleta incluyendo "
+        "rendimiento físico, estadísticas de juego, asistencia y tests."
+    ),
+)
+def get_athlete_individual_stats(
+    athlete_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Obtiene estadísticas individuales de un atleta."""
+    try:
+        data = statistic_controller.get_athlete_individual_stats(
+            db=db,
+            athlete_id=athlete_id,
+        )
+
+        if data is None:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content=ResponseSchema(
+                    status="error",
+                    message="Atleta no encontrado",
+                    data=None,
+                    errors=None,
+                ).model_dump(),
+            )
+
+        return ResponseSchema(
+            status="success",
+            message="Estadísticas del atleta obtenidas correctamente",
+            data=data,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )

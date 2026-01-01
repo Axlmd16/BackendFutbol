@@ -7,6 +7,7 @@ from app.dao.endurance_test_dao import EnduranceTestDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
 from app.models.test import Test
+from app.services.statistic_service import statistic_service
 from app.utils.exceptions import DatabaseException
 
 
@@ -35,7 +36,7 @@ class EnduranceTestController:
         if not self.athlete_dao.get_by_id(db, athlete_id):
             raise DatabaseException(f"Atleta {athlete_id} no existe")
 
-        return self.test_dao.create_endurance_test(
+        test = self.test_dao.create_endurance_test(
             db=db,
             date=date,
             athlete_id=athlete_id,
@@ -44,6 +45,11 @@ class EnduranceTestController:
             total_distance_m=total_distance_m,
             observations=observations,
         )
+
+        # Actualizar estadísticas del atleta
+        statistic_service.update_athlete_stats(db, athlete_id)
+
+        return test
 
     def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
         """Actualizar un EnduranceTest existente."""

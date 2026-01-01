@@ -111,3 +111,28 @@ class StatisticController:
             raise AppException(
                 f"Error al obtener rendimiento de tests: {str(e)}"
             ) from e
+
+    def get_athlete_individual_stats(self, db: Session, athlete_id: int) -> dict:
+        """
+        Obtener estadísticas individuales de un atleta.
+
+        Args:
+            db: Sesión de base de datos
+            athlete_id: ID del atleta
+
+        Returns:
+            Dict con estadísticas individuales del atleta o None si no existe
+        """
+        try:
+            result = self.statistic_dao.get_athlete_individual_stats(
+                db=db,
+                athlete_id=athlete_id,
+            )
+            if result is None:
+                return None
+            return result
+        except Exception as e:
+            logger.error(f"Error getting athlete individual stats: {str(e)}")
+            raise AppException(
+                f"Error al obtener estadísticas del atleta: {str(e)}"
+            ) from e

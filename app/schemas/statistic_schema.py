@@ -94,3 +94,46 @@ class TestPerformanceResponse(BaseModel):
     total_tests: int
     tests_by_type: List[TestTypeStats]
     top_performers: List[TopPerformer]
+
+
+class AthleteTestSummary(BaseModel):
+    """Resumen de tests de un atleta."""
+
+    test_type: str
+    count: int
+    avg_score: Optional[float] = None
+    last_date: Optional[str] = None
+
+
+class AthleteIndividualStatsResponse(BaseModel):
+    """Estadísticas individuales de un atleta."""
+
+    # Información básica del atleta
+    athlete_id: int
+    athlete_name: str
+    type_athlete: str
+    sex: str
+    is_active: bool
+
+    # Estadísticas físicas (del modelo Statistic)
+    speed: Optional[float] = None
+    stamina: Optional[float] = None
+    strength: Optional[float] = None
+    agility: Optional[float] = None
+
+    # Estadísticas de rendimiento deportivo
+    matches_played: int = 0
+    goals: int = 0
+    assists: int = 0
+    yellow_cards: int = 0
+    red_cards: int = 0
+
+    # Resumen de asistencia
+    attendance_total: int = 0
+    attendance_present: int = 0
+    attendance_absent: int = 0
+    attendance_rate: float = 0.0
+
+    # Resumen de tests
+    tests_completed: int = 0
+    tests_by_type: List[AthleteTestSummary] = []

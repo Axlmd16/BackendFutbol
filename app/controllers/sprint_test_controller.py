@@ -7,6 +7,7 @@ from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.sprint_test_dao import SprintTestDAO
 from app.dao.test_dao import TestDAO
 from app.models.test import Test
+from app.services.statistic_service import statistic_service
 from app.utils.exceptions import DatabaseException
 
 
@@ -36,7 +37,7 @@ class SprintTestController:
         if not self.athlete_dao.get_by_id(db, athlete_id):
             raise DatabaseException(f"Atleta {athlete_id} no existe")
 
-        return self.test_dao.create_sprint_test(
+        test = self.test_dao.create_sprint_test(
             db=db,
             date=date,
             athlete_id=athlete_id,
@@ -46,6 +47,11 @@ class SprintTestController:
             time_0_30_s=time_0_30_s,
             observations=observations,
         )
+
+        # Actualizar estadísticas del atleta
+        statistic_service.update_athlete_stats(db, athlete_id)
+
+        return test
 
     def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
         """Actualizar un SprintTest existente."""

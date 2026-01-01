@@ -354,3 +354,157 @@ class StatisticDAO(BaseDAO[Statistic]):
             raise DatabaseException(
                 "Error al obtener estadísticas de rendimiento"
             ) from e
+
+    def get_athlete_individual_stats(self, db: Session, athlete_id: int) -> dict:
+        """
+        Obtener estadísticas individuales de un atleta específico.
+
+        Returns:
+            Dict con estadísticas físicas, de rendimiento, asistencia y tests
+        """
+        try:
+            # Obtener atleta
+            athlete = db.query(Athlete).filter(Athlete.id == athlete_id).first()
+            if not athlete:
+                return None
+
+            # Obtener estadísticas del atleta
+            statistic = (
+                db.query(Statistic).filter(Statistic.athlete_id == athlete_id).first()
+            )
+
+            # Estadísticas de asistencia
+            attendance_query = db.query(
+                func.count(Attendance.id).label("total"),
+                func.sum(
+                    case((Attendance.is_present == True, 1), else_=0)  # noqa: E712
+                ).label("present"),
+                func.sum(
+                    case((Attendance.is_present == False, 1), else_=0)  # noqa: E712
+                ).label("absent"),
+            ).filter(Attendance.athlete_id == athlete_id)
+
+            attendance_result = attendance_query.first()
+            attendance_total = attendance_result.total or 0
+            attendance_present = attendance_result.present or 0
+            attendance_absent = attendance_result.absent or 0
+            attendance_rate = (
+                round((attendance_present / attendance_total) * 100, 1)
+                if attendance_total > 0
+                else 0.0
+            )
+
+            # Contar tests por tipo
+            tests_by_type = []
+
+            # Sprint tests
+            sprint_count = (
+                db.query(func.count(SprintTest.id))
+                .filter(SprintTest.athlete_id == athlete_id)
+                .scalar()
+                or 0
+            )
+            if sprint_count > 0:
+                avg_time = (
+                    db.query(func.avg(SprintTest.time_0_30_s))
+                    .filter(SprintTest.athlete_id == athlete_id)
+                    .scalar()
+                )
+                tests_by_type.append(
+                    {
+                        "test_type": "Sprint Test",
+                        "count": sprint_count,
+                        "avg_score": round(avg_time, 2) if avg_time else None,
+                    }
+                )
+
+            # YoYo tests
+            yoyo_count = (
+                db.query(func.count(YoyoTest.id))
+                .filter(YoyoTest.athlete_id == athlete_id)
+                .scalar()
+                or 0
+            )
+            if yoyo_count > 0:
+                avg_shuttle = (
+                    db.query(func.avg(YoyoTest.shuttle_count))
+                    .filter(YoyoTest.athlete_id == athlete_id)
+                    .scalar()
+                )
+                tests_by_type.append(
+                    {
+                        "test_type": "YoYo Test",
+                        "count": yoyo_count,
+                        "avg_score": round(avg_shuttle, 1) if avg_shuttle else None,
+                    }
+                )
+
+            # Endurance tests
+            endurance_count = (
+                db.query(func.count(EnduranceTest.id))
+                .filter(EnduranceTest.athlete_id == athlete_id)
+                .scalar()
+                or 0
+            )
+            if endurance_count > 0:
+                avg_distance = (
+                    db.query(func.avg(EnduranceTest.total_distance_m))
+                    .filter(EnduranceTest.athlete_id == athlete_id)
+                    .scalar()
+                )
+                tests_by_type.append(
+                    {
+                        "test_type": "Endurance Test",
+                        "count": endurance_count,
+                        "avg_score": round(avg_distance, 0) if avg_distance else None,
+                    }
+                )
+
+            # Technical assessments
+            tech_count = (
+                db.query(func.count(TechnicalAssessment.id))
+                .filter(TechnicalAssessment.athlete_id == athlete_id)
+                .scalar()
+                or 0
+            )
+            if tech_count > 0:
+                tests_by_type.append(
+                    {
+                        "test_type": "Technical Assessment",
+                        "count": tech_count,
+                        "avg_score": None,
+                    }
+                )
+
+            tests_completed = sprint_count + yoyo_count + endurance_count + tech_count
+
+            return {
+                "athlete_id": athlete.id,
+                "athlete_name": athlete.full_name,
+                "type_athlete": athlete.type_athlete,
+                "sex": athlete.sex.value if athlete.sex else "MALE",
+                "is_active": athlete.is_active,
+                # Estadísticas físicas
+                "speed": statistic.speed if statistic else None,
+                "stamina": statistic.stamina if statistic else None,
+                "strength": statistic.strength if statistic else None,
+                "agility": statistic.agility if statistic else None,
+                # Estadísticas de rendimiento
+                "matches_played": statistic.matches_played if statistic else 0,
+                "goals": statistic.goals if statistic else 0,
+                "assists": statistic.assists if statistic else 0,
+                "yellow_cards": statistic.yellow_cards if statistic else 0,
+                "red_cards": statistic.red_cards if statistic else 0,
+                # Asistencia
+                "attendance_total": attendance_total,
+                "attendance_present": attendance_present,
+                "attendance_absent": attendance_absent,
+                "attendance_rate": attendance_rate,
+                # Tests
+                "tests_completed": tests_completed,
+                "tests_by_type": tests_by_type,
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting individual athlete stats: {str(e)}")
+            raise DatabaseException("Error al obtener estadísticas del atleta") from e
