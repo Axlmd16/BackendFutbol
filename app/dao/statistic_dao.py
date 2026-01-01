@@ -508,3 +508,89 @@ class StatisticDAO(BaseDAO[Statistic]):
         except Exception as e:
             logger.error(f"Error getting individual athlete stats: {str(e)}")
             raise DatabaseException("Error al obtener estadísticas del atleta") from e
+
+    # ================================================================
+    # Métodos para cálculo de estadísticas desde tests
+    # ================================================================
+
+    def get_sprint_avg_time(self, db: Session, athlete_id: int) -> float | None:
+        """Obtiene el promedio de tiempo 0-30m de SprintTests activos."""
+        try:
+            result = (
+                db.query(func.avg(SprintTest.time_0_30_s))
+                .filter(SprintTest.athlete_id == athlete_id)
+                .filter(SprintTest.is_active == True)  # noqa: E712
+                .scalar()
+            )
+            return float(result) if result is not None else None
+        except Exception as e:
+            logger.error(f"Error getting sprint avg: {e}")
+            return None
+
+    def get_yoyo_avg_shuttles(self, db: Session, athlete_id: int) -> float | None:
+        """Obtiene el promedio de shuttle count de YoyoTests activos."""
+        try:
+            result = (
+                db.query(func.avg(YoyoTest.shuttle_count))
+                .filter(YoyoTest.athlete_id == athlete_id)
+                .filter(YoyoTest.is_active == True)  # noqa: E712
+                .scalar()
+            )
+            return float(result) if result is not None else None
+        except Exception as e:
+            logger.error(f"Error getting yoyo avg: {e}")
+            return None
+
+    def get_endurance_avg_distance(self, db: Session, athlete_id: int) -> float | None:
+        """Obtiene el promedio de distancia de EnduranceTests activos."""
+        try:
+            result = (
+                db.query(func.avg(EnduranceTest.total_distance_m))
+                .filter(EnduranceTest.athlete_id == athlete_id)
+                .filter(EnduranceTest.is_active == True)  # noqa: E712
+                .scalar()
+            )
+            return float(result) if result is not None else None
+        except Exception as e:
+            logger.error(f"Error getting endurance avg: {e}")
+            return None
+
+    def get_technical_count(self, db: Session, athlete_id: int) -> int:
+        """Obtiene la cantidad de TechnicalAssessments activos."""
+        try:
+            result = (
+                db.query(func.count(TechnicalAssessment.id))
+                .filter(TechnicalAssessment.athlete_id == athlete_id)
+                .filter(TechnicalAssessment.is_active == True)  # noqa: E712
+                .scalar()
+            )
+            return int(result) if result else 0
+        except Exception as e:
+            logger.error(f"Error getting technical count: {e}")
+            return 0
+
+    def get_athlete_statistic(self, db: Session, athlete_id: int) -> Statistic | None:
+        """Obtiene el registro Statistic de un atleta."""
+        try:
+            return (
+                db.query(Statistic).filter(Statistic.athlete_id == athlete_id).first()
+            )
+        except Exception as e:
+            logger.error(f"Error getting athlete statistic: {e}")
+            return None
+
+    def update_statistic_fields(
+        self, db: Session, statistic: Statistic, fields: dict
+    ) -> Statistic:
+        """Actualiza los campos de un registro Statistic."""
+        try:
+            for key, value in fields.items():
+                if hasattr(statistic, key) and value is not None:
+                    setattr(statistic, key, value)
+            db.commit()
+            db.refresh(statistic)
+            return statistic
+        except Exception as e:
+            logger.error(f"Error updating statistic: {e}")
+            db.rollback()
+            raise DatabaseException("Error al actualizar estadísticas") from e

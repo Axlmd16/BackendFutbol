@@ -136,3 +136,82 @@ class StatisticController:
             raise AppException(
                 f"Error al obtener estadísticas del atleta: {str(e)}"
             ) from e
+
+    def update_athlete_stats(self, db: Session, athlete_id: int) -> dict | None:
+        """
+        Recalcula y actualiza las estadísticas físicas de un atleta
+        basándose en sus tests completados.
+
+        Lógica de negocio:
+        - speed: Basado en tiempo promedio de SprintTests (4s=100, 8s=0)
+        - stamina: Combinación de YoyoTests y EnduranceTests
+        - agility: Basado en cantidad de TechnicalAssessments
+
+        Args:
+            db: Sesión de base de datos
+            athlete_id: ID del atleta
+
+        Returns:
+            Dict con estadísticas actualizadas o None si no existe
+        """
+        try:
+            # Obtener el registro Statistic del atleta
+            statistic = self.statistic_dao.get_athlete_statistic(db, athlete_id)
+            print(f"[DEBUG] Statistic encontrado: {statistic}")
+            if not statistic:
+                logger.warning(f"Statistic no encontrado para atleta {athlete_id}")
+                return None
+
+            updates = {}
+
+            # VELOCIDAD (SprintTest)
+            sprint_avg = self.statistic_dao.get_sprint_avg_time(db, athlete_id)
+            print(f"[DEBUG] Sprint avg time: {sprint_avg}")
+            if sprint_avg is not None:
+                # Fórmula: 4 segundos = 100 (excelente), 8 segundos = 0 (malo)
+                speed_score = max(0, min(100, 100 - ((sprint_avg - 4) * 25)))
+                updates["speed"] = round(speed_score, 1)
+                print(f"[DEBUG] Speed score calculado: {speed_score}")
+
+            # RESISTENCIA (YoyoTest + EnduranceTest)
+            yoyo_avg = self.statistic_dao.get_yoyo_avg_shuttles(db, athlete_id)
+            endurance_avg = self.statistic_dao.get_endurance_avg_distance(
+                db, athlete_id
+            )
+            stamina_scores = []
+
+            if yoyo_avg is not None:
+                # Shuttle count: 20 = 30 puntos, 80 = 100 puntos
+                yoyo_score = min(100, max(0, 30 + (yoyo_avg - 20) * 1.17))
+                stamina_scores.append(yoyo_score)
+
+            if endurance_avg is not None:
+                # Distancia: 1000m = 30 puntos, 3000m = 100 puntos
+                endurance_score = min(100, max(0, 30 + (endurance_avg - 1000) * 0.035))
+                stamina_scores.append(endurance_score)
+
+            if stamina_scores:
+                updates["stamina"] = round(sum(stamina_scores) / len(stamina_scores), 1)
+
+            # AGILIDAD (TechnicalAssessment)
+            tech_count = self.statistic_dao.get_technical_count(db, athlete_id)
+            if tech_count > 0:
+                # Cada evaluación técnica suma 10 puntos (máximo 100)
+                updates["agility"] = min(100, tech_count * 10)
+
+            # Actualizar en la base de datos
+            if updates:
+                self.statistic_dao.update_statistic_fields(db, statistic, updates)
+                logger.info(f"Stats actualizadas para atleta {athlete_id}: {updates}")
+
+            return updates
+
+        except Exception as e:
+            logger.error(f"Error updating athlete stats: {str(e)}")
+            raise AppException(
+                f"Error al actualizar estadísticas del atleta: {str(e)}"
+            ) from e
+
+
+# Singleton para uso en otros controladores
+statistic_controller = StatisticController()

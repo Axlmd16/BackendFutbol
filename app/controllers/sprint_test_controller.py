@@ -2,12 +2,12 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.controllers.statistic_controller import statistic_controller
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.sprint_test_dao import SprintTestDAO
 from app.dao.test_dao import TestDAO
 from app.models.test import Test
-from app.services.statistic_service import statistic_service
 from app.utils.exceptions import DatabaseException
 
 
@@ -49,7 +49,11 @@ class SprintTestController:
         )
 
         # Actualizar estadísticas del atleta
-        statistic_service.update_athlete_stats(db, athlete_id)
+        print(
+            f"[DEBUG] SprintTest creado. Llamando update_athlete_stats para atleta {athlete_id}"
+        )
+        result = statistic_controller.update_athlete_stats(db, athlete_id)
+        print(f"[DEBUG] Resultado de update_athlete_stats: {result}")
 
         return test
 

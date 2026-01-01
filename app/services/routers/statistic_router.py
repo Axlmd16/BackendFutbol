@@ -83,10 +83,12 @@ def get_club_overview(
 def get_attendance_statistics(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_account)],
-    start_date: Optional[date] = Query(None, description="Fecha de inicio"),
-    end_date: Optional[date] = Query(None, description="Fecha de fin"),
-    type_athlete: Optional[str] = Query(None, description="Filtro por tipo de atleta"),
-    sex: Optional[str] = Query(None, description="Filtro por sexo"),
+    start_date: Annotated[Optional[date], Query(description="Fecha de inicio")] = None,
+    end_date: Annotated[Optional[date], Query(description="Fecha de fin")] = None,
+    type_athlete: Annotated[
+        Optional[str], Query(description="Filtro por tipo de atleta")
+    ] = None,
+    sex: Annotated[Optional[str], Query(description="Filtro por sexo")] = None,
 ):
     """Obtiene estadísticas de asistencia."""
     try:
@@ -138,9 +140,11 @@ def get_attendance_statistics(
 def get_test_performance(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_account)],
-    start_date: Optional[date] = Query(None, description="Fecha de inicio"),
-    end_date: Optional[date] = Query(None, description="Fecha de fin"),
-    type_athlete: Optional[str] = Query(None, description="Filtro por tipo de atleta"),
+    start_date: Annotated[Optional[date], Query(description="Fecha de inicio")] = None,
+    end_date: Annotated[Optional[date], Query(description="Fecha de fin")] = None,
+    type_athlete: Annotated[
+        Optional[str], Query(description="Filtro por tipo de atleta")
+    ] = None,
 ):
     """Obtiene estadísticas de rendimiento en tests."""
     try:
