@@ -39,3 +39,13 @@ class EnduranceTestResponseSchema(BaseResponseSchema):
     evaluation_id: int
     min_duration: int
     total_distance_m: float
+
+    # Campos calculados
+    pace_min_per_km: Optional[float] = Field(
+        None, description="Ritmo en minutos por kilómetro (calculado)"
+    )
+    estimated_vo2max: Optional[float] = Field(
+        None, description="VO2 máximo estimado en ml/kg/min (calculado)"
+    )
+
+    model_config = {"from_attributes": True}

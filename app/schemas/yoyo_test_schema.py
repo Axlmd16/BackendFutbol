@@ -44,3 +44,13 @@ class YoyoTestResponseSchema(BaseResponseSchema):
     shuttle_count: int
     final_level: str
     failures: int
+
+    # Campos calculados
+    total_distance: Optional[float] = Field(
+        None, description="Distancia total recorrida en metros (calculada)"
+    )
+    vo2_max: Optional[float] = Field(
+        None, description="VO2 máximo estimado en ml/kg/min (calculado)"
+    )
+
+    model_config = {"from_attributes": True}

@@ -42,3 +42,16 @@ class SprintTestResponseSchema(BaseResponseSchema):
     distance_meters: float
     time_0_10_s: float
     time_0_30_s: float
+
+    # Campos calculados
+    time_10_30_s: Optional[float] = Field(
+        None, description="Tiempo del segmento 10-30 metros (calculado)"
+    )
+    avg_speed_ms: Optional[float] = Field(
+        None, description="Velocidad promedio en m/s (calculada)"
+    )
+    estimated_max_speed: Optional[float] = Field(
+        None, description="Velocidad máxima estimada en m/s (calculada)"
+    )
+
+    model_config = {"from_attributes": True}
