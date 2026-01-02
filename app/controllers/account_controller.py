@@ -9,13 +9,16 @@ from app.schemas.account_schema import (
     LoginResponse,
     PasswordResetConfirm,
     PasswordResetRequest,
+    RefreshTokenRequest,
 )
 from app.utils.email_client import send_reset_email
 from app.utils.exceptions import UnauthorizedException
 from app.utils.security import (
     create_access_token,
+    create_refresh_token,
     create_reset_token,
     hash_password,
+    validate_refresh_token,
     validate_reset_token,
     verify_password,
 )
@@ -43,12 +46,15 @@ class AccountController:
         if not verify_password(payload.password, account.password_hash):
             raise UnauthorizedException("Credenciales inválidas")
 
-        token = self.generate_jwt(account)
+        access_token = self.generate_jwt(account)
+        refresh_token = create_refresh_token(subject=account.id)
 
         return LoginResponse(
-            access_token=token,
+            access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             expires_in=settings.TOKEN_EXPIRES,
+            refresh_expires_in=settings.REFRESH_TOKEN_EXPIRES,
         )
 
     def generate_jwt(self, account: Account) -> str:
@@ -135,3 +141,33 @@ class AccountController:
 
         account.password_hash = hash_password(payload.new_password)
         db.commit()
+
+    def refresh_token(self, db: Session, payload: RefreshTokenRequest) -> LoginResponse:
+        """Genera un nuevo access token usando un refresh token válido.
+
+        Args:
+            db: Sesión de base de datos.
+            payload: Contiene el refresh_token a validar.
+
+        Returns:
+            LoginResponse: Nuevo access token y el mismo refresh token.
+
+        Raises:
+            UnauthorizedException: Si el refresh token es inválido o expirado.
+        """
+        data = validate_refresh_token(payload.refresh_token)
+        account_id = int(data["sub"])
+
+        account = self.account_dao.get_by_id(db, account_id, only_active=True)
+        if not account:
+            raise UnauthorizedException("Cuenta no encontrada o inactiva")
+
+        new_access_token = self.generate_jwt(account)
+
+        return LoginResponse(
+            access_token=new_access_token,
+            refresh_token=payload.refresh_token,  # Reutilizar el refresh token
+            token_type="bearer",
+            expires_in=settings.TOKEN_EXPIRES,
+            refresh_expires_in=settings.REFRESH_TOKEN_EXPIRES,
+        )

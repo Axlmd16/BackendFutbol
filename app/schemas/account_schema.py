@@ -23,13 +23,27 @@ class LoginResponse(BaseModel):
 
     Attributes:
         access_token: Token JWT generado tras autenticación correcta.
+        refresh_token: Token para renovar el access_token sin re-autenticar.
         token_type: Esquema de autenticación, típicamente "bearer".
-        expires_in: Tiempo de vida del token (segundos) desde su emisión.
+        expires_in: Tiempo de vida del access_token (segundos).
+        refresh_expires_in: Tiempo de vida del refresh_token (segundos).
     """
 
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+    refresh_expires_in: int
+
+
+class RefreshTokenRequest(BaseModel):
+    """Datos para solicitar renovación de access token.
+
+    Attributes:
+        refresh_token: Token de refresco válido.
+    """
+
+    refresh_token: str
 
 
 class PasswordResetRequest(BaseModel):
