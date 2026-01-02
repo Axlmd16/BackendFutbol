@@ -50,7 +50,7 @@ class SprintTestController:
 
         # Actualizar estadísticas del atleta
         print(
-            f"[DEBUG] SprintTest creado. Llamando update_athlete_stats para atleta {athlete_id}"
+            f"[DEBUG] SprintTest creado. Llamando update_stats para atleta {athlete_id}"
         )
         result = statistic_controller.update_athlete_stats(db, athlete_id)
         print(f"[DEBUG] Resultado de update_athlete_stats: {result}")
