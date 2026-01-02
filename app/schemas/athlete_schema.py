@@ -205,3 +205,103 @@ class AthleteInscriptionResponseDTO(BaseSchema):
     statistic_id: int
     full_name: str
     dni: str
+
+
+# ==========================================
+# SCHEMAS PARA MENORES DE EDAD
+
+
+class RepresentativeDataDTO(BaseModel):
+    """Datos del representante para inscripción de menor."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    first_name: str = Field(..., min_length=2, max_length=100)
+    last_name: str = Field(..., min_length=2, max_length=100)
+    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
+    phone: Optional[str] = Field(default="S/N", description="Teléfono de contacto")
+    email: Optional[str] = Field(default=None, description="Email (opcional)")
+    direction: Optional[str] = Field(default="S/N", description="Dirección")
+    type_identification: str = Field(default="CEDULA")
+    # type_stament siempre será EXTERNOS para representantes de menores
+    relationship_type: str = Field(
+        ..., description="Tipo de relación: FATHER, MOTHER, LEGAL_GUARDIAN"
+    )
+
+    # @field_validator("dni", mode="before")
+    # @classmethod
+    # def _normalize_and_validate_dni(cls, value: Any) -> str:
+    #     try:
+    #         return validate_ec_dni(str(value))
+    #     except ValidationException as exc:
+    #         raise ValueError(exc.message) from exc
+
+
+class MinorAthleteDataDTO(BaseModel):
+    """Datos del atleta menor para inscripción."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    first_name: str = Field(..., min_length=2, max_length=100)
+    last_name: str = Field(..., min_length=2, max_length=100)
+    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
+    birth_date: date = Field(..., description="Fecha de nacimiento (YYYY-MM-DD)")
+    sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
+    height: Optional[float] = Field(default=None, ge=0, description="Altura en metros")
+    weight: Optional[float] = Field(default=None, ge=0, description="Peso en kg")
+    direction: Optional[str] = Field(default="S/N", description="Dirección")
+    phone: Optional[str] = Field(default="S/N", description="Teléfono")
+    type_identification: str = Field(default="CEDULA")
+    # type_stament siempre será EXTERNOS para menores de edad
+
+    # @field_validator("dni", mode="before")
+    # @classmethod
+    # def _normalize_and_validate_dni(cls, value: Any) -> str:
+    #     try:
+    #         return validate_ec_dni(str(value))
+    #     except ValidationException as exc:
+    #         raise ValueError(exc.message) from exc
+
+    @field_validator("sex", mode="before")
+    @classmethod
+    def _normalize_sex(cls, value: Any) -> SexInput:
+        if value is None or value == "":
+            return SexInput.MALE
+        if isinstance(value, SexInput):
+            return value
+        raw = str(value).strip().lower()
+        mapping = {
+            "male": SexInput.MALE,
+            "m": SexInput.MALE,
+            "masculino": SexInput.MALE,
+            "female": SexInput.FEMALE,
+            "f": SexInput.FEMALE,
+            "femenino": SexInput.FEMALE,
+            "other": SexInput.OTHER,
+            "otro": SexInput.OTHER,
+        }
+        if raw not in mapping:
+            raise ValueError("El sexo debe ser MALE, FEMALE u OTHER")
+        return mapping[raw]
+
+
+class MinorAthleteInscriptionDTO(BaseModel):
+    """Datos para inscribir un deportista menor de edad con su representante."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    representative: RepresentativeDataDTO
+    athlete: MinorAthleteDataDTO
+
+
+class MinorAthleteInscriptionResponseDTO(BaseSchema):
+    """Respuesta al registrar un deportista menor con su representante."""
+
+    representative_id: int
+    representative_full_name: str
+    representative_dni: str
+    representative_is_new: bool  # True si se creó nuevo, False si ya existía
+    athlete_id: int
+    athlete_full_name: str
+    athlete_dni: str
+    statistic_id: int
