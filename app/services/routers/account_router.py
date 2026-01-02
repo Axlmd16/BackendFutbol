@@ -12,6 +12,7 @@ from app.schemas.account_schema import (
     LoginRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
+    RefreshTokenRequest,
 )
 from app.schemas.response import ResponseSchema
 from app.utils.exceptions import AppException
@@ -162,6 +163,46 @@ def change_password(
             status="success",
             message="Contraseña actualizada correctamente",
             data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.post(
+    "/refresh",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Refrescar access token",
+    description="Genera un nuevo access token usando un refresh token válido.",
+)
+def refresh_token(
+    payload: RefreshTokenRequest, db: Annotated[Session, Depends(get_db)]
+) -> ResponseSchema:
+    """Endpoint para refrescar el access token."""
+    try:
+        result = account_controller.refresh_token(db, payload)
+        return ResponseSchema(
+            status="success",
+            message="Token renovado exitosamente",
+            data=result.model_dump(),
         )
     except AppException as exc:
         return JSONResponse(

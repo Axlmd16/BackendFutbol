@@ -217,6 +217,55 @@ def validate_reset_token(token: str) -> dict:
     return payload
 
 
+def create_refresh_token(
+    subject: str | int,
+    expires_seconds: int | None = None,
+    extra_claims: dict | None = None,
+) -> str:
+    """Genera un refresh token JWT con expiración larga.
+
+    Args:
+        subject: Identificador del sujeto (generalmente ID de cuenta).
+        expires_seconds: Tiempo de expiración en segundos.
+            Si es None, usa REFRESH_TOKEN_EXPIRES de configuración.
+        extra_claims: Diccionario opcional con claims adicionales.
+
+    Returns:
+        str: Refresh token JWT firmado.
+    """
+    exp_seconds = expires_seconds or settings.REFRESH_TOKEN_EXPIRES
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(subject),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=exp_seconds)).timestamp()),
+        "type": "refresh",
+    }
+    if extra_claims:
+        payload.update(extra_claims)
+
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def validate_refresh_token(token: str) -> dict:
+    """Valida que el token sea de tipo refresh y retorna el payload.
+
+    Args:
+        token: Token JWT a validar.
+
+    Returns:
+        dict: Payload del token si es válido y tiene type='refresh'.
+
+    Raises:
+        UnauthorizedException: Si el token es inválido,
+        expirado, o no tiene type='refresh'.
+    """
+    payload = decode_token(token)
+    if payload.get("type") != "refresh":
+        raise UnauthorizedException("Token de refresco inválido")
+    return payload
+
+
 def get_current_account(
     token: str = _TOKEN_DEP,
     db: Session = _DB_DEP,

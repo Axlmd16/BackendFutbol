@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.controllers.statistic_controller import statistic_controller
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.sprint_test_dao import SprintTestDAO
@@ -36,7 +37,7 @@ class SprintTestController:
         if not self.athlete_dao.get_by_id(db, athlete_id):
             raise DatabaseException(f"Atleta {athlete_id} no existe")
 
-        return self.test_dao.create_sprint_test(
+        test = self.test_dao.create_sprint_test(
             db=db,
             date=date,
             athlete_id=athlete_id,
@@ -46,6 +47,15 @@ class SprintTestController:
             time_0_30_s=time_0_30_s,
             observations=observations,
         )
+
+        # Actualizar estadísticas del atleta
+        print(
+            f"[DEBUG] SprintTest creado. Llamando update_stats para atleta {athlete_id}"
+        )
+        result = statistic_controller.update_athlete_stats(db, athlete_id)
+        print(f"[DEBUG] Resultado de update_athlete_stats: {result}")
+
+        return test
 
     def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
         """Actualizar un SprintTest existente."""
