@@ -3,6 +3,7 @@ from app.services.routers.athlete_router import router as athlete_router
 from app.services.routers.attendance_router import router as attendance_router
 from app.services.routers.endurance_test_router import router as endurance_test_router
 from app.services.routers.evaluation_router import router as evaluation_router
+from app.services.routers.report_router import router as report_router
 from app.services.routers.sprint_test_router import router as sprint_test_router
 from app.services.routers.statistic_router import router as statistic_router
 from app.services.routers.technical_assessment_router import (
@@ -24,4 +25,5 @@ __all__ = [
     "technical_assessment_router",
     "user_router",
     "account_router",
+    "report_router",
 ]
