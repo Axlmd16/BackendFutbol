@@ -91,10 +91,10 @@ def generate_report(
     description="Obtiene una vista previa en formato CSV de los datos que tendrá el reporte",
 )
 def preview_report(
-    club_id: Annotated[int, Query(None)] = None,
-    athlete_id: Annotated[int, Query(None)] = None,
-    start_date: Annotated[date, Query(None)] = None,
-    end_date: Annotated[date, Query(None)] = None,
+    club_id: int | None = Query(None),
+    athlete_id: int | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db: Annotated[Session, Depends(get_db)] = None,
     current_user: Annotated[Account, Depends(get_current_account)] = None,
 ):
@@ -164,10 +164,10 @@ def preview_report(
     description="Obtiene estadísticas de datos disponibles para reportes",
 )
 def get_report_stats(
-    club_id: Annotated[int, Query(None)] = None,
-    athlete_id: Annotated[int, Query(None)] = None,
-    start_date: Annotated[date, Query(None)] = None,
-    end_date: Annotated[date, Query(None)] = None,
+    club_id: int | None = Query(None),
+    athlete_id: int | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db: Annotated[Session, Depends(get_db)] = None,
     current_user: Annotated[Account, Depends(get_current_account)] = None,
 ):

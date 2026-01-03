@@ -92,10 +92,10 @@ class TestReportController:
         assert b"REPORTE DEPORTIVO" in content
         assert b"Total de Atletas: 1" in content
 
-    @patch("app.controllers.report_controller.openpyxl")
-    def test_generate_xlsx_report_basic(self, mock_openpyxl):
+    def test_generate_xlsx_report_basic(self):
         """Verifica la generación básica de reporte XLSX."""
         from app.models.athlete import Athlete
+        from io import BytesIO
 
         # Mock de datos
         athlete = Mock(spec=Athlete)
@@ -121,22 +121,14 @@ class TestReportController:
 
         filters = ReportFilter(format="xlsx")
 
-        # Mock openpyxl si no está disponible
-        if mock_openpyxl:
-            mock_workbook = Mock()
-            mock_openpyxl.Workbook.return_value = mock_workbook
-
         result = self.controller.generate_xlsx_report(report_data, filters)
 
         assert result is not None
+        assert isinstance(result, BytesIO)
 
     def test_generate_report_invalid_format(self):
         """Verifica que un formato inválido lance excepción."""
-        filters = ReportFilter(format="invalid_format")
+        from pydantic_core import ValidationError
 
-        with pytest.raises(ValidationException):
-            self.controller.generate_report(
-                db=Mock(),
-                filters=filters,
-                user_dni="1234567890",
-            )
+        with pytest.raises(ValidationError):
+            ReportFilter(format="invalid_format")
