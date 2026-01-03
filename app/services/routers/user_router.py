@@ -23,7 +23,9 @@ from app.utils.exceptions import AppException
 from app.utils.security import get_current_account, get_current_admin
 
 
-def get_current_coach_or_admin(current_account: Account = Depends(get_current_account)):
+def get_current_coach_or_admin(
+    current_account: Annotated[Account, Depends(get_current_account)],
+):
     """Dependencia que valida que el usuario sea Coach o Admin."""
     if current_account.role not in [Role.COACH, Role.ADMINISTRATOR]:
         raise HTTPException(
@@ -229,7 +231,7 @@ async def get_me(
     response_model=ResponseSchema[PaginatedResponse[InternResponse]],
     status_code=status.HTTP_200_OK,
     summary="Obtener todos los pasantes",
-    description="Lista todos los pasantes con paginación y búsqueda. Solo Coach o Admin.",
+    description="Lista todos los pasantes con paginación y búsqueda.",
 )
 def get_all_interns(
     db: Annotated[Session, Depends(get_db)],
@@ -405,7 +407,7 @@ async def activate_user(
     response_model=ResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Promover atleta a pasante",
-    description="Crea una cuenta de pasante para un atleta existente. Solo Coach o Admin.",
+    description="Crea una cuenta de pasante para un atleta existente.",
 )
 async def promote_athlete_to_intern(
     athlete_id: int,
