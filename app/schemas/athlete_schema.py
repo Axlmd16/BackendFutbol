@@ -90,10 +90,20 @@ class AthleteUpdateDTO(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    height: Optional[float] = Field(default=None, ge=0)
-    weight: Optional[float] = Field(default=None, ge=0)
+    # Datos personales
+    first_name: Optional[str] = Field(default=None, min_length=2)
+    last_name: Optional[str] = Field(default=None, min_length=2)
+    birth_date: Optional[date] = Field(default=None, description="YYYY-MM-DD")
+    sex: Optional[SexInput] = None
+    type_identification: Optional[str] = None
+    dni: Optional[str] = None
+    type_stament: Optional[str] = None
+    # Datos de contacto (se sincronizan con MS de personas)
     direction: Optional[str] = Field(default=None, description="Dirección")
     phone: Optional[str] = Field(default=None, description="Teléfono")
+    # Datos físicos
+    height: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(default=None, ge=0)
 
 
 class AthleteFilter(BaseModel):

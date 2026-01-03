@@ -40,12 +40,16 @@ async def test_create_endurance_test_success(admin_client, endurance_test_payloa
         mock_test = MagicMock()
         mock_test.id = 3
         mock_test.type = "endurance_test"
+        mock_test.test_type = "endurance_test"
         mock_test.date = datetime.now()
         mock_test.athlete_id = 5
         mock_test.evaluation_id = 1
         mock_test.min_duration = 36
         mock_test.total_distance_m = 6000
         mock_test.observations = "Completed test"
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
         mock_controller.add_test.return_value = mock_test
 
         response = await admin_client.post(
@@ -110,46 +114,51 @@ async def test_create_endurance_test_validation_error(admin_client):
 
 
 @pytest.mark.asyncio
-async def test_list_endurance_tests_success(admin_client):
+async def test_list_endurance_tests_success(admin_client, mock_db_session):
     """GET /endurance-tests/ debe listar Endurance Tests."""
-    with patch("app.dao.test_dao.TestDAO") as mock_dao_class:
-        mock_dao = MagicMock()
-        mock_dao_class.return_value = mock_dao
+    mock_test = MagicMock()
+    mock_test.id = 3
+    mock_test.type = "endurance_test"
+    mock_test.test_type = "endurance_test"
+    mock_test.date = datetime.now()
+    mock_test.athlete_id = 5
+    mock_test.evaluation_id = 1
+    mock_test.min_duration = 36
+    mock_test.total_distance_m = 6000
+    mock_test.observations = None
+    mock_test.created_at = datetime.now()
+    mock_test.updated_at = None
+    mock_test.is_active = True
 
-        mock_test = MagicMock()
-        mock_test.id = 3
-        mock_test.type = "endurance_test"
-        mock_test.date = datetime.now()
-        mock_test.athlete_id = 5
-        mock_test.evaluation_id = 1
-        mock_test.min_duration = 36
-        mock_test.total_distance_m = 6000
-        mock_test.observations = None
+    query_mock = mock_db_session.query.return_value
+    filter_mock = query_mock.filter.return_value
+    offset_mock = filter_mock.offset.return_value
+    limit_mock = offset_mock.limit.return_value
+    limit_mock.all.return_value = [mock_test]
 
-        mock_dao.list_tests.return_value = [mock_test]
+    response = await admin_client.get("/api/v1/endurance-tests/")
 
-        response = await admin_client.get("/api/v1/endurance-tests/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert len(data["data"]) == 1
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert len(data["data"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_list_endurance_tests_empty(admin_client):
+async def test_list_endurance_tests_empty(admin_client, mock_db_session):
     """GET /endurance-tests/ debe retornar lista vacía."""
-    with patch("app.dao.test_dao.TestDAO") as mock_dao_class:
-        mock_dao = MagicMock()
-        mock_dao_class.return_value = mock_dao
-        mock_dao.list_tests.return_value = []
+    query_mock = mock_db_session.query.return_value
+    filter_mock = query_mock.filter.return_value
+    offset_mock = filter_mock.offset.return_value
+    limit_mock = offset_mock.limit.return_value
+    limit_mock.all.return_value = []
 
-        response = await admin_client.get("/api/v1/endurance-tests/")
+    response = await admin_client.get("/api/v1/endurance-tests/")
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert len(data["data"]) == 0
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert len(data["data"]) == 0
 
 
 # ==============================================
@@ -167,12 +176,16 @@ async def test_get_endurance_test_success(admin_client):
         mock_test = MagicMock()
         mock_test.id = 3
         mock_test.type = "endurance_test"
+        mock_test.test_type = "endurance_test"
         mock_test.date = datetime.now()
         mock_test.athlete_id = 5
         mock_test.evaluation_id = 1
         mock_test.min_duration = 36
         mock_test.total_distance_m = 6000
         mock_test.observations = None
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
 
         mock_dao.get_test.return_value = mock_test
 

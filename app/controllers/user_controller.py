@@ -238,3 +238,13 @@ class UserController:
             raise ValidationException("El usuario a desactivar no existe")
 
         self.user_dao.update(db, user_id, {"is_active": False})
+
+    def activate_user(self, db: Session, user_id: int) -> None:
+        """
+        Activa un usuario (soft delete).
+        """
+        user = self.user_dao.get_by_id(db=db, id=user_id)
+        if not user:
+            raise ValidationException("El usuario a activar no existe")
+
+        self.user_dao.update(db, user_id, {"is_active": True})

@@ -9,10 +9,12 @@ from app.controllers.sprint_test_controller import SprintTestController
 from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
+from app.models.sprint_test import SprintTest
 from app.schemas.response import ResponseSchema
 from app.schemas.sprint_test_schema import (
     CreateSprintTestSchema,
     SprintTestResponseSchema,
+    UpdateSprintTestSchema,
 )
 from app.utils.exceptions import DatabaseException
 from app.utils.security import get_current_account
@@ -63,20 +65,36 @@ async def create_sprint_test(
     response_model=ResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Listar Sprint Tests",
-    description="Obtiene lista de Sprint Tests con paginación.",
+    description="Obtiene lista de Sprint Tests con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
 )
 async def list_sprint_tests(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    evaluation_id: int = Query(
+        None, description="Filtrar por evaluation_id (opcional)"
+    ),
 ) -> ResponseSchema:
     """Listar todos los Sprint Tests."""
     try:
-        from app.dao.test_dao import TestDAO
-
-        dao = TestDAO()
-        tests = dao.list_tests(db, skip, limit, test_type="sprint_test")
+        if evaluation_id:
+            # Filtrar por evaluación y tipo específico de test
+            tests = (
+                db.query(SprintTest)
+                .filter(SprintTest.evaluation_id == evaluation_id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+        else:
+            tests = (
+                db.query(SprintTest)
+                .filter(SprintTest.is_active)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
 
         return ResponseSchema(
             status="success",
@@ -114,6 +132,43 @@ async def get_sprint_test(
             message="Sprint Test obtenido correctamente",
             data=SprintTestResponseSchema.model_validate(test),
         )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{test_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar Sprint Test",
+    description="Actualiza los datos de un Sprint Test existente.",
+)
+async def update_sprint_test(
+    test_id: int,
+    payload: UpdateSprintTestSchema,
+    db: Annotated[Session, Depends(get_db)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Actualizar un Sprint Test."""
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+    try:
+        updated = sprint_test_controller.update_test(db=db, test_id=test_id, **data)
+
+        if not updated:
+            raise HTTPException(status_code=404, detail="Sprint Test no encontrado")
+
+        return ResponseSchema(
+            status="success",
+            message="Sprint Test actualizado correctamente",
+            data=SprintTestResponseSchema.model_validate(updated),
+        )
+    except DatabaseException as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
     except HTTPException:
         raise
     except Exception as exc:

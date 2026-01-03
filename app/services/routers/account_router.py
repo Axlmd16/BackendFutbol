@@ -6,13 +6,17 @@ from sqlalchemy.orm import Session
 
 from app.controllers.account_controller import AccountController
 from app.core.database import get_db
+from app.models.account import Account
 from app.schemas.account_schema import (
+    ChangePasswordRequest,
     LoginRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
+    RefreshTokenRequest,
 )
 from app.schemas.response import ResponseSchema
 from app.utils.exceptions import AppException
+from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 account_controller = AccountController()
@@ -117,6 +121,88 @@ def confirm_password_reset(
             status="success",
             message="Contraseña actualizada",
             data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.post(
+    "/change-password",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Cambiar contraseña",
+    description="Permite a un usuario autenticado cambiar su contraseña.",
+)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+) -> ResponseSchema:
+    """Cambia la contraseña del usuario actual."""
+    try:
+        account_controller.change_password(db, current_user.id, payload)
+        return ResponseSchema(
+            status="success",
+            message="Contraseña actualizada correctamente",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.post(
+    "/refresh",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Refrescar access token",
+    description="Genera un nuevo access token usando un refresh token válido.",
+)
+def refresh_token(
+    payload: RefreshTokenRequest, db: Annotated[Session, Depends(get_db)]
+) -> ResponseSchema:
+    """Endpoint para refrescar el access token."""
+    try:
+        result = account_controller.refresh_token(db, payload)
+        return ResponseSchema(
+            status="success",
+            message="Token renovado exitosamente",
+            data=result.model_dump(),
         )
     except AppException as exc:
         return JSONResponse(

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
@@ -17,9 +17,26 @@ class CreateYoyoTestSchema(CreateTestBaseSchema):
     failures: int = Field(..., ge=0, description="Número de fallos")
 
 
+class UpdateYoyoTestSchema(BaseModel):
+    """Schema para actualizar un Yoyo Test."""
+
+    date: Optional[datetime] = None
+    observations: Optional[str] = None
+    athlete_id: Optional[int] = Field(None, gt=0, description="ID del atleta")
+    evaluation_id: Optional[int] = Field(None, gt=0, description="ID de la evaluación")
+    shuttle_count: Optional[int] = Field(
+        None, gt=0, description="Número de shuttles completados"
+    )
+    final_level: Optional[str] = Field(
+        None, description="Nivel final alcanzado (ej: 16.3, 18.2)"
+    )
+    failures: Optional[int] = Field(None, ge=0, description="Número de fallos")
+
+
 class YoyoTestResponseSchema(BaseResponseSchema):
     """Schema de respuesta para Yoyo Test."""
 
+    test_type: str = "yoyo_test"
     date: datetime
     observations: Optional[str]
     athlete_id: int
@@ -27,3 +44,13 @@ class YoyoTestResponseSchema(BaseResponseSchema):
     shuttle_count: int
     final_level: str
     failures: int
+
+    # Campos calculados
+    total_distance: Optional[float] = Field(
+        None, description="Distancia total recorrida en metros (calculada)"
+    )
+    vo2_max: Optional[float] = Field(
+        None, description="VO2 máximo estimado en ml/kg/min (calculado)"
+    )
+
+    model_config = {"from_attributes": True}

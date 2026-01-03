@@ -41,6 +41,7 @@ async def test_create_yoyo_test_success(admin_client, yoyo_test_payload):
         mock_test = MagicMock()
         mock_test.id = 2
         mock_test.type = "yoyo_test"
+        mock_test.test_type = "yoyo_test"
         mock_test.date = datetime.now()
         mock_test.athlete_id = 5
         mock_test.evaluation_id = 1
@@ -48,6 +49,9 @@ async def test_create_yoyo_test_success(admin_client, yoyo_test_payload):
         mock_test.final_level = "18.2"
         mock_test.failures = 2
         mock_test.observations = "Good effort"
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
         mock_controller.add_test.return_value = mock_test
 
         response = await admin_client.post(
@@ -114,47 +118,52 @@ async def test_create_yoyo_test_validation_error(admin_client):
 
 
 @pytest.mark.asyncio
-async def test_list_yoyo_tests_success(admin_client):
+async def test_list_yoyo_tests_success(admin_client, mock_db_session):
     """GET /yoyo-tests/ debe listar Yoyo Tests."""
-    with patch("app.dao.test_dao.TestDAO") as mock_dao_class:
-        mock_dao = MagicMock()
-        mock_dao_class.return_value = mock_dao
+    mock_test = MagicMock()
+    mock_test.id = 2
+    mock_test.type = "yoyo_test"
+    mock_test.test_type = "yoyo_test"
+    mock_test.date = datetime.now()
+    mock_test.athlete_id = 5
+    mock_test.evaluation_id = 1
+    mock_test.shuttle_count = 47
+    mock_test.final_level = "18.2"
+    mock_test.failures = 2
+    mock_test.observations = None
+    mock_test.created_at = datetime.now()
+    mock_test.updated_at = None
+    mock_test.is_active = True
 
-        mock_test = MagicMock()
-        mock_test.id = 2
-        mock_test.type = "yoyo_test"
-        mock_test.date = datetime.now()
-        mock_test.athlete_id = 5
-        mock_test.evaluation_id = 1
-        mock_test.shuttle_count = 47
-        mock_test.final_level = "18.2"
-        mock_test.failures = 2
-        mock_test.observations = None
+    query_mock = mock_db_session.query.return_value
+    filter_mock = query_mock.filter.return_value
+    offset_mock = filter_mock.offset.return_value
+    limit_mock = offset_mock.limit.return_value
+    limit_mock.all.return_value = [mock_test]
 
-        mock_dao.list_tests.return_value = [mock_test]
+    response = await admin_client.get("/api/v1/yoyo-tests/")
 
-        response = await admin_client.get("/api/v1/yoyo-tests/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert len(data["data"]) == 1
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["status"] == "success"
+    assert len(data["data"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_list_yoyo_tests_empty(admin_client):
+async def test_list_yoyo_tests_empty(admin_client, mock_db_session):
     """GET /yoyo-tests/ debe retornar lista vacía."""
-    with patch("app.dao.test_dao.TestDAO") as mock_dao_class:
-        mock_dao = MagicMock()
-        mock_dao_class.return_value = mock_dao
-        mock_dao.list_tests.return_value = []
+    query_mock = mock_db_session.query.return_value
+    filter_mock = query_mock.filter.return_value
+    offset_mock = filter_mock.offset.return_value
+    limit_mock = offset_mock.limit.return_value
+    limit_mock.all.return_value = []
 
-        response = await admin_client.get("/api/v1/yoyo-tests/")
+    response = await admin_client.get("/api/v1/yoyo-tests/")
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert len(data["data"]) == 0
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert len(data["data"]) == 0
 
 
 # ==============================================
@@ -172,6 +181,7 @@ async def test_get_yoyo_test_success(admin_client):
         mock_test = MagicMock()
         mock_test.id = 2
         mock_test.type = "yoyo_test"
+        mock_test.test_type = "yoyo_test"
         mock_test.date = datetime.now()
         mock_test.athlete_id = 5
         mock_test.evaluation_id = 1
@@ -179,6 +189,9 @@ async def test_get_yoyo_test_success(admin_client):
         mock_test.final_level = "18.2"
         mock_test.failures = 2
         mock_test.observations = None
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
 
         mock_dao.get_test.return_value = mock_test
 

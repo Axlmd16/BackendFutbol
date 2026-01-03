@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.controllers.statistic_controller import statistic_controller
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
@@ -36,7 +37,7 @@ class YoyoTestController:
         if not self.athlete_dao.get_by_id(db, athlete_id):
             raise DatabaseException(f"Atleta {athlete_id} no existe")
 
-        return self.test_dao.create_yoyo_test(
+        test = self.test_dao.create_yoyo_test(
             db=db,
             date=date,
             athlete_id=athlete_id,
@@ -46,3 +47,29 @@ class YoyoTestController:
             failures=failures,
             observations=observations,
         )
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, athlete_id)
+
+        return test
+
+    def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
+        """Actualizar un YoyoTest existente."""
+        if "evaluation_id" in fields and fields["evaluation_id"] is not None:
+            if not self.evaluation_dao.get_by_id(db, fields["evaluation_id"]):
+                raise DatabaseException(
+                    f"Evaluación {fields['evaluation_id']} no existe"
+                )
+
+        if "athlete_id" in fields and fields["athlete_id"] is not None:
+            if not self.athlete_dao.get_by_id(db, fields["athlete_id"]):
+                raise DatabaseException(f"Atleta {fields['athlete_id']} no existe")
+
+        existing = self.yoyo_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return None
+
+        if not fields:
+            return existing
+
+        return self.yoyo_test_dao.update(db, test_id, fields)
