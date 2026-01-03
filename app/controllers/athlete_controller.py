@@ -314,33 +314,47 @@ class AthleteController:
     ) -> AthleteUpdateResponse:
         """
         Actualiza los datos básicos de un atleta y sincroniza con MS de personas.
-        Retorna AthleteUpdateResponse.
+        Similar a admin_update_user: simple y directo.
         """
         athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id, only_active=False)
         if not athlete:
             raise ValidationException("Atleta no encontrado")
 
-        # Extraer campos para MS de personas (no se guardan localmente)
+        # Extraer campos del payload
         direction = update_data.pop("direction", None)
         phone = update_data.pop("phone", None)
         _type_identification = update_data.pop("type_identification", None)
         _type_stament = update_data.pop("type_stament", None)
-        _dni = update_data.pop("dni", None)  # No permitimos cambiar DNI localmente
+        _dni = update_data.pop("dni", None)  # No permitimos cambiar DNI
 
-        # Extraer nombres para actualizar full_name
+        # Extraer nombres
         first_name = update_data.pop("first_name", None)
         last_name = update_data.pop("last_name", None)
 
+        # Para el MS, usar nombres del payload o el full_name actual
+        ms_first = first_name.strip() if first_name else athlete.full_name
+        ms_last = last_name.strip() if last_name else ""
+
+        # Siempre actualizar en MS de usuarios (mantiene sync)
+        new_external = await self.person_ms_service.update_person(
+            external=athlete.external_person_id,
+            first_name=ms_first,
+            last_name=ms_last,
+            dni=athlete.dni,
+            direction=direction,
+            phone=phone,
+        )
+
+        # Actualizar external_person_id
+        update_data["external_person_id"] = new_external
+
         # Actualizar full_name si se enviaron nombres
-        if first_name or last_name:
-            current_names = athlete.full_name.split(" ", 1)
-            new_first = first_name if first_name else current_names[0]
-            new_last = (
-                last_name
-                if last_name
-                else (current_names[1] if len(current_names) > 1 else "")
-            )
-            update_data["full_name"] = f"{new_first} {new_last}".strip()
+        if first_name and last_name:
+            update_data["full_name"] = f"{first_name.strip()} {last_name.strip()}"
+        elif first_name:
+            update_data["full_name"] = first_name.strip()
+        elif last_name:
+            update_data["full_name"] = last_name.strip()
 
         # Convertir birth_date a date_of_birth para el modelo
         birth_date = update_data.pop("birth_date", None)
@@ -360,26 +374,6 @@ class AthleteController:
             sex_value = getattr(sex, "value", str(sex)).upper()
             if sex_value in sex_mapping:
                 update_data["sex"] = sex_mapping[sex_value]
-
-        # Actualizar en MS de personas si hay datos de contacto
-        new_external_person_id = athlete.external_person_id
-        if direction is not None or phone is not None:
-            names = update_data.get("full_name", athlete.full_name).split(" ", 1)
-            ms_first_name = names[0] if names else athlete.full_name
-            ms_last_name = names[1] if len(names) > 1 else ""
-
-            new_external_person_id = await self.person_ms_service.update_person(
-                external=athlete.external_person_id,
-                first_name=ms_first_name,
-                last_name=ms_last_name,
-                dni=athlete.dni,
-                direction=direction,
-                phone=phone,
-            )
-
-        # Actualizar external_person_id si cambió
-        if new_external_person_id != athlete.external_person_id:
-            update_data["external_person_id"] = new_external_person_id
 
         # Actualizar datos locales del atleta
         updated_athlete = self.athlete_dao.update(db, athlete_id, update_data)

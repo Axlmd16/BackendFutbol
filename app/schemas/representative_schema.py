@@ -116,6 +116,15 @@ class RepresentativeCreateDB(BaseModel):
 # RESPONSE SCHEMAS (Salidas)
 
 
+class AthleteBasicInfo(BaseSchema):
+    """Info básica de atleta para listas de representantes."""
+
+    id: int
+    full_name: str
+    dni: str
+    is_active: bool
+
+
 class RepresentativeResponse(BaseSchema):
     """Respuesta básica de representante para listados."""
 
@@ -123,8 +132,11 @@ class RepresentativeResponse(BaseSchema):
     full_name: str
     dni: str
     phone: Optional[str] = None
+    email: Optional[str] = None
     relationship_type: str
     is_active: bool
+    athletes_count: int = 0
+    athletes: list[AthleteBasicInfo] = []
     created_at: Optional[str] = None
 
 

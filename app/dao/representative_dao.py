@@ -3,7 +3,7 @@
 from typing import List, Tuple
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.dao.base import BaseDAO
 from app.models.representative import Representative
@@ -40,8 +40,13 @@ class RepresentativeDAO(BaseDAO[Representative]):
         # Contar total antes de paginar
         total = query.count()
 
-        # Aplicar paginación
-        items = query.offset(filters.skip).limit(filters.limit).all()
+        # Aplicar paginación y eager load de athletes para el conteo
+        items = (
+            query.options(joinedload(self.model.athletes))
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
 
         return items, total
 

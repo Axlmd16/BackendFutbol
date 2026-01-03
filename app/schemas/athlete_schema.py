@@ -186,6 +186,13 @@ class AthleteDetailResponse(BaseSchema):
     type_identification: Optional[str] = None
     type_stament: Optional[str] = None
     photo: Optional[str] = None
+    # Campos del representante (para menores de edad)
+    representative_id: Optional[int] = None
+    representative_name: Optional[str] = None
+    representative_dni: Optional[str] = None
+    representative_phone: Optional[str] = None
+    representative_email: Optional[str] = None
+    representative_relationship: Optional[str] = None
 
 
 class AthleteUpdateResponse(BaseSchema):

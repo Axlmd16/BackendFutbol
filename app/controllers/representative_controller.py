@@ -9,6 +9,7 @@ from app.client.person_ms_service import PersonMSService
 from app.dao.representative_dao import RepresentativeDAO
 from app.models.enums.relationship import Relationship
 from app.schemas.representative_schema import (
+    AthleteBasicInfo,
     RelationshipType,
     RepresentativeCreateDB,
     RepresentativeDetailResponse,
@@ -121,10 +122,23 @@ class RepresentativeController:
                 full_name=rep.full_name,
                 dni=rep.dni,
                 phone=rep.phone,
+                email=rep.email,
                 relationship_type=getattr(
                     rep.relationship_type, "value", str(rep.relationship_type)
                 ),
                 is_active=rep.is_active,
+                athletes_count=len(rep.athletes)
+                if hasattr(rep, "athletes") and rep.athletes
+                else 0,
+                athletes=[
+                    AthleteBasicInfo(
+                        id=ath.id,
+                        full_name=ath.full_name,
+                        dni=ath.dni,
+                        is_active=ath.is_active,
+                    )
+                    for ath in (rep.athletes if rep.athletes else [])
+                ],
                 created_at=(rep.created_at.isoformat() if rep.created_at else None),
             )
             for rep in items
@@ -237,6 +251,7 @@ class RepresentativeController:
     ) -> RepresentativeDetailResponse:
         """
         Actualiza los datos de un representante.
+        Similar a admin_update_user: simple y directo.
         """
         representative = self.representative_dao.get_by_id(
             db=db, id=representative_id, only_active=False
@@ -244,48 +259,52 @@ class RepresentativeController:
         if not representative:
             raise ValidationException("Representante no encontrado")
 
-        update_data = data.model_dump(exclude_unset=True)
+        # Usar nombres del payload o los actuales
+        first_name = data.first_name.strip() if data.first_name else None
+        last_name = data.last_name.strip() if data.last_name else None
+
+        # Para el MS necesitamos nombres, usar actuales si no se enviaron
+        ms_first = first_name if first_name else representative.full_name
+        ms_last = last_name if last_name else ""
+
+        # Actualizar en MS de usuarios (siempre, para mantener sync)
+        new_external = await self.person_ms_service.update_person(
+            external=representative.external_person_id,
+            first_name=ms_first,
+            last_name=ms_last,
+            dni=representative.dni,
+            direction=data.direction,
+            phone=data.phone,
+        )
+
+        # Construir datos para actualizar localmente
+        update_data = {
+            "external_person_id": new_external,
+        }
 
         # Actualizar full_name si se enviaron nombres
-        first_name = update_data.pop("first_name", None)
-        last_name = update_data.pop("last_name", None)
-        if first_name or last_name:
-            current_names = representative.full_name.split(" ", 1)
-            new_first = first_name if first_name else current_names[0]
-            new_last = (
-                last_name
-                if last_name
-                else (current_names[1] if len(current_names) > 1 else "")
-            )
-            update_data["full_name"] = f"{new_first} {new_last}".strip()
+        if first_name and last_name:
+            update_data["full_name"] = f"{first_name} {last_name}"
+        elif first_name:
+            update_data["full_name"] = first_name
+        elif last_name:
+            update_data["full_name"] = last_name
+
+        # Agregar phone y email si se enviaron
+        if data.phone is not None:
+            update_data["phone"] = data.phone
+        if data.email is not None:
+            update_data["email"] = data.email
 
         # Convertir relationship_type si está presente
-        relationship_type = update_data.pop("relationship_type", None)
-        if relationship_type:
+        if data.relationship_type:
             relationship_mapping = {
                 RelationshipType.FATHER: Relationship.FATHER,
                 RelationshipType.MOTHER: Relationship.MOTHER,
                 RelationshipType.LEGAL_GUARDIAN: Relationship.LEGAL_GUARDIAN,
             }
             update_data["relationship_type"] = relationship_mapping.get(
-                relationship_type, Relationship.LEGAL_GUARDIAN
-            )
-
-        # Actualizar en MS si hay datos de contacto
-        direction = update_data.get("direction")
-        phone = update_data.get("phone")
-        if direction is not None or phone is not None:
-            names = update_data.get("full_name", representative.full_name).split(" ", 1)
-            ms_first_name = names[0] if names else representative.full_name
-            ms_last_name = names[1] if len(names) > 1 else ""
-
-            await self.person_ms_service.update_person(
-                external=representative.external_person_id,
-                first_name=ms_first_name,
-                last_name=ms_last_name,
-                dni=representative.dni,
-                direction=direction,
-                phone=phone,
+                data.relationship_type, Relationship.LEGAL_GUARDIAN
             )
 
         # Actualizar localmente
