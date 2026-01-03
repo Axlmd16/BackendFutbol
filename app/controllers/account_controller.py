@@ -64,12 +64,19 @@ class AccountController:
             account: Cuenta autenticada para la que se generará el token.
 
         Returns:
-            str: JWT firmado que incluye `sub`, rol y email.
+            str: JWT firmado que incluye `sub`, rol, email y nombre.
         """
+        # Obtener nombre del usuario relacionado
+        full_name = account.user.full_name if account.user else None
+
         return create_access_token(
             subject=account.id,
             expires_seconds=settings.TOKEN_EXPIRES,
-            extra_claims={"role": account.role.value, "email": account.email},
+            extra_claims={
+                "role": account.role.value,
+                "email": account.email,
+                "full_name": full_name,
+            },
         )
 
     def request_password_reset(
