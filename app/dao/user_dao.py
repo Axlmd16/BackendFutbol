@@ -75,3 +75,29 @@ class UserDAO(BaseDAO[User]):
         )
 
         return items, total
+
+    def get_interns_with_filters(self, db: Session, filters) -> Tuple[List[User], int]:
+        """
+        Obtiene usuarios con rol INTERN con paginación y búsqueda.
+        """
+        query = db.query(self.model).filter(self.model.account.has(role=Role.INTERN))
+
+        if filters.search:
+            search_norm = filters.search.strip()
+            query = query.filter(
+                or_(
+                    self.model.full_name.ilike(f"%{search_norm}%"),
+                    self.model.dni.ilike(f"%{search_norm}%"),
+                )
+            )
+
+        total = query.count()
+
+        items = (
+            query.order_by(self.model.id.desc())
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+
+        return items, total

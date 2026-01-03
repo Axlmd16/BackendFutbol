@@ -6,6 +6,7 @@ from app.client.person_ms_service import PersonMSService
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.representative_dao import RepresentativeDAO
 from app.dao.statistic_dao import StatisticDAO
+from app.dao.user_dao import UserDAO
 from app.models.enums.relationship import Relationship
 from app.models.enums.sex import Sex
 from app.schemas.athlete_schema import (
@@ -36,6 +37,7 @@ class AthleteController:
         self.athlete_dao = AthleteDAO()
         self.statistic_dao = StatisticDAO()
         self.representative_dao = RepresentativeDAO()
+        self.user_dao = UserDAO()
         self.person_ms_service = PersonMSService()
 
     async def register_athlete_unl(
@@ -273,6 +275,15 @@ class AthleteController:
         """
         items, total = self.athlete_dao.get_all_with_filters(db, filters=filters)
 
+        # Obtener DNIs de todos los atletas para verificar cuentas
+        athlete_dnis = [athlete.dni for athlete in items]
+
+        # Verificar cuáles tienen cuenta en el sistema
+        existing_users = {}
+        for dni in athlete_dnis:
+            user = self.user_dao.get_by_field(db, "dni", dni, only_active=False)
+            existing_users[dni] = user is not None
+
         athlete_responses = [
             AthleteResponse(
                 id=athlete.id,
@@ -281,6 +292,7 @@ class AthleteController:
                 type_athlete=athlete.type_athlete,
                 sex=getattr(athlete.sex, "value", str(athlete.sex)),
                 is_active=athlete.is_active,
+                has_account=existing_users.get(athlete.dni, False),
                 height=athlete.height,
                 weight=athlete.weight,
                 created_at=(
