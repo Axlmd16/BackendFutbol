@@ -157,6 +157,7 @@ class AthleteResponse(BaseSchema):
     type_athlete: str
     sex: str
     is_active: bool
+    has_account: bool = False  # True si ya tiene cuenta en el sistema (pasante)
     height: Optional[float] = None
     weight: Optional[float] = None
     created_at: Optional[str] = None
