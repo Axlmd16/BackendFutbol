@@ -81,8 +81,25 @@ class ReportController:
             athlete_id=filters.athlete_id,
         )
 
+        # Si no hay atletas, igual devolvemos un reporte vacío para no romper UX
         if not athletes:
-            raise ValidationException("No se encontraron atletas con los filtros especificados")
+            logger.warning("Reporte sin atletas para los filtros dados")
+            return {
+                "athletes": [],
+                "attendance": [],
+                "evaluations": [],
+                "tests": {
+                    "sprint": [],
+                    "endurance": [],
+                    "yoyo": [],
+                    "technical": [],
+                },
+                "statistics": {
+                    "total_attendance": 0,
+                    "total_evaluations": 0,
+                    "total_tests": 0,
+                },
+            }
 
         athlete_ids = [athlete.id for athlete in athletes]
 
@@ -477,8 +494,7 @@ class ReportController:
         self,
         db: Session,
         filters: ReportFilter,
-        user_dni: str,
-    ) -> ReportGenerationResponse:
+    ) -> BytesIO:
         """
         Genera un reporte completo con los datos especificados.
 
@@ -495,41 +511,24 @@ class ReportController:
             report_data = self.collect_report_data(db=db, filters=filters)
 
             # Generar archivo según formato
-            report_id = str(uuid.uuid4())
-            filename = f"reporte_deportivo_{report_id[:8]}"
-
             if filters.format == "csv":
                 file_content = self.generate_csv_report(report_data, filters)
-                filename += ".csv"
-                mime_type = "text/csv"
             elif filters.format == "xlsx":
                 file_content = self.generate_xlsx_report(report_data, filters)
-                filename += ".xlsx"
-                mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             elif filters.format == "pdf":
                 file_content = self.generate_pdf_report(report_data, filters)
-                filename += ".pdf"
-                mime_type = "application/pdf"
             else:
                 raise ValidationException(f"Formato no soportado: {filters.format}")
 
-            file_size = len(file_content.getvalue())
+            file_content.seek(0)
 
             logger.info(
-                f"Reporte generado exitosamente. ID: {report_id}, "
-                f"Formato: {filters.format}, Tamaño: {file_size} bytes"
+                "Reporte generado exitosamente | Formato: %s | Tamaño: %s bytes",
+                filters.format,
+                len(file_content.getvalue()),
             )
 
-            return ReportGenerationResponse(
-                report_id=report_id,
-                format=filters.format,
-                file_name=filename,
-                file_size=file_size,
-                generated_at=datetime.now().isoformat(),
-                expires_at=(
-                    (datetime.now().timestamp() + 86400) if file_size < 104857600 else None
-                ),
-            )
+            return file_content
 
         except Exception as e:
             logger.error(f"Error generando reporte: {str(e)}")

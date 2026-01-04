@@ -11,7 +11,7 @@ from app.schemas.base_schema import BaseSchema
 class ReportFilter(BaseModel):
     """Filtros para generación de reportes."""
 
-    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
 
     club_id: Optional[int] = Field(None, description="ID del club/escuela")
     athlete_id: Optional[int] = Field(None, description="ID del deportista")
@@ -27,7 +27,13 @@ class ReportFilter(BaseModel):
         default=True, description="Incluir resultados de pruebas"
     )
     format: str = Field(
-        default="xlsx", description="Formato: pdf, csv, xlsx", pattern="^(pdf|csv|xlsx)$"
+        default="xlsx",
+        description="Formato: pdf, csv, xlsx",
+        pattern="^(?i)(pdf|csv|xlsx)$",  # permite mayúsculas y minúsculas
+    )
+    report_type: str = Field(
+        default="all",
+        description="Tipo de reporte: attendance, evaluation, results, all",
     )
 
 
