@@ -1,149 +1,213 @@
-"""Router de reportes deportivos con endpoints para generación de reportes."""
+"""Router de reportes deportivos con endpoints específicos."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.controllers.report_controller import ReportController
 from app.core.database import get_db
 from app.models.account import Account
-from app.schemas.report_schema import ReportFilter, ReportGenerationResponse
-from app.schemas.response import ResponseSchema
+from app.schemas.report_schema import ReportFilter, ReportType
 from app.utils.exceptions import AppException, ValidationException
 from app.utils.security import get_current_account
-from datetime import date, datetime
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 report_controller = ReportController()
 
 
-@router.get(
-    "",
+@router.post(
+    "/attendance",
     response_model=None,
     status_code=status.HTTP_200_OK,
-    summary="Generar reporte deportivo",
+    summary="Generar reporte de asistencia",
     description=(
-        "Genera un reporte con datos de atletas, asistencia, evaluaciones y resultados "
-        "de pruebas. Soporta filtros por club, atleta y rango de fechas. "
-        "Permite exportar en formatos PDF, CSV o XLSX."
+        "Genera un reporte formal de asistencia con datos de deportistas, "
+        "porcentajes de asistencia y resúmenes. Soporta filtros por tipo de atleta, "
+        "sexo y rango de fechas."
     ),
 )
-def generate_report(
-    format: Annotated[str | None, Query()] = "PDF",
-    start_date: Annotated[str | None, Query()] = None,
-    end_date: Annotated[str | None, Query()] = None,
-    club_id: Annotated[int | None, Query()] = None,
-    athlete_id: Annotated[int | None, Query()] = None,
-    report_type: Annotated[str | None, Query()] = "all",
-    include_attendance: Annotated[str | bool | None, Query()] = True,
-    include_evaluations: Annotated[str | bool | None, Query()] = True,
-    include_tests: Annotated[str | bool | None, Query()] = True,
-    db: Annotated[Session, Depends(get_db)] = None,
-    current_user: Annotated[Account, Depends(get_current_account)] = None,
+def generate_attendance_report(
+    filters: ReportFilter,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
 ):
     """
-    Genera un reporte deportivo con los filtros especificados.
+    Genera reporte de asistencia.
 
-    - **format**: Formato del archivo: PDF, CSV, XLSX (requerido)
-    - **club_id**: Opcional. Filtra por club/escuela
-    - **athlete_id**: Opcional. Filtra por deportista específico
-    - **start_date**: Opcional. Fecha de inicio (YYYY-MM-DD)
-    - **end_date**: Opcional. Fecha de fin (YYYY-MM-DD)
-    - **report_type**: Tipo de reporte: attendance, evaluation, results, all (default: all)
+    - **format**: Formato del archivo: pdf, xlsx, csv
+    - **start_date**: Fecha de inicio (YYYY-MM-DD)
+    - **end_date**: Fecha de fin (YYYY-MM-DD)
+    - **athlete_type**: Filtro por tipo de deportista
+    - **sex**: Filtro por sexo
     """
     try:
-        # Validación de formato
-        fmt = (format or "PDF").upper()
-        if fmt not in ["PDF", "CSV", "XLSX"]:
-            raise ValidationException(f"Formato inválido: {format}. Use PDF, CSV o XLSX")
-
-        # Validación de permisos
-        if current_user.user.role not in ["ADMINISTRATOR", "COACH"]:
+        # Validar permisos
+        user_role = current_user.user.role
+        role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
+        if role_value not in ["Administrator", "Coach"]:
             raise ValidationException("No tiene permisos para generar reportes")
 
-        # Normalizar fechas: strings vacíos -> None
-        parsed_start = None
-        parsed_end = None
-        try:
-            if start_date:
-                parsed_start = datetime.strptime(start_date, "%Y-%m-%d").date()
-            if end_date:
-                parsed_end = datetime.strptime(end_date, "%Y-%m-%d").date()
-        except ValueError:
-            raise ValidationException("Fechas inválidas. Usa formato YYYY-MM-DD")
-
-        # Normalizar booleans (acepta "true"/"false"/1/0)
-        def to_bool(val: str | bool | None, default: bool) -> bool:
-            if val is None or val == "":
-                return default
-            if isinstance(val, bool):
-                return val
-            v = str(val).strip().lower()
-            if v in ["true", "1", "yes", "on"]:
-                return True
-            if v in ["false", "0", "no", "off"]:
-                return False
-            return default
-
-        inc_att = to_bool(include_attendance, True)
-        inc_eval = to_bool(include_evaluations, True)
-        inc_tests = to_bool(include_tests, True)
-
-        # Report type por defecto
-        rpt_type = (report_type or "all").strip() or "all"
-
-        # Crear filtros
-        filters = ReportFilter(
-            format=fmt.lower(),
-            start_date=parsed_start,
-            end_date=parsed_end,
-            club_id=club_id,
-            athlete_id=athlete_id,
-            report_type=rpt_type,
-            include_attendance=inc_att,
-            include_evaluations=inc_eval,
-            include_tests=inc_tests,
-        )
-
-        # Si es coach, solo puede ver su club
-        if current_user.user.role == "COACH":
-            if club_id and current_user.club_id != club_id:
-                raise ValidationException("No tiene permiso para acceder a este club")
-            filters.club_id = current_user.club_id
+        # Forzar tipo de reporte
+        filters.report_type = ReportType.ATTENDANCE
 
         # Generar reporte
-        file_content = report_controller.generate_report(db=db, filters=filters)
+        file_content = report_controller.generate_report(
+            db=db,
+            filters=filters,
+            user_name=current_user.user.full_name,
+        )
 
         # Determinar content type
         content_types = {
-            "PDF": "application/pdf",
-            "CSV": "text/csv",
-            "XLSX": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "pdf": "application/pdf",
+            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "csv": "text/csv",
         }
-        content_type = content_types.get(fmt, "application/octet-stream")
+        content_type = content_types.get(filters.format, "application/octet-stream")
 
-        # Determinar extensión
-        extensions = {
-            "PDF": "pdf",
-            "CSV": "csv",
-            "XLSX": "xlsx",
-        }
-        ext = extensions.get(fmt, "file")
+        # Nombre del archivo
+        file_name = f"reporte_asistencia.{filters.format}"
 
-        # Usamos el buffer directamente para no duplicar memoria
-        file_content.seek(0)
         return StreamingResponse(
             file_content,
             media_type=content_type,
-            headers={"Content-Disposition": f"attachment; filename=reporte.{ext}"},
+            headers={"Content-Disposition": f"attachment; filename={file_name}"},
         )
 
     except ValidationException as e:
-        raise AppException(status_code=400, message=str(e))
+        raise AppException(status_code=400, message=str(e)) from e
     except Exception as e:
-        raise AppException(status_code=500, message=f"Error al generar reporte: {str(e)}")
+        raise AppException(
+            status_code=500, message=f"Error al generar reporte: {str(e)}"
+        ) from e
 
 
+@router.post(
+    "/tests",
+    response_model=None,
+    status_code=status.HTTP_200_OK,
+    summary="Generar reporte de evaluaciones y tests",
+    description=(
+        "Genera un reporte formal con resultados de tests físicos (sprint, etc.."
+        "técnicos). Incluye promedios y resúmenes por tipo de test."
+    ),
+)
+def generate_tests_report(
+    filters: ReportFilter,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """
+    Genera reporte de evaluaciones y tests.
 
+    - **format**: Formato del archivo: pdf, xlsx, csv
+    - **start_date**: Fecha de inicio
+    - **end_date**: Fecha de fin
+    - **athlete_type**: Filtro por tipo de deportista
+    """
+    try:
+        # Validar permisos
+        user_role = current_user.user.role
+        role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
+        if role_value not in ["Administrator", "Coach"]:
+            raise ValidationException("No tiene permisos para generar reportes")
+
+        # Forzar tipo de reporte
+        filters.report_type = ReportType.TESTS
+
+        # Generar reporte
+        file_content = report_controller.generate_report(
+            db=db,
+            filters=filters,
+            user_name=current_user.user.full_name,
+        )
+
+        # Content type
+        content_types = {
+            "pdf": "application/pdf",
+            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "csv": "text/csv",
+        }
+        content_type = content_types.get(filters.format, "application/octet-stream")
+
+        # Nombre del archivo
+        file_name = f"reporte_tests.{filters.format}"
+
+        return StreamingResponse(
+            file_content,
+            media_type=content_type,
+            headers={"Content-Disposition": f"attachment; filename={file_name}"},
+        )
+
+    except ValidationException as e:
+        raise AppException(status_code=400, message=str(e)) from e
+    except Exception as e:
+        raise AppException(
+            status_code=500, message=f"Error al generar reporte: {str(e)}"
+        ) from e
+
+
+@router.post(
+    "/statistics",
+    response_model=None,
+    status_code=status.HTTP_200_OK,
+    summary="Generar reporte de estadísticas generales",
+    description=(
+        "Genera un reporte ejecutivo con estadísticas consolidadas del club: "
+        "totales de deportistas, evaluaciones, tests, y resúmenes generales."
+    ),
+)
+def generate_statistics_report(
+    filters: ReportFilter,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """
+    Genera reporte de estadísticas generales.
+
+    - **format**: Formato del archivo: pdf, xlsx, csv
+    - **athlete_type**: Filtro por tipo de deportista
+    - **sex**: Filtro por sexo
+    """
+    try:
+        # Validar permisos
+        user_role = current_user.user.role
+        role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
+        if role_value not in ["Administrator", "Coach"]:
+            raise ValidationException("No tiene permisos para generar reportes")
+
+        # Forzar tipo de reporte
+        filters.report_type = ReportType.STATISTICS
+
+        # Generar reporte
+        file_content = report_controller.generate_report(
+            db=db,
+            filters=filters,
+            user_name=current_user.user.full_name,
+        )
+
+        # Content type
+        content_types = {
+            "pdf": "application/pdf",
+            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "csv": "text/csv",
+        }
+        content_type = content_types.get(filters.format, "application/octet-stream")
+
+        # Nombre del archivo
+        file_name = f"reporte_estadisticas.{filters.format}"
+
+        return StreamingResponse(
+            file_content,
+            media_type=content_type,
+            headers={"Content-Disposition": f"attachment; filename={file_name}"},
+        )
+
+    except ValidationException as e:
+        raise AppException(status_code=400, message=str(e)) from e
+    except Exception as e:
+        raise AppException(
+            status_code=500, message=f"Error al generar reporte: {str(e)}"
+        ) from e

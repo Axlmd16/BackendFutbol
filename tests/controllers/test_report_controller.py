@@ -1,11 +1,13 @@
 """Tests para el controlador de reportes."""
 
-import pytest
-from datetime import date, datetime
+from datetime import date
+from io import BytesIO
 from unittest.mock import Mock, patch
 
+import pytest
+
 from app.controllers.report_controller import ReportController
-from app.schemas.report_schema import ReportFilter
+from app.schemas.report_schema import ReportFilter, ReportType
 from app.utils.exceptions import ValidationException
 
 
@@ -15,120 +17,152 @@ class TestReportController:
     def setup_method(self):
         """Configuración para cada test."""
         self.controller = ReportController()
+        self.mock_db = Mock()
 
-    def test_validate_filters_invalid_date_range(self):
-        """Verifica que se valide correctamente el rango de fechas."""
+    def test_generate_report_attendance_pdf(self):
+        """Verifica generación de reporte de asistencia en PDF."""
         filters = ReportFilter(
-            start_date=date(2026, 1, 15),
-            end_date=date(2026, 1, 1),
-            format="csv",
-        )
-
-        with pytest.raises(ValidationException) as exc_info:
-            self.controller.validate_filters(filters)
-
-        assert "start_date debe ser menor o igual a end_date" in str(exc_info.value)
-
-    def test_validate_filters_no_inclusion_filters(self):
-        """Verifica que al menos un filtro de inclusión esté activo."""
-        filters = ReportFilter(
-            format="csv",
-            include_attendance=False,
-            include_evaluations=False,
-            include_tests=False,
-        )
-
-        with pytest.raises(ValidationException) as exc_info:
-            self.controller.validate_filters(filters)
-
-        assert "Al menos uno de los filtros de inclusión debe estar activo" in str(
-            exc_info.value
-        )
-
-    def test_validate_filters_valid(self):
-        """Verifica que filters válidos no levanten excepciones."""
-        filters = ReportFilter(
+            report_type=ReportType.ATTENDANCE,
+            format="pdf",
             start_date=date(2026, 1, 1),
-            end_date=date(2026, 1, 15),
-            format="csv",
-            include_attendance=True,
+            end_date=date(2026, 1, 31),
         )
 
-        # No debe lanzar excepción
-        self.controller.validate_filters(filters)
+        with patch.object(
+            self.controller.report_service,
+            "generate_attendance_report",
+            return_value=BytesIO(b"PDF content"),
+        ) as mock_generate:
+            result = self.controller.generate_report(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
 
-    def test_generate_csv_report_basic(self):
-        """Verifica la generación básica de reporte CSV."""
-        from app.models.athlete import Athlete
+            assert result is not None
+            assert isinstance(result, BytesIO)
+            mock_generate.assert_called_once()
 
-        # Mock de datos
-        athlete = Mock(spec=Athlete)
-        athlete.id = 1
-        athlete.full_name = "Test Athlete"
+    def test_generate_report_tests_csv(self):
+        """Verifica generación de reporte de tests en CSV."""
+        filters = ReportFilter(
+            report_type=ReportType.TESTS,
+            format="csv",
+        )
 
-        report_data = {
-            "athletes": [athlete],
-            "attendance": [],
-            "evaluations": [],
-            "tests": {
-                "sprint": [],
-                "endurance": [],
-                "yoyo": [],
-                "technical": [],
-            },
-            "statistics": {
-                "total_attendance": 0,
-                "total_evaluations": 0,
-                "total_tests": 0,
-            },
-        }
+        with patch.object(
+            self.controller.report_service,
+            "generate_tests_report",
+            return_value=BytesIO(b"CSV content"),
+        ) as mock_generate:
+            result = self.controller.generate_report(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
 
-        filters = ReportFilter(format="csv")
+            assert result is not None
+            mock_generate.assert_called_once_with(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
 
-        result = self.controller.generate_csv_report(report_data, filters)
+    def test_generate_report_statistics_xlsx(self):
+        """Verifica generación de reporte de estadísticas en XLSX."""
+        filters = ReportFilter(
+            report_type=ReportType.STATISTICS,
+            format="xlsx",
+        )
 
-        assert result is not None
-        content = result.getvalue()
-        assert b"REPORTE DEPORTIVO" in content
-        assert b"Total de Atletas: 1" in content
+        with patch.object(
+            self.controller.report_service,
+            "generate_statistics_report",
+            return_value=BytesIO(b"XLSX content"),
+        ) as mock_generate:
+            result = self.controller.generate_report(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
 
-    def test_generate_xlsx_report_basic(self):
-        """Verifica la generación básica de reporte XLSX."""
-        from app.models.athlete import Athlete
-        from io import BytesIO
+            assert result is not None
+            mock_generate.assert_called_once()
 
-        # Mock de datos
-        athlete = Mock(spec=Athlete)
-        athlete.id = 1
-        athlete.full_name = "Test Athlete"
+    def test_generate_report_no_type(self):
+        """Verifica que falle si no se especifica tipo de reporte."""
+        filters = ReportFilter(format="pdf")
 
-        report_data = {
-            "athletes": [athlete],
-            "attendance": [],
-            "evaluations": [],
-            "tests": {
-                "sprint": [],
-                "endurance": [],
-                "yoyo": [],
-                "technical": [],
-            },
-            "statistics": {
-                "total_attendance": 0,
-                "total_evaluations": 0,
-                "total_tests": 0,
-            },
-        }
+        with pytest.raises(ValidationException) as exc_info:
+            self.controller.generate_report(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
 
-        filters = ReportFilter(format="xlsx")
+        assert "tipo de reporte" in str(exc_info.value).lower()
 
-        result = self.controller.generate_xlsx_report(report_data, filters)
+    def test_generate_report_with_filters(self):
+        """Verifica que los filtros se pasen correctamente."""
+        from app.schemas.athlete_schema import SexInput
+        from app.schemas.user_schema import TypeStament
 
-        assert result is not None
-        assert isinstance(result, BytesIO)
+        filters = ReportFilter(
+            report_type=ReportType.ATTENDANCE,
+            format="pdf",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            athlete_type=TypeStament.EXTERNOS,
+            sex=SexInput.MALE,
+        )
+
+        with patch.object(
+            self.controller.report_service,
+            "generate_attendance_report",
+            return_value=BytesIO(b"PDF with filters"),
+        ) as mock_generate:
+            self.controller.generate_report(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
+
+            # Verificar que se llamó con los filtros correctos
+            call_args = mock_generate.call_args
+            assert call_args[1]["filters"] == filters
+
+    def test_generate_report_with_athlete_id(self):
+        """Verifica generación de reporte individual (con athlete_id)."""
+        filters = ReportFilter(
+            report_type=ReportType.ATTENDANCE,
+            format="pdf",
+            athlete_id=123,
+        )
+
+        with patch.object(
+            self.controller.report_service,
+            "generate_attendance_report",
+            return_value=BytesIO(b"Individual report"),
+        ) as mock_generate:
+            result = self.controller.generate_report(
+                db=self.mock_db, filters=filters, user_name="Test User"
+            )
+
+            assert result is not None
+            # Verificar que athlete_id se pasó
+            call_args = mock_generate.call_args
+            assert call_args[1]["filters"].athlete_id == 123
 
     def test_generate_report_invalid_format(self):
-        """Verifica que un formato inválido lance excepción."""
+        """Verifica que un formato inválido lance excepción Pydantic."""
         from pydantic_core import ValidationError
 
         with pytest.raises(ValidationError):
-            ReportFilter(format="invalid_format")
+            ReportFilter(report_type=ReportType.ATTENDANCE, format="invalid_format")
+
+    def test_generate_report_service_exception(self):
+        """Verifica manejo de excepciones del servicio de reportes."""
+        filters = ReportFilter(
+            report_type=ReportType.ATTENDANCE,
+            format="pdf",
+        )
+
+        with patch.object(
+            self.controller.report_service,
+            "generate_attendance_report",
+            side_effect=Exception("Service error"),
+        ):
+            with pytest.raises(ValidationException) as exc_info:
+                self.controller.generate_report(
+                    db=self.mock_db, filters=filters, user_name="Test User"
+                )
+
+            assert "error al generar reporte" in str(exc_info.value).lower()

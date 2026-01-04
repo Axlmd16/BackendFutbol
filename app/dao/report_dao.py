@@ -1,15 +1,15 @@
 """DAO para generación de reportes deportivos."""
 
 from datetime import date
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
-from app.models.attendance import Attendance
 from app.models.athlete import Athlete
-from app.models.evaluation import Evaluation
+from app.models.attendance import Attendance
 from app.models.endurance_test import EnduranceTest
+from app.models.evaluation import Evaluation
 from app.models.sprint_test import SprintTest
 from app.models.technical_assessment import TechnicalAssessment
 from app.models.yoyo_test import YoyoTest
@@ -35,7 +35,7 @@ class ReportDAO:
         Returns:
             Lista de atletas
         """
-        query = db.query(Athlete).filter(Athlete.is_active == True)
+        query = db.query(Athlete).filter(Athlete.is_active)
 
         if club_id:
             query = query.filter(Athlete.club_id == club_id)
@@ -67,14 +67,12 @@ class ReportDAO:
         query = db.query(Attendance).filter(Attendance.athlete_id.in_(athlete_ids))
 
         if start_date:
-            query = query.filter(Attendance.attendance_date >= start_date)
+            query = query.filter(Attendance.date >= start_date)
 
         if end_date:
-            query = query.filter(Attendance.attendance_date <= end_date)
+            query = query.filter(Attendance.date <= end_date)
 
-        return query.order_by(
-            Attendance.athlete_id, Attendance.attendance_date.desc()
-        ).all()
+        return query.order_by(Attendance.athlete_id, Attendance.date.desc()).all()
 
     def get_evaluations(
         self,
@@ -84,7 +82,7 @@ class ReportDAO:
         end_date: Optional[date] = None,
     ) -> List[Evaluation]:
         """
-        Obtiene evaluaciones para atletas.
+        Obtiene evaluaciones para atletas (a través de sus tests).
 
         Args:
             db: Sesión de BD
@@ -95,17 +93,22 @@ class ReportDAO:
         Returns:
             Lista de evaluaciones
         """
-        query = db.query(Evaluation).filter(Evaluation.athlete_id.in_(athlete_ids))
+        from app.models.test import Test
+
+        # Evaluations don't have athlete_id directly - we get them through tests
+        query = (
+            db.query(Evaluation)
+            .join(Test, Evaluation.id == Test.evaluation_id)
+            .filter(Test.athlete_id.in_(athlete_ids))
+        )
 
         if start_date:
-            query = query.filter(Evaluation.created_at >= start_date)
+            query = query.filter(Evaluation.date >= start_date)
 
         if end_date:
-            query = query.filter(Evaluation.created_at <= end_date)
+            query = query.filter(Evaluation.date <= end_date)
 
-        return query.order_by(
-            Evaluation.athlete_id, Evaluation.created_at.desc()
-        ).all()
+        return query.distinct().order_by(Evaluation.date.desc()).all()
 
     def get_sprint_tests(
         self,
@@ -134,9 +137,7 @@ class ReportDAO:
         if end_date:
             query = query.filter(SprintTest.created_at <= end_date)
 
-        return query.order_by(
-            SprintTest.athlete_id, SprintTest.created_at.desc()
-        ).all()
+        return query.order_by(SprintTest.athlete_id, SprintTest.created_at.desc()).all()
 
     def get_endurance_tests(
         self,
@@ -252,33 +253,42 @@ class ReportDAO:
         Returns:
             Diccionario con estadísticas
         """
+        # 1. Asistencia
         filters = [Attendance.athlete_id.in_(athlete_ids)] if athlete_ids else []
         if start_date:
-            filters.append(Attendance.attendance_date >= start_date)
+            filters.append(Attendance.date >= start_date)
         if end_date:
-            filters.append(Attendance.attendance_date <= end_date)
+            filters.append(Attendance.date <= end_date)
 
         attendance_count = db.query(func.count(Attendance.id))
         if filters:
             attendance_count = attendance_count.filter(and_(*filters))
         attendance_count = attendance_count.scalar() or 0
 
-        eval_filters = [Evaluation.athlete_id.in_(athlete_ids)] if athlete_ids else []
+        # 2. Evaluaciones (via Tests)
+        from app.models.test import Test
+
+        eval_query = db.query(func.count(func.distinct(Evaluation.id)))
+
+        if athlete_ids:
+            eval_query = eval_query.join(
+                Test, Evaluation.id == Test.evaluation_id
+            ).filter(Test.athlete_id.in_(athlete_ids))
+
         if start_date:
-            eval_filters.append(Evaluation.created_at >= start_date)
+            eval_query = eval_query.filter(Evaluation.date >= start_date)
         if end_date:
-            eval_filters.append(Evaluation.created_at <= end_date)
+            eval_query = eval_query.filter(Evaluation.date <= end_date)
 
-        evaluations_count = db.query(func.count(Evaluation.id))
-        if eval_filters:
-            evaluations_count = evaluations_count.filter(and_(*eval_filters))
-        evaluations_count = evaluations_count.scalar() or 0
+        evaluations_count = eval_query.scalar() or 0
 
+        # 3. Tests (Sprint) use as proxy for "tests" or count all?
+        # Original code counted SprintTest only, preserving that but fixing dates.
         test_filters = [SprintTest.athlete_id.in_(athlete_ids)] if athlete_ids else []
         if start_date:
-            test_filters.append(SprintTest.created_at >= start_date)
+            test_filters.append(SprintTest.date >= start_date)
         if end_date:
-            test_filters.append(SprintTest.created_at <= end_date)
+            test_filters.append(SprintTest.date <= end_date)
 
         sprint_count = db.query(func.count(SprintTest.id))
         if test_filters:

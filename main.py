@@ -23,6 +23,7 @@ from app.services.routers import (
     attendance_router,
     endurance_test_router,
     evaluation_router,
+    report_router,
     representative_router,
     sprint_test_router,
     statistic_router,
@@ -171,6 +172,7 @@ def create_application() -> FastAPI:
     app.include_router(yoyo_test_router, prefix=API_PREFIX)
     app.include_router(technical_assessment_router, prefix=API_PREFIX)
     app.include_router(representative_router, prefix=API_PREFIX)
+    app.include_router(report_router, prefix=API_PREFIX)
 
     @app.get("/", include_in_schema=False)
     async def root():

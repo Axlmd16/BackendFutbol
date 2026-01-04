@@ -1,11 +1,22 @@
 """Esquemas Pydantic para reportes deportivos."""
 
-from datetime import date
-from typing import List, Optional
+from datetime import date, datetime
+from enum import Enum
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.athlete_schema import SexInput
 from app.schemas.base_schema import BaseSchema
+from app.schemas.user_schema import TypeStament
+
+
+class ReportType(str, Enum):
+    """Tipos de reportes disponibles."""
+
+    ATTENDANCE = "attendance"
+    TESTS = "tests"
+    STATISTICS = "statistics"
 
 
 class ReportFilter(BaseModel):
@@ -13,27 +24,41 @@ class ReportFilter(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
 
-    club_id: Optional[int] = Field(None, description="ID del club/escuela")
-    athlete_id: Optional[int] = Field(None, description="ID del deportista")
+    # Tipo y formato
+    report_type: Optional[ReportType] = Field(
+        default=None, description="Tipo de reporte específico"
+    )
+    format: Literal["pdf", "xlsx", "csv"] = Field(
+        default="pdf",
+        description="Formato de exportación",
+    )
+
+    # Filtros temporales
     start_date: Optional[date] = Field(None, description="Fecha inicio (YYYY-MM-DD)")
     end_date: Optional[date] = Field(None, description="Fecha fin (YYYY-MM-DD)")
-    include_attendance: bool = Field(
-        default=True, description="Incluir datos de asistencia"
+
+    # Filtros de atletas
+    athlete_id: Optional[int] = Field(None, description="ID del deportista específico")
+    athlete_type: Optional[TypeStament] = Field(None, description="Tipo de deportista")
+    sex: Optional[SexInput] = Field(None, description="Sexo")
+
+
+class ReportMetadata(BaseModel):
+    """Metadata formal para reportes."""
+
+    title: str = Field(..., description="Título del reporte")
+    system_name: str = Field(
+        default="Sistema Kallpa UNL", description="Nombre del sistema"
     )
-    include_evaluations: bool = Field(
-        default=True, description="Incluir datos de evaluaciones"
+    generated_at: datetime = Field(
+        default_factory=datetime.now, description="Fecha y hora de generación"
     )
-    include_tests: bool = Field(
-        default=True, description="Incluir resultados de pruebas"
+    generated_by: str = Field(..., description="Usuario que generó el reporte")
+    filters_applied: dict = Field(
+        default_factory=dict, description="Filtros aplicados al reporte"
     )
-    format: str = Field(
-        default="xlsx",
-        description="Formato: pdf, csv, xlsx",
-        pattern="^(?i)(pdf|csv|xlsx)$",  # permite mayúsculas y minúsculas
-    )
-    report_type: str = Field(
-        default="all",
-        description="Tipo de reporte: attendance, evaluation, results, all",
+    period: Optional[str] = Field(
+        None, description="Período del reporte (ej: Enero 2025)"
     )
 
 
@@ -42,32 +67,30 @@ class AttendanceReportData(BaseSchema):
 
     athlete_id: int
     athlete_name: str
-    attendance_date: date
-    attendance_time: Optional[str] = None
-    attendance_status: str  # PRESENT, ABSENT, LATE
+    athlete_type: str
+    total_sessions: int
+    attended_sessions: int
+    attendance_percentage: float
 
 
-class EvaluationReportData(BaseSchema):
-    """Datos de evaluación para reporte."""
-
-    athlete_id: int
-    athlete_name: str
-    evaluation_date: date
-    evaluation_type: str
-    score: Optional[float] = None
-    comments: Optional[str] = None
-
-
-class TestResultReportData(BaseSchema):
-    """Datos de resultados de pruebas para reporte."""
+class TestReportData(BaseSchema):
+    """Datos de tests para reporte."""
 
     athlete_id: int
     athlete_name: str
+    test_type: str
     test_date: date
-    test_type: str  # SPRINT, ENDURANCE, YOYO, TECHNICAL_ASSESSMENT
-    result: Optional[float] = None
-    unit: Optional[str] = None
-    status: Optional[str] = None
+    result_value: Optional[float] = None
+    result_unit: Optional[str] = None
+
+
+class StatisticsReportData(BaseSchema):
+    """Datos de estadísticas para reporte."""
+
+    metric_name: str
+    metric_value: float
+    metric_unit: Optional[str] = None
+    category: Optional[str] = None
 
 
 class ReportGenerationResponse(BaseSchema):
@@ -78,17 +101,4 @@ class ReportGenerationResponse(BaseSchema):
     file_name: str
     file_size: Optional[int] = None
     generated_at: str
-    expires_at: Optional[str] = None
     download_url: Optional[str] = None
-
-
-class ReportSummary(BaseSchema):
-    """Resumen de reporte generado."""
-
-    total_athletes: int
-    total_attendance_records: int
-    total_evaluations: int
-    total_tests: int
-    date_range: str
-    generated_by_user: str
-    generated_at: str
