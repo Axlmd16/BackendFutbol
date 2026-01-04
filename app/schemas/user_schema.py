@@ -207,3 +207,52 @@ class AdminUpdateUserResponse(UserResponseBase):
     email: EmailStr
     updated_at: datetime
     is_active: bool
+
+
+# ==========================================
+# INTERN SCHEMAS (Pasantes)
+
+
+class PromoteAthleteRequest(BaseModel):
+    """Datos para promover un atleta a pasante."""
+
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=64)
+
+
+class InternFilter(BaseModel):
+    """Filtros para listar pasantes."""
+
+    page: int = Field(1, ge=1, description="Número de página")
+    limit: int = Field(10, ge=1, le=100, description="Registros por página")
+    search: Optional[str] = Field(None, description="Búsqueda por nombre o DNI")
+
+    @property
+    def skip(self) -> int:
+        """Calcula automáticamente el offset para la BD."""
+        return (self.page - 1) * self.limit
+
+
+class InternResponse(BaseModel):
+    """Respuesta de un pasante."""
+
+    id: int
+    user_id: int
+    full_name: str
+    dni: str
+    email: EmailStr
+    athlete_id: int
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PromoteAthleteResponse(BaseModel):
+    """Respuesta tras promover un atleta a pasante."""
+
+    id: int
+    user_id: int
+    full_name: str
+    email: EmailStr
+    role: str

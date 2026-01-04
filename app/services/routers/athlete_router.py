@@ -15,6 +15,8 @@ from app.schemas.athlete_schema import (
     AthleteInscriptionResponseDTO,
     AthleteUpdateDTO,
     AthleteUpdateResponse,
+    MinorAthleteInscriptionDTO,
+    MinorAthleteInscriptionResponseDTO,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.utils.exceptions import AppException
@@ -23,6 +25,46 @@ from app.utils.security import get_current_account
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/athletes", tags=["Athletes"])
 athlete_controller = AthleteController()
+
+
+# ==========================================
+# ENDPOINTS PÚBLICOS
+
+
+@router.post(
+    "/register-minor",
+    response_model=ResponseSchema[MinorAthleteInscriptionResponseDTO],
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar deportista menor de edad",
+    description="Inscribe un deportista menor de edad junto con su representante. "
+    "Endpoint público para auto-registro. Si el representante ya existe (por DNI), "
+    "se reutiliza automáticamente.",
+)
+async def register_minor_athlete(
+    payload: MinorAthleteInscriptionDTO,
+    db: Annotated[Session, Depends(get_db)],
+) -> ResponseSchema[MinorAthleteInscriptionResponseDTO]:
+    """
+    Registra un deportista menor de edad con su representante.
+
+    - Si el representante ya existe (por DNI), se reutiliza.
+    - Si no existe, se crea nuevo representante.
+    - Crea el atleta menor con la referencia al representante.
+    - Crea estadísticas iniciales para el atleta.
+    """
+    try:
+        result = await athlete_controller.register_minor_athlete(db=db, data=payload)
+        return ResponseSchema(
+            status="success",
+            message="Deportista menor registrado exitosamente",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Error inesperado: {str(exc)}"
+        ) from exc
 
 
 @router.post(
@@ -50,6 +92,10 @@ async def register_athlete_unl(
         raise HTTPException(
             status_code=500, detail=f"Error inesperado: {str(exc)}"
         ) from exc
+
+
+# ==========================================
+# ENDPOINTS CON AUTENTICACIÓN
 
 
 @router.get(

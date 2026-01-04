@@ -71,5 +71,20 @@ class Athlete(BaseModel):
     def representative_dni(self):
         return self.representative.dni if self.representative else None
 
+    @property
+    def category(self):
+        if self.age is not None:
+            if self.age < 12:
+                return "Sub 12"
+            elif self.age < 14:
+                return "Sub 14"
+            elif self.age < 16:
+                return "Sub 16"
+            elif self.age < 18:
+                return "Sub 18"
+            else:
+                return "Adult"
+        return None
+
     def _repr_(self):
         return f"<Athlete {self.full_name} - DNI: {self.dni}>"

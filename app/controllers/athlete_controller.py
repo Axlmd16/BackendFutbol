@@ -4,7 +4,10 @@ from sqlalchemy.orm import Session
 
 from app.client.person_ms_service import PersonMSService
 from app.dao.athlete_dao import AthleteDAO
+from app.dao.representative_dao import RepresentativeDAO
 from app.dao.statistic_dao import StatisticDAO
+from app.dao.user_dao import UserDAO
+from app.models.enums.relationship import Relationship
 from app.models.enums.sex import Sex
 from app.schemas.athlete_schema import (
     AthleteCreateDB,
@@ -14,11 +17,14 @@ from app.schemas.athlete_schema import (
     AthleteInscriptionResponseDTO,
     AthleteResponse,
     AthleteUpdateResponse,
+    MinorAthleteInscriptionDTO,
+    MinorAthleteInscriptionResponseDTO,
     SexInput,
     StatisticCreateDB,
 )
+from app.schemas.representative_schema import RepresentativeCreateDB
 from app.schemas.response import PaginatedResponse
-from app.schemas.user_schema import CreatePersonInMSRequest
+from app.schemas.user_schema import CreatePersonInMSRequest, TypeStament
 from app.utils.exceptions import AlreadyExistsException, ValidationException
 
 logger = logging.getLogger(__name__)
@@ -30,6 +36,8 @@ class AthleteController:
     def __init__(self) -> None:
         self.athlete_dao = AthleteDAO()
         self.statistic_dao = StatisticDAO()
+        self.representative_dao = RepresentativeDAO()
+        self.user_dao = UserDAO()
         self.person_ms_service = PersonMSService()
 
     async def register_athlete_unl(
@@ -101,6 +109,163 @@ class AthleteController:
             dni=athlete.dni,
         )
 
+    async def register_minor_athlete(
+        self, db: Session, data: MinorAthleteInscriptionDTO
+    ) -> MinorAthleteInscriptionResponseDTO:
+        """
+        Registra un deportista menor de edad junto con su representante.
+
+        Flujo:
+        1. Verificar si representante existe por DNI
+        2. Si no existe, crear en MS + local
+        3. Crear atleta menor en MS + local con representative_id
+        4. Crear estadísticas iniciales
+        5. Retornar respuesta combinada
+
+        Este endpoint es público (sin autenticación) para auto-registro.
+        """
+        rep_data = data.representative
+        athlete_data = data.athlete
+
+        # Validar que el DNI del atleta no exista
+        if self.athlete_dao.exists(db, "dni", athlete_data.dni):
+            raise AlreadyExistsException(
+                "Ya existe un deportista con ese DNI en el club."
+            )
+
+        # 1. Buscar representante existente por DNI
+        existing_rep = self.representative_dao.get_by_field(
+            db, "dni", rep_data.dni, only_active=True
+        )
+
+        representative_is_new = False
+        representative_id: int
+
+        if existing_rep:
+            # Usar representante existente
+            representative_id = existing_rep.id
+            representative_full_name = existing_rep.full_name
+            representative_dni = existing_rep.dni
+            logger.info(
+                f"Representante existente encontrado: {existing_rep.full_name} "
+                f"(ID: {existing_rep.id})"
+            )
+        else:
+            # 2. Crear representante nuevo
+            representative_is_new = True
+
+            # Crear persona del representante en MS de usuarios
+            rep_external_person_id = await self.person_ms_service.create_or_get_person(
+                CreatePersonInMSRequest(
+                    first_name=rep_data.first_name.strip(),
+                    last_name=rep_data.last_name.strip(),
+                    dni=rep_data.dni,
+                    direction=(rep_data.direction or "S/N").strip(),
+                    phone=(rep_data.phone or "S/N").strip(),
+                    type_identification=rep_data.type_identification,
+                    type_stament=TypeStament.EXTERNOS,  # Siempre EXTERNOS para menores
+                )
+            )
+
+            # Mapear relationship_type string -> Relationship enum
+            relationship_mapping = {
+                "FATHER": Relationship.FATHER,
+                "MADRE": Relationship.MOTHER,
+                "MOTHER": Relationship.MOTHER,
+                "PADRE": Relationship.FATHER,
+                "LEGAL_GUARDIAN": Relationship.LEGAL_GUARDIAN,
+                "TUTOR": Relationship.LEGAL_GUARDIAN,
+            }
+            relationship = relationship_mapping.get(
+                rep_data.relationship_type.upper(), Relationship.LEGAL_GUARDIAN
+            )
+
+            # Crear representante localmente
+            rep_full_name = (
+                f"{rep_data.first_name.strip()} {rep_data.last_name.strip()}"
+            )
+            rep_payload = RepresentativeCreateDB(
+                external_person_id=rep_external_person_id,
+                full_name=rep_full_name,
+                dni=rep_data.dni,
+                phone=(rep_data.phone or "S/N").strip(),
+                email=rep_data.email,
+                relationship_type=relationship,  # Pasar enum, no el value
+            )
+
+            new_representative = self.representative_dao.create(
+                db, rep_payload.model_dump()
+            )
+            representative_id = new_representative.id
+            representative_full_name = new_representative.full_name
+            representative_dni = new_representative.dni
+
+            logger.info(
+                f"Nuevo representante creado: {rep_full_name} (ID: {representative_id})"
+            )
+
+        # 3. Crear atleta menor en MS de usuarios
+        athlete_external_person_id = await self.person_ms_service.create_or_get_person(
+            CreatePersonInMSRequest(
+                first_name=athlete_data.first_name.strip(),
+                last_name=athlete_data.last_name.strip(),
+                dni=athlete_data.dni,
+                direction=(athlete_data.direction or "S/N").strip(),
+                phone=(athlete_data.phone or "S/N").strip(),
+                type_identification=athlete_data.type_identification,
+                type_stament=TypeStament.EXTERNOS,  # Siempre EXTERNOS para menores
+            )
+        )
+
+        # Convertir SexInput -> Sex del modelo
+        sex_mapping = {
+            SexInput.MALE: Sex.MALE,
+            SexInput.FEMALE: Sex.FEMALE,
+            SexInput.OTHER: Sex.OTHER,
+        }
+        sex = sex_mapping.get(athlete_data.sex, Sex.MALE)
+
+        # Crear atleta localmente con representative_id
+        athlete_full_name = (
+            f"{athlete_data.first_name.strip()} {athlete_data.last_name.strip()}"
+        )
+        athlete_payload = AthleteCreateDB(
+            external_person_id=athlete_external_person_id,
+            full_name=athlete_full_name,
+            dni=athlete_data.dni,
+            type_athlete=TypeStament.EXTERNOS.value,  # Siempre EXTERNOS para menores
+            date_of_birth=athlete_data.birth_date,
+            height=athlete_data.height,
+            weight=athlete_data.weight,
+            sex=sex,
+        )
+
+        # Incluir representative_id en el payload
+        athlete_dict = athlete_payload.model_dump()
+        athlete_dict["representative_id"] = representative_id
+
+        athlete = self.athlete_dao.create(db, athlete_dict)
+
+        # 4. Crear estadísticas iniciales
+        statistic_payload = StatisticCreateDB(athlete_id=athlete.id)
+        statistic = self.statistic_dao.create(db, statistic_payload.model_dump())
+
+        logger.info(
+            f"Atleta menor registrado: {athlete_full_name} "
+            f"(ID: {athlete.id}) con representante ID: {representative_id}"
+        )
+
+        return MinorAthleteInscriptionResponseDTO(
+            representative_id=representative_id,
+            representative_full_name=representative_full_name,
+            representative_dni=representative_dni,
+            representative_is_new=representative_is_new,
+            athlete_id=athlete.id,
+            athlete_full_name=athlete.full_name,
+            athlete_dni=athlete.dni,
+            statistic_id=statistic.id,
+        )
+
     def get_all_athletes(
         self, db: Session, filters: AthleteFilter
     ) -> PaginatedResponse:
@@ -110,6 +275,15 @@ class AthleteController:
         """
         items, total = self.athlete_dao.get_all_with_filters(db, filters=filters)
 
+        # Obtener DNIs de todos los atletas para verificar cuentas
+        athlete_dnis = [athlete.dni for athlete in items]
+
+        # Verificar cuáles tienen cuenta en el sistema
+        existing_users = {}
+        for dni in athlete_dnis:
+            user = self.user_dao.get_by_field(db, "dni", dni, only_active=False)
+            existing_users[dni] = user is not None
+
         athlete_responses = [
             AthleteResponse(
                 id=athlete.id,
@@ -118,6 +292,7 @@ class AthleteController:
                 type_athlete=athlete.type_athlete,
                 sex=getattr(athlete.sex, "value", str(athlete.sex)),
                 is_active=athlete.is_active,
+                has_account=existing_users.get(athlete.dni, False),
                 height=athlete.height,
                 weight=athlete.weight,
                 created_at=(
@@ -151,33 +326,47 @@ class AthleteController:
     ) -> AthleteUpdateResponse:
         """
         Actualiza los datos básicos de un atleta y sincroniza con MS de personas.
-        Retorna AthleteUpdateResponse.
+        Similar a admin_update_user: simple y directo.
         """
         athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id, only_active=False)
         if not athlete:
             raise ValidationException("Atleta no encontrado")
 
-        # Extraer campos para MS de personas (no se guardan localmente)
+        # Extraer campos del payload
         direction = update_data.pop("direction", None)
         phone = update_data.pop("phone", None)
         _type_identification = update_data.pop("type_identification", None)
         _type_stament = update_data.pop("type_stament", None)
-        _dni = update_data.pop("dni", None)  # No permitimos cambiar DNI localmente
+        _dni = update_data.pop("dni", None)  # No permitimos cambiar DNI
 
-        # Extraer nombres para actualizar full_name
+        # Extraer nombres
         first_name = update_data.pop("first_name", None)
         last_name = update_data.pop("last_name", None)
 
+        # Para el MS, usar nombres del payload o el full_name actual
+        ms_first = first_name.strip() if first_name else athlete.full_name
+        ms_last = last_name.strip() if last_name else ""
+
+        # Siempre actualizar en MS de usuarios (mantiene sync)
+        new_external = await self.person_ms_service.update_person(
+            external=athlete.external_person_id,
+            first_name=ms_first,
+            last_name=ms_last,
+            dni=athlete.dni,
+            direction=direction,
+            phone=phone,
+        )
+
+        # Actualizar external_person_id
+        update_data["external_person_id"] = new_external
+
         # Actualizar full_name si se enviaron nombres
-        if first_name or last_name:
-            current_names = athlete.full_name.split(" ", 1)
-            new_first = first_name if first_name else current_names[0]
-            new_last = (
-                last_name
-                if last_name
-                else (current_names[1] if len(current_names) > 1 else "")
-            )
-            update_data["full_name"] = f"{new_first} {new_last}".strip()
+        if first_name and last_name:
+            update_data["full_name"] = f"{first_name.strip()} {last_name.strip()}"
+        elif first_name:
+            update_data["full_name"] = first_name.strip()
+        elif last_name:
+            update_data["full_name"] = last_name.strip()
 
         # Convertir birth_date a date_of_birth para el modelo
         birth_date = update_data.pop("birth_date", None)
@@ -197,26 +386,6 @@ class AthleteController:
             sex_value = getattr(sex, "value", str(sex)).upper()
             if sex_value in sex_mapping:
                 update_data["sex"] = sex_mapping[sex_value]
-
-        # Actualizar en MS de personas si hay datos de contacto
-        new_external_person_id = athlete.external_person_id
-        if direction is not None or phone is not None:
-            names = update_data.get("full_name", athlete.full_name).split(" ", 1)
-            ms_first_name = names[0] if names else athlete.full_name
-            ms_last_name = names[1] if len(names) > 1 else ""
-
-            new_external_person_id = await self.person_ms_service.update_person(
-                external=athlete.external_person_id,
-                first_name=ms_first_name,
-                last_name=ms_last_name,
-                dni=athlete.dni,
-                direction=direction,
-                phone=phone,
-            )
-
-        # Actualizar external_person_id si cambió
-        if new_external_person_id != athlete.external_person_id:
-            update_data["external_person_id"] = new_external_person_id
 
         # Actualizar datos locales del atleta
         updated_athlete = self.athlete_dao.update(db, athlete_id, update_data)
