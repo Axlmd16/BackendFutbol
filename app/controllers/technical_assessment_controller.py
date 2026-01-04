@@ -73,3 +73,14 @@ class TechnicalAssessmentController:
             return existing
 
         return self.technical_assessment_dao.update(db, test_id, fields)
+
+    def delete_test(self, db: Session, test_id: int) -> bool:
+        """Eliminar (desactivar) un TechnicalAssessment existente."""
+        existing = self.technical_assessment_dao.get_by_id(
+            db, test_id, only_active=True
+        )
+        if not existing:
+            return False
+
+        self.technical_assessment_dao.delete(db, test_id)
+        return True

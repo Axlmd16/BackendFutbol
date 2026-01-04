@@ -200,6 +200,42 @@ def test_update_technical_assessment_not_found(
     technical_assessment_controller.technical_assessment_dao.update.assert_not_called()
 
 
+# ==============================================
+# TESTS: DELETE TECHNICAL ASSESSMENT
+# ==============================================
+
+
+def test_delete_technical_assessment_success(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Elimina cuando existe."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        mock_technical_assessment
+    )
+    technical_assessment_controller.technical_assessment_dao.delete.return_value = None
+
+    result = technical_assessment_controller.delete_test(mock_db, test_id=4)
+
+    assert result is True
+    technical_assessment_controller.technical_assessment_dao.delete.assert_called_once_with(
+        mock_db, 4
+    )
+
+
+def test_delete_technical_assessment_not_found(
+    technical_assessment_controller, mock_db
+):
+    """Si no existe retorna False y no borra."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        None
+    )
+
+    result = technical_assessment_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    technical_assessment_controller.technical_assessment_dao.delete.assert_not_called()
+
+
 def test_update_technical_assessment_evaluation_not_found(
     technical_assessment_controller, mock_db
 ):

@@ -199,3 +199,43 @@ def test_update_yoyo_test_no_fields_returns_existing(
 
     assert result is mock_yoyo_test
     yoyo_test_controller.yoyo_test_dao.update.assert_not_called()
+
+
+# ==============================================
+# TESTS: DELETE YOYO TEST
+# ==============================================
+
+
+def test_delete_yoyo_test_success(
+    monkeypatch, yoyo_test_controller, mock_db, mock_yoyo_test
+):
+    """Elimina y actualiza estadísticas cuando existe."""
+    yoyo_test_controller.yoyo_test_dao.get_by_id.return_value = mock_yoyo_test
+    yoyo_test_controller.yoyo_test_dao.delete.return_value = None
+
+    called = {"stats": False}
+
+    def _update_stats(db, athlete_id):
+        called["stats"] = True
+        assert athlete_id == mock_yoyo_test.athlete_id
+
+    monkeypatch.setattr(
+        "app.controllers.yoyo_test_controller.statistic_controller.update_athlete_stats",
+        _update_stats,
+    )
+
+    result = yoyo_test_controller.delete_test(mock_db, test_id=2)
+
+    assert result is True
+    yoyo_test_controller.yoyo_test_dao.delete.assert_called_once_with(mock_db, 2)
+    assert called["stats"] is True
+
+
+def test_delete_yoyo_test_not_found(yoyo_test_controller, mock_db):
+    """Si no existe retorna False y no borra."""
+    yoyo_test_controller.yoyo_test_dao.get_by_id.return_value = None
+
+    result = yoyo_test_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    yoyo_test_controller.yoyo_test_dao.delete.assert_not_called()

@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.controllers.endurance_test_controller import EnduranceTestController
-from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
 from app.models.endurance_test import EnduranceTest
@@ -21,7 +20,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/endurance-tests", tags=["Endurance Tests"])
 endurance_test_controller = EnduranceTestController()
-test_controller = TestController()
 
 
 @router.post(
@@ -188,7 +186,7 @@ async def delete_endurance_test(
 ) -> ResponseSchema:
     """Eliminar un Endurance Test."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = endurance_test_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Endurance Test no encontrado")

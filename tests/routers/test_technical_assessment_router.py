@@ -217,7 +217,7 @@ async def test_get_technical_assessment_not_found(admin_client):
 async def test_delete_technical_assessment_success(admin_client):
     """DELETE /technical-assessments/{test_id} debe eliminar un Technical Assessment."""
     with patch(
-        "app.services.routers.technical_assessment_router.test_controller"
+        "app.services.routers.technical_assessment_router.technical_assessment_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = True
 
@@ -232,7 +232,7 @@ async def test_delete_technical_assessment_success(admin_client):
 async def test_delete_technical_assessment_not_found(admin_client):
     """DELETE /technical-assessments/{test_id} debe retornar 404 si no existe."""
     with patch(
-        "app.services.routers.technical_assessment_router.test_controller"
+        "app.services.routers.technical_assessment_router.technical_assessment_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = False
 

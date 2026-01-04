@@ -71,3 +71,15 @@ class EnduranceTestController:
             return existing
 
         return self.endurance_test_dao.update(db, test_id, fields)
+
+    def delete_test(self, db: Session, test_id: int) -> bool:
+        """Eliminar un EnduranceTest existente."""
+        existing = self.endurance_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return False
+
+        self.endurance_test_dao.delete(db, test_id)
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, existing.athlete_id)
+        return True

@@ -5,7 +5,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.controllers.test_controller import TestController
 from app.controllers.yoyo_test_controller import YoyoTestController
 from app.core.database import get_db
 from app.models.account import Account
@@ -21,7 +20,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/yoyo-tests", tags=["Yoyo Tests"])
 yoyo_test_controller = YoyoTestController()
-test_controller = TestController()
 
 
 @router.post(
@@ -189,7 +187,7 @@ async def delete_yoyo_test(
 ) -> ResponseSchema:
     """Eliminar un Yoyo Test."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = yoyo_test_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Yoyo Test no encontrado")

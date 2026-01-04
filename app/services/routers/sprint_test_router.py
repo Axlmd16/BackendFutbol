@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.controllers.sprint_test_controller import SprintTestController
-from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
 from app.models.sprint_test import SprintTest
@@ -21,7 +20,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/sprint-tests", tags=["Sprint Tests"])
 sprint_test_controller = SprintTestController()
-test_controller = TestController()
 
 
 @router.post(
@@ -189,7 +187,7 @@ async def delete_sprint_test(
 ) -> ResponseSchema:
     """Eliminar un Sprint Test."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = sprint_test_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Sprint Test no encontrado")

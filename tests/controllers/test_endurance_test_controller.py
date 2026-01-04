@@ -208,3 +208,47 @@ def test_update_endurance_test_no_fields_returns_existing(
 
     assert result is mock_endurance_test
     endurance_test_controller.endurance_test_dao.update.assert_not_called()
+
+
+# ==============================================
+# TESTS: DELETE ENDURANCE TEST
+# ==============================================
+
+
+def test_delete_endurance_test_success(
+    monkeypatch, endurance_test_controller, mock_db, mock_endurance_test
+):
+    """Elimina y actualiza estadísticas cuando existe."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = (
+        mock_endurance_test
+    )
+    endurance_test_controller.endurance_test_dao.delete.return_value = None
+
+    called = {"stats": False}
+
+    def _update_stats(db, athlete_id):
+        called["stats"] = True
+        assert athlete_id == mock_endurance_test.athlete_id
+
+    monkeypatch.setattr(
+        "app.controllers.endurance_test_controller.statistic_controller.update_athlete_stats",
+        _update_stats,
+    )
+
+    result = endurance_test_controller.delete_test(mock_db, test_id=3)
+
+    assert result is True
+    endurance_test_controller.endurance_test_dao.delete.assert_called_once_with(
+        mock_db, 3
+    )
+    assert called["stats"] is True
+
+
+def test_delete_endurance_test_not_found(endurance_test_controller, mock_db):
+    """Si no existe retorna False y no borra."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = None
+
+    result = endurance_test_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    endurance_test_controller.endurance_test_dao.delete.assert_not_called()

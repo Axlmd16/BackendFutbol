@@ -219,7 +219,7 @@ async def test_get_endurance_test_not_found(admin_client):
 async def test_delete_endurance_test_success(admin_client):
     """DELETE /endurance-tests/{test_id} debe eliminar un Endurance Test."""
     with patch(
-        "app.services.routers.endurance_test_router.test_controller"
+        "app.services.routers.endurance_test_router.endurance_test_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = True
 
@@ -234,7 +234,7 @@ async def test_delete_endurance_test_success(admin_client):
 async def test_delete_endurance_test_not_found(admin_client):
     """DELETE /endurance-tests/{test_id} debe retornar 404 si no existe."""
     with patch(
-        "app.services.routers.endurance_test_router.test_controller"
+        "app.services.routers.endurance_test_router.endurance_test_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = False
 

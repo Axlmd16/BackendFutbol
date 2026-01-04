@@ -77,3 +77,15 @@ class SprintTestController:
             return existing
 
         return self.sprint_test_dao.update(db, test_id, fields)
+
+    def delete_test(self, db: Session, test_id: int) -> bool:
+        """Eliminar un SprintTest existente."""
+        existing = self.sprint_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return False
+
+        self.sprint_test_dao.delete(db, test_id)
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, existing.athlete_id)
+        return True

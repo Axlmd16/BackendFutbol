@@ -199,3 +199,43 @@ def test_update_sprint_test_no_fields_returns_existing(
 
     assert result is mock_sprint_test
     sprint_test_controller.sprint_test_dao.update.assert_not_called()
+
+
+# ==============================================
+# TESTS: DELETE SPRINT TEST
+# ==============================================
+
+
+def test_delete_sprint_test_success(
+    monkeypatch, sprint_test_controller, mock_db, mock_sprint_test
+):
+    """Elimina y actualiza estadísticas cuando existe."""
+    sprint_test_controller.sprint_test_dao.get_by_id.return_value = mock_sprint_test
+    sprint_test_controller.sprint_test_dao.delete.return_value = None
+
+    called = {"stats": False}
+
+    def _update_stats(db, athlete_id):
+        called["stats"] = True
+        assert athlete_id == mock_sprint_test.athlete_id
+
+    monkeypatch.setattr(
+        "app.controllers.sprint_test_controller.statistic_controller.update_athlete_stats",
+        _update_stats,
+    )
+
+    result = sprint_test_controller.delete_test(mock_db, test_id=1)
+
+    assert result is True
+    sprint_test_controller.sprint_test_dao.delete.assert_called_once_with(mock_db, 1)
+    assert called["stats"] is True
+
+
+def test_delete_sprint_test_not_found(sprint_test_controller, mock_db):
+    """Si no existe retorna False y no borra."""
+    sprint_test_controller.sprint_test_dao.get_by_id.return_value = None
+
+    result = sprint_test_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    sprint_test_controller.sprint_test_dao.delete.assert_not_called()

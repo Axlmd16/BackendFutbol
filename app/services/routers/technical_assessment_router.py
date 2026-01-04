@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.controllers.technical_assessment_controller import (
     TechnicalAssessmentController,
 )
-from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
 from app.models.technical_assessment import TechnicalAssessment
@@ -23,7 +22,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/technical-assessments", tags=["Technical Assessments"])
 technical_assessment_controller = TechnicalAssessmentController()
-test_controller = TestController()
 
 
 @router.post(
@@ -199,7 +197,7 @@ async def delete_technical_assessment(
 ) -> ResponseSchema:
     """Eliminar un Technical Assessment."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = technical_assessment_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(
