@@ -63,6 +63,21 @@ class EvaluationResponseSchema(BaseResponseSchema):
     user_id: int
 
 
+class EvaluationFilter(BaseModel):
+    """Filtros y paginación para listar evaluaciones."""
+
+    page: int = Field(1, ge=1, description="Número de página")
+    limit: int = Field(10, ge=1, le=100, description="Registros por página")
+    search: Optional[str] = Field(None, description="Buscar por nombre")
+    user_id: Optional[int] = Field(None, gt=0, description="Filtrar por usuario")
+    date: Optional[str] = Field(None, description="Filtrar por fecha (YYYY-MM-DD)")
+    location: Optional[str] = Field(None, description="Filtrar por ubicación")
+
+    @property
+    def skip(self) -> int:
+        return (self.page - 1) * self.limit
+
+
 # ==========================================
 # GENERIC TEST RESPONSE (para listar)
 

@@ -200,6 +200,42 @@ def test_update_technical_assessment_not_found(
     technical_assessment_controller.technical_assessment_dao.update.assert_not_called()
 
 
+# ==============================================
+# TESTS: DELETE TECHNICAL ASSESSMENT
+# ==============================================
+
+
+def test_delete_technical_assessment_success(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Elimina cuando existe."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        mock_technical_assessment
+    )
+    technical_assessment_controller.technical_assessment_dao.delete.return_value = None
+
+    result = technical_assessment_controller.delete_test(mock_db, test_id=4)
+
+    assert result is True
+    technical_assessment_controller.technical_assessment_dao.delete.assert_called_once_with(
+        mock_db, 4
+    )
+
+
+def test_delete_technical_assessment_not_found(
+    technical_assessment_controller, mock_db
+):
+    """Si no existe retorna False y no borra."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        None
+    )
+
+    result = technical_assessment_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    technical_assessment_controller.technical_assessment_dao.delete.assert_not_called()
+
+
 def test_update_technical_assessment_evaluation_not_found(
     technical_assessment_controller, mock_db
 ):
@@ -243,3 +279,128 @@ def test_update_technical_assessment_no_fields_returns_existing(
 
     assert result is mock_technical_assessment
     technical_assessment_controller.technical_assessment_dao.update.assert_not_called()
+
+
+# ==============================================
+# TESTS: LIST TECHNICAL ASSESSMENTS
+# ==============================================
+
+
+def test_list_tests_success(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Lista technical assessments con paginación y filtros."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 4
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_technical_assessment]
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10)
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 4
+    assert items[0] is mock_technical_assessment
+
+
+def test_list_tests_with_filters(technical_assessment_controller, mock_db):
+    """Lista technical assessments filtrando por evaluation_id y athlete_id."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 2
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10, evaluation_id=1, athlete_id=5)
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 2
+
+
+def test_list_tests_with_search(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Lista technical assessments filtrando por nombre de atleta (search)."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_technical_assessment]
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10, search="María")
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_search_no_match(technical_assessment_controller, mock_db):
+    """Lista technical assessments con search que no coincide devuelve lista vacía."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10, search="NoExiste")
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 0

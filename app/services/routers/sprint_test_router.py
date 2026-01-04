@@ -2,17 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.controllers.sprint_test_controller import SprintTestController
-from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
-from app.models.sprint_test import SprintTest
-from app.schemas.response import ResponseSchema
+from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.sprint_test_schema import (
     CreateSprintTestSchema,
+    SprintTestFilter,
     SprintTestResponseSchema,
     UpdateSprintTestSchema,
 )
@@ -21,7 +20,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/sprint-tests", tags=["Sprint Tests"])
 sprint_test_controller = SprintTestController()
-test_controller = TestController()
 
 
 @router.post(
@@ -62,44 +60,29 @@ async def create_sprint_test(
 
 @router.get(
     "/",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[PaginatedResponse[SprintTestResponseSchema]],
     status_code=status.HTTP_200_OK,
     summary="Listar Sprint Tests",
-    description="Obtiene lista de Sprint Tests con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
+    description="Obtiene lista paginada de Sprint Tests con filtros.",
 )
 async def list_sprint_tests(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    evaluation_id: int = Query(
-        None, description="Filtrar por evaluation_id (opcional)"
-    ),
+    filters: Annotated[SprintTestFilter, Depends()],
 ) -> ResponseSchema:
-    """Listar todos los Sprint Tests."""
+    """Listar todos los Sprint Tests con paginación."""
     try:
-        if evaluation_id:
-            # Filtrar por evaluación y tipo específico de test
-            tests = (
-                db.query(SprintTest)
-                .filter(SprintTest.evaluation_id == evaluation_id)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
-        else:
-            tests = (
-                db.query(SprintTest)
-                .filter(SprintTest.is_active)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
+        items, total = sprint_test_controller.list_tests(db, filters)
 
         return ResponseSchema(
             status="success",
             message="Sprint Tests obtenidos correctamente",
-            data=[SprintTestResponseSchema.model_validate(t) for t in tests],
+            data=PaginatedResponse(
+                items=[SprintTestResponseSchema.model_validate(t) for t in items],
+                total=total,
+                page=filters.page,
+                limit=filters.limit,
+            ),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -189,7 +172,7 @@ async def delete_sprint_test(
 ) -> ResponseSchema:
     """Eliminar un Sprint Test."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = sprint_test_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Sprint Test no encontrado")

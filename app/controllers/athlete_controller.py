@@ -194,7 +194,7 @@ class AthleteController:
             )
 
             new_representative = self.representative_dao.create(
-                db, rep_payload.model_dump()
+                db, rep_payload.model_dump(mode="python")
             )
             representative_id = new_representative.id
             representative_full_name = new_representative.full_name

@@ -29,6 +29,20 @@ class UpdateEnduranceTestSchema(BaseModel):
     )
 
 
+class EnduranceTestFilter(BaseModel):
+    """Filtros y paginación para Endurance Tests."""
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(10, ge=1, le=100)
+    evaluation_id: Optional[int] = Field(None, gt=0)
+    athlete_id: Optional[int] = Field(None, gt=0)
+    search: Optional[str] = Field(None, description="Buscar por nombre de atleta")
+
+    @property
+    def skip(self) -> int:
+        return (self.page - 1) * self.limit
+
+
 class EnduranceTestResponseSchema(BaseResponseSchema):
     """Schema de respuesta para Endurance Test."""
 

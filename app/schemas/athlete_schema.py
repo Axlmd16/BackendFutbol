@@ -114,6 +114,9 @@ class AthleteFilter(BaseModel):
     search: Optional[str] = Field(None, description="BÃºsqueda por nombre o DNI")
     type_athlete: Optional[TypeStament] = None
     sex: Optional[SexInput] = None
+    is_active: Optional[bool] = Field(
+        default=None, description="Filtrar por estado activo (None = todos)"
+    )
 
     @property
     def skip(self) -> int:
@@ -269,6 +272,29 @@ class MinorAthleteDataDTO(BaseModel):
     #         return validate_ec_dni(str(value))
     #     except ValidationException as exc:
     #         raise ValueError(exc.message) from exc
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_minor_age(cls, value: date) -> date:
+        """Valida que el atleta sea menor de edad (menos de 18 años)."""
+        from datetime import date as date_type
+
+        today = date_type.today()
+        # Calcular edad
+        age = (
+            today.year
+            - value.year
+            - ((today.month, today.day) < (value.month, value.day))
+        )
+        if age >= 18:
+            raise ValueError(
+                f"El deportista debe ser menor de 18 años. Edad calculada: {age} años"
+            )
+        if age < 3:
+            raise ValueError(
+                f"La fecha de nacimiento no es válida. Edad calculada: {age} años"
+            )
+        return value
 
     @field_validator("sex", mode="before")
     @classmethod
