@@ -47,3 +47,17 @@ class UpdateTechnicalAssessmentSchema(BaseModel):
     long_pass: Optional[Scale] = None
     shooting: Optional[Scale] = None
     dribbling: Optional[Scale] = None
+
+
+class TechnicalAssessmentFilter(BaseModel):
+    """Filtros y paginación para Technical Assessments."""
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(10, ge=1, le=100)
+    evaluation_id: Optional[int] = Field(None, gt=0)
+    athlete_id: Optional[int] = Field(None, gt=0)
+    search: Optional[str] = Field(None, description="Buscar por nombre de atleta")
+
+    @property
+    def skip(self) -> int:
+        return (self.page - 1) * self.limit

@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.controllers.statistic_controller import statistic_controller
@@ -7,7 +8,10 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.endurance_test_dao import EnduranceTestDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
+from app.models.athlete import Athlete
+from app.models.endurance_test import EnduranceTest
 from app.models.test import Test
+from app.schemas.endurance_test_schema import EnduranceTestFilter
 from app.utils.exceptions import DatabaseException
 
 
@@ -71,3 +75,41 @@ class EnduranceTestController:
             return existing
 
         return self.endurance_test_dao.update(db, test_id, fields)
+
+    def delete_test(self, db: Session, test_id: int) -> bool:
+        """Eliminar un EnduranceTest existente."""
+        existing = self.endurance_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return False
+
+        self.endurance_test_dao.delete(db, test_id)
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, existing.athlete_id)
+        return True
+
+    def list_tests(
+        self, db: Session, filters: EnduranceTestFilter
+    ) -> tuple[list[Test], int]:
+        """Listar EnduranceTests con paginación y filtros."""
+        query = db.query(Test).join(EnduranceTest).filter(Test.is_active)
+
+        if filters.evaluation_id is not None:
+            query = query.filter(Test.evaluation_id == filters.evaluation_id)
+        if filters.athlete_id is not None:
+            query = query.filter(Test.athlete_id == filters.athlete_id)
+        if filters.search:
+            query = query.join(Athlete).filter(
+                Athlete.full_name.ilike(f"%{filters.search}%")
+            )
+
+        total = query.with_entities(func.count(Test.id)).scalar()
+
+        items = (
+            query.order_by(desc(Test.date))
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+
+        return items, total

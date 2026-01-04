@@ -120,50 +120,50 @@ async def test_create_yoyo_test_validation_error(admin_client):
 @pytest.mark.asyncio
 async def test_list_yoyo_tests_success(admin_client, mock_db_session):
     """GET /yoyo-tests/ debe listar Yoyo Tests."""
-    mock_test = MagicMock()
-    mock_test.id = 2
-    mock_test.type = "yoyo_test"
-    mock_test.test_type = "yoyo_test"
-    mock_test.date = datetime.now()
-    mock_test.athlete_id = 5
-    mock_test.evaluation_id = 1
-    mock_test.shuttle_count = 47
-    mock_test.final_level = "18.2"
-    mock_test.failures = 2
-    mock_test.observations = None
-    mock_test.created_at = datetime.now()
-    mock_test.updated_at = None
-    mock_test.is_active = True
+    with patch(
+        "app.services.routers.yoyo_test_router.yoyo_test_controller"
+    ) as mock_controller:
+        mock_test = MagicMock()
+        mock_test.id = 2
+        mock_test.type = "yoyo_test"
+        mock_test.test_type = "yoyo_test"
+        mock_test.date = datetime.now()
+        mock_test.athlete_id = 5
+        mock_test.evaluation_id = 1
+        mock_test.shuttle_count = 47
+        mock_test.final_level = "18.2"
+        mock_test.failures = 2
+        mock_test.observations = None
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
 
-    query_mock = mock_db_session.query.return_value
-    filter_mock = query_mock.filter.return_value
-    offset_mock = filter_mock.offset.return_value
-    limit_mock = offset_mock.limit.return_value
-    limit_mock.all.return_value = [mock_test]
+        mock_controller.list_tests.return_value = ([mock_test], 1)
 
-    response = await admin_client.get("/api/v1/yoyo-tests/")
+        response = await admin_client.get("/api/v1/yoyo-tests/")
 
-    assert response.status_code == 200, response.text
-    data = response.json()
-    assert data["status"] == "success"
-    assert len(data["data"]) == 1
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["data"]["total"] == 1
+        assert len(data["data"]["items"]) == 1
 
 
 @pytest.mark.asyncio
 async def test_list_yoyo_tests_empty(admin_client, mock_db_session):
     """GET /yoyo-tests/ debe retornar lista vacía."""
-    query_mock = mock_db_session.query.return_value
-    filter_mock = query_mock.filter.return_value
-    offset_mock = filter_mock.offset.return_value
-    limit_mock = offset_mock.limit.return_value
-    limit_mock.all.return_value = []
+    with patch(
+        "app.services.routers.yoyo_test_router.yoyo_test_controller"
+    ) as mock_controller:
+        mock_controller.list_tests.return_value = ([], 0)
 
-    response = await admin_client.get("/api/v1/yoyo-tests/")
+        response = await admin_client.get("/api/v1/yoyo-tests/")
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert len(data["data"]) == 0
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["data"]["total"] == 0
+        assert len(data["data"]["items"]) == 0
 
 
 # ==============================================
@@ -225,7 +225,7 @@ async def test_get_yoyo_test_not_found(admin_client):
 async def test_delete_yoyo_test_success(admin_client):
     """DELETE /yoyo-tests/{test_id} debe eliminar un Yoyo Test."""
     with patch(
-        "app.services.routers.yoyo_test_router.test_controller"
+        "app.services.routers.yoyo_test_router.yoyo_test_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = True
 
@@ -240,7 +240,7 @@ async def test_delete_yoyo_test_success(admin_client):
 async def test_delete_yoyo_test_not_found(admin_client):
     """DELETE /yoyo-tests/{test_id} debe retornar 404 si no existe."""
     with patch(
-        "app.services.routers.yoyo_test_router.test_controller"
+        "app.services.routers.yoyo_test_router.yoyo_test_controller"
     ) as mock_controller:
         mock_controller.delete_test.return_value = False
 

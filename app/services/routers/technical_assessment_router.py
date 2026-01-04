@@ -2,19 +2,18 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.controllers.technical_assessment_controller import (
     TechnicalAssessmentController,
 )
-from app.controllers.test_controller import TestController
 from app.core.database import get_db
 from app.models.account import Account
-from app.models.technical_assessment import TechnicalAssessment
-from app.schemas.response import ResponseSchema
+from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.technical_assessment_schema import (
     CreateTechnicalAssessmentSchema,
+    TechnicalAssessmentFilter,
     TechnicalAssessmentResponseSchema,
     UpdateTechnicalAssessmentSchema,
 )
@@ -23,7 +22,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/technical-assessments", tags=["Technical Assessments"])
 technical_assessment_controller = TechnicalAssessmentController()
-test_controller = TestController()
 
 
 @router.post(
@@ -66,44 +64,31 @@ async def create_technical_assessment(
 
 @router.get(
     "/",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[PaginatedResponse[TechnicalAssessmentResponseSchema]],
     status_code=status.HTTP_200_OK,
     summary="Listar Technical Assessments",
-    description="Obtiene lista de Technical Assessments con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
+    description="Obtiene lista paginada de Technical Assessments con filtros.",
 )
 async def list_technical_assessments(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    evaluation_id: int = Query(
-        None, description="Filtrar por evaluation_id (opcional)"
-    ),
+    filters: Annotated[TechnicalAssessmentFilter, Depends()],
 ) -> ResponseSchema:
-    """Listar todos los Technical Assessments."""
+    """Listar todos los Technical Assessments con paginación."""
     try:
-        if evaluation_id:
-            # Filtrar por evaluación y tipo específico de test
-            tests = (
-                db.query(TechnicalAssessment)
-                .filter(TechnicalAssessment.evaluation_id == evaluation_id)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
-        else:
-            tests = (
-                db.query(TechnicalAssessment)
-                .filter(TechnicalAssessment.is_active)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )  # noqa: E501
+        items, total = technical_assessment_controller.list_tests(db, filters)
 
         return ResponseSchema(
             status="success",
             message="Technical Assessments obtenidos correctamente",
-            data=[TechnicalAssessmentResponseSchema.model_validate(t) for t in tests],
+            data=PaginatedResponse(
+                items=[
+                    TechnicalAssessmentResponseSchema.model_validate(t) for t in items
+                ],
+                total=total,
+                page=filters.page,
+                limit=filters.limit,
+            ),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -199,7 +184,7 @@ async def delete_technical_assessment(
 ) -> ResponseSchema:
     """Eliminar un Technical Assessment."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = technical_assessment_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(

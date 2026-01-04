@@ -2,18 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.controllers.test_controller import TestController
 from app.controllers.yoyo_test_controller import YoyoTestController
 from app.core.database import get_db
 from app.models.account import Account
-from app.models.yoyo_test import YoyoTest
-from app.schemas.response import ResponseSchema
+from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.schemas.yoyo_test_schema import (
     CreateYoyoTestSchema,
     UpdateYoyoTestSchema,
+    YoyoTestFilter,
     YoyoTestResponseSchema,
 )
 from app.utils.exceptions import DatabaseException
@@ -21,7 +20,6 @@ from app.utils.security import get_current_account
 
 router = APIRouter(prefix="/yoyo-tests", tags=["Yoyo Tests"])
 yoyo_test_controller = YoyoTestController()
-test_controller = TestController()
 
 
 @router.post(
@@ -62,44 +60,29 @@ async def create_yoyo_test(
 
 @router.get(
     "/",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[PaginatedResponse[YoyoTestResponseSchema]],
     status_code=status.HTTP_200_OK,
     summary="Listar Yoyo Tests",
-    description="Obtiene lista de Yoyo Tests con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
+    description="Obtiene lista paginada de Yoyo Tests con filtros.",
 )
 async def list_yoyo_tests(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    evaluation_id: int = Query(
-        None, description="Filtrar por evaluation_id (opcional)"
-    ),
+    filters: Annotated[YoyoTestFilter, Depends()],
 ) -> ResponseSchema:
-    """Listar todos los Yoyo Tests."""
+    """Listar todos los Yoyo Tests con paginación."""
     try:
-        if evaluation_id:
-            # Filtrar por evaluación y tipo específico de test
-            tests = (
-                db.query(YoyoTest)
-                .filter(YoyoTest.evaluation_id == evaluation_id)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
-        else:
-            tests = (
-                db.query(YoyoTest)
-                .filter(YoyoTest.is_active)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )  # noqa: E501
+        items, total = yoyo_test_controller.list_tests(db, filters)
 
         return ResponseSchema(
             status="success",
             message="Yoyo Tests obtenidos correctamente",
-            data=[YoyoTestResponseSchema.model_validate(t) for t in tests],
+            data=PaginatedResponse(
+                items=[YoyoTestResponseSchema.model_validate(t) for t in items],
+                total=total,
+                page=filters.page,
+                limit=filters.limit,
+            ),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -189,7 +172,7 @@ async def delete_yoyo_test(
 ) -> ResponseSchema:
     """Eliminar un Yoyo Test."""
     try:
-        deleted = test_controller.delete_test(db, test_id)
+        deleted = yoyo_test_controller.delete_test(db, test_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Yoyo Test no encontrado")

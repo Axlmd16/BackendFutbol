@@ -19,3 +19,5 @@ class ResponseSchema(BaseModel, Generic[T]):
 class PaginatedResponse(BaseModel, Generic[T]):
     items: List[T]
     total: int
+    page: int
+    limit: int
