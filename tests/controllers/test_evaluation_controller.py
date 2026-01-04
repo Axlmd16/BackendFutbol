@@ -262,6 +262,97 @@ def test_delete_evaluation_not_found(evaluation_controller, mock_db):
     assert result is False
 
 
+# ==============================================
+# TESTS: LIST EVALUATIONS PAGINATED
+# ==============================================
+
+
+def test_list_evaluations_paginated_success(
+    evaluation_controller, mock_db, mock_evaluation
+):
+    """Lista evaluaciones con paginación y filtros."""
+    from app.schemas.evaluation_schema import EvaluationFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 10
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_evaluation]
+
+    filters = EvaluationFilter(page=1, limit=10)
+    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 10
+    assert items[0] is mock_evaluation
+
+
+def test_list_evaluations_paginated_with_search(evaluation_controller, mock_db):
+    """Lista evaluaciones con búsqueda por nombre."""
+    from app.schemas.evaluation_schema import EvaluationFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 2
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EvaluationFilter(page=1, limit=10, search="Física")
+    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
+
+    assert items == []
+    assert total == 2
+
+
+def test_list_evaluations_paginated_with_user_filter(evaluation_controller, mock_db):
+    """Lista evaluaciones filtrando por usuario."""
+    from app.schemas.evaluation_schema import EvaluationFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 5
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EvaluationFilter(page=1, limit=10, user_id=1)
+    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
+
+    assert items == []
+    assert total == 5
+
+
 # Nota: Tests para test_management (add_sprint_test, add_yoyo_test, etc.)
 # han sido movidos a sus controladores específicos:
 # - sprint_test_controller

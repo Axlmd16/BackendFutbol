@@ -252,3 +252,68 @@ def test_delete_endurance_test_not_found(endurance_test_controller, mock_db):
 
     assert result is False
     endurance_test_controller.endurance_test_dao.delete.assert_not_called()
+
+
+# ==============================================
+# TESTS: LIST ENDURANCE TESTS
+# ==============================================
+
+
+def test_list_tests_success(endurance_test_controller, mock_db, mock_endurance_test):
+    """Lista endurance tests con paginación y filtros."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 6
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_endurance_test]
+
+    filters = EnduranceTestFilter(page=1, limit=10)
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 6
+    assert items[0] is mock_endurance_test
+
+
+def test_list_tests_with_filters(endurance_test_controller, mock_db):
+    """Lista endurance tests filtrando por evaluation_id y athlete_id."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 3
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EnduranceTestFilter(page=1, limit=10, evaluation_id=1, athlete_id=5)
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 3

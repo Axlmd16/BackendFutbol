@@ -116,28 +116,34 @@ async def test_list_evaluations_success(admin_client):
         mock_eval.created_at = datetime.now()
         mock_eval.updated_at = None
         mock_eval.is_active = True
-        mock_controller.list_evaluations.return_value = [mock_eval]
+        mock_controller.list_evaluations_paginated.return_value = ([mock_eval], 1)
 
         response = await admin_client.get("/api/v1/evaluations/")
 
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
-        assert len(data["data"]) == 1
+        assert data["data"]["total"] == 1
+        assert len(data["data"]["items"]) == 1
+        assert data["data"]["page"] == 1
+        assert data["data"]["limit"] == 10  # Valor por defecto
 
 
 @pytest.mark.asyncio
 async def test_list_evaluations_with_pagination(admin_client):
-    """GET /evaluations/?skip=0&limit=10 debe paginar."""
+    """GET /evaluations/?page=1&limit=10 debe paginar."""
     with patch(
         "app.services.routers.evaluation_router.evaluation_controller"
     ) as mock_controller:
-        mock_controller.list_evaluations.return_value = []
+        mock_controller.list_evaluations_paginated.return_value = ([], 0)
 
-        response = await admin_client.get("/api/v1/evaluations/?skip=0&limit=10")
+        response = await admin_client.get("/api/v1/evaluations/?page=1&limit=10")
 
         assert response.status_code == 200
-        mock_controller.list_evaluations.assert_called_once()
+        data = response.json()
+        assert data["data"]["total"] == 0
+        assert data["data"]["items"] == []
+        mock_controller.list_evaluations_paginated.assert_called_once()
 
 
 # ==============================================

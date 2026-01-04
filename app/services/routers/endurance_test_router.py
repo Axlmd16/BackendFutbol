@@ -2,19 +2,19 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.controllers.endurance_test_controller import EnduranceTestController
 from app.core.database import get_db
 from app.models.account import Account
-from app.models.endurance_test import EnduranceTest
 from app.schemas.endurance_test_schema import (
     CreateEnduranceTestSchema,
+    EnduranceTestFilter,
     EnduranceTestResponseSchema,
     UpdateEnduranceTestSchema,
 )
-from app.schemas.response import ResponseSchema
+from app.schemas.response import PaginatedResponse, ResponseSchema
 from app.utils.exceptions import DatabaseException
 from app.utils.security import get_current_account
 
@@ -59,44 +59,29 @@ async def create_endurance_test(
 
 @router.get(
     "/",
-    response_model=ResponseSchema,
+    response_model=ResponseSchema[PaginatedResponse[EnduranceTestResponseSchema]],
     status_code=status.HTTP_200_OK,
     summary="Listar Endurance Tests",
-    description="Obtiene lista de Endurance Tests con paginación. Opcionalmente filtrada por evaluación.",  # noqa: E501
+    description="Obtiene lista paginada de Endurance Tests con filtros.",
 )
 async def list_endurance_tests(
     db: Annotated[Session, Depends(get_db)],
     current_account: Annotated[Account, Depends(get_current_account)],
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    evaluation_id: int = Query(
-        None, description="Filtrar por evaluation_id (opcional)"
-    ),
+    filters: Annotated[EnduranceTestFilter, Depends()],
 ) -> ResponseSchema:
-    """Listar todos los Endurance Tests."""
+    """Listar todos los Endurance Tests con paginación."""
     try:
-        if evaluation_id:
-            # Filtrar por evaluación y tipo específico de test
-            tests = (
-                db.query(EnduranceTest)
-                .filter(EnduranceTest.evaluation_id == evaluation_id)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
-        else:
-            tests = (
-                db.query(EnduranceTest)
-                .filter(EnduranceTest.is_active)
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )  # noqa: E501
+        items, total = endurance_test_controller.list_tests(db, filters)
 
         return ResponseSchema(
             status="success",
             message="Endurance Tests obtenidos correctamente",
-            data=[EnduranceTestResponseSchema.model_validate(t) for t in tests],
+            data=PaginatedResponse(
+                items=[EnduranceTestResponseSchema.model_validate(t) for t in items],
+                total=total,
+                page=filters.page,
+                limit=filters.limit,
+            ),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -239,3 +239,65 @@ def test_delete_yoyo_test_not_found(yoyo_test_controller, mock_db):
 
     assert result is False
     yoyo_test_controller.yoyo_test_dao.delete.assert_not_called()
+
+
+# ==============================================
+# TESTS: LIST YOYO TESTS
+# ==============================================
+
+
+def test_list_tests_success(yoyo_test_controller, mock_db, mock_yoyo_test):
+    """Lista yoyo tests con paginación y filtros."""
+    from app.schemas.yoyo_test_schema import YoyoTestFilter
+
+    # Mock query chain
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 5
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_yoyo_test]
+
+    filters = YoyoTestFilter(page=1, limit=10)
+    items, total = yoyo_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 5
+    assert items[0] is mock_yoyo_test
+
+
+def test_list_tests_with_filters(yoyo_test_controller, mock_db):
+    """Lista yoyo tests filtrando por evaluation_id y athlete_id."""
+    from app.schemas.yoyo_test_schema import YoyoTestFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter  # Para encadenar filters
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 2
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = YoyoTestFilter(page=1, limit=10, evaluation_id=1, athlete_id=5)
+    items, total = yoyo_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 2

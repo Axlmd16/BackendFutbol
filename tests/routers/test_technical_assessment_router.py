@@ -108,52 +108,52 @@ async def test_create_technical_assessment_athlete_not_found(admin_client):
 @pytest.mark.asyncio
 async def test_list_technical_assessments_success(admin_client, mock_db_session):
     """GET /technical-assessments/ debe listar Technical Assessments."""
-    mock_test = MagicMock()
-    mock_test.id = 4
-    mock_test.type = "technical_assessment"
-    mock_test.test_type = "technical_assessment"
-    mock_test.date = datetime.now()
-    mock_test.athlete_id = 5
-    mock_test.evaluation_id = 1
-    mock_test.ball_control = "Excellent"
-    mock_test.short_pass = "Excellent"
-    mock_test.long_pass = "Good"
-    mock_test.shooting = "Good"
-    mock_test.dribbling = "Excellent"
-    mock_test.observations = None
-    mock_test.created_at = datetime.now()
-    mock_test.updated_at = None
-    mock_test.is_active = True
+    with patch(
+        "app.services.routers.technical_assessment_router.technical_assessment_controller"
+    ) as mock_controller:
+        mock_test = MagicMock()
+        mock_test.id = 4
+        mock_test.type = "technical_assessment"
+        mock_test.test_type = "technical_assessment"
+        mock_test.date = datetime.now()
+        mock_test.athlete_id = 5
+        mock_test.evaluation_id = 1
+        mock_test.ball_control = "Excellent"
+        mock_test.short_pass = "Excellent"
+        mock_test.long_pass = "Good"
+        mock_test.shooting = "Good"
+        mock_test.dribbling = "Excellent"
+        mock_test.observations = None
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
 
-    query_mock = mock_db_session.query.return_value
-    filter_mock = query_mock.filter.return_value
-    offset_mock = filter_mock.offset.return_value
-    limit_mock = offset_mock.limit.return_value
-    limit_mock.all.return_value = [mock_test]
+        mock_controller.list_tests.return_value = ([mock_test], 1)
 
-    response = await admin_client.get("/api/v1/technical-assessments/")
+        response = await admin_client.get("/api/v1/technical-assessments/")
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert len(data["data"]) == 1
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["data"]["total"] == 1
+        assert len(data["data"]["items"]) == 1
 
 
 @pytest.mark.asyncio
 async def test_list_technical_assessments_empty(admin_client, mock_db_session):
     """GET /technical-assessments/ debe retornar lista vacía."""
-    query_mock = mock_db_session.query.return_value
-    filter_mock = query_mock.filter.return_value
-    offset_mock = filter_mock.offset.return_value
-    limit_mock = offset_mock.limit.return_value
-    limit_mock.all.return_value = []
+    with patch(
+        "app.services.routers.technical_assessment_router.technical_assessment_controller"
+    ) as mock_controller:
+        mock_controller.list_tests.return_value = ([], 0)
 
-    response = await admin_client.get("/api/v1/technical-assessments/")
+        response = await admin_client.get("/api/v1/technical-assessments/")
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert len(data["data"]) == 0
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["data"]["total"] == 0
+        assert len(data["data"]["items"]) == 0
 
 
 # ==============================================

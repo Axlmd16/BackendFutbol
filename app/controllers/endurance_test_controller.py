@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.controllers.statistic_controller import statistic_controller
@@ -7,7 +8,9 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.endurance_test_dao import EnduranceTestDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
+from app.models.endurance_test import EnduranceTest
 from app.models.test import Test
+from app.schemas.endurance_test_schema import EnduranceTestFilter
 from app.utils.exceptions import DatabaseException
 
 
@@ -83,3 +86,25 @@ class EnduranceTestController:
         # Actualizar estadísticas del atleta
         statistic_controller.update_athlete_stats(db, existing.athlete_id)
         return True
+
+    def list_tests(
+        self, db: Session, filters: EnduranceTestFilter
+    ) -> tuple[list[Test], int]:
+        """Listar EnduranceTests con paginación y filtros."""
+        query = db.query(Test).join(EnduranceTest).filter(Test.is_active == True)
+
+        if filters.evaluation_id is not None:
+            query = query.filter(Test.evaluation_id == filters.evaluation_id)
+        if filters.athlete_id is not None:
+            query = query.filter(Test.athlete_id == filters.athlete_id)
+
+        total = query.with_entities(func.count(Test.id)).scalar()
+
+        items = (
+            query.order_by(desc(Test.date))
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+
+        return items, total

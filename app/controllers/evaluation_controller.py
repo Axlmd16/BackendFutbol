@@ -3,10 +3,12 @@
 from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.dao.evaluation_dao import EvaluationDAO
 from app.models.evaluation import Evaluation
+from app.schemas.evaluation_schema import EvaluationFilter
 
 
 class EvaluationController:
@@ -80,6 +82,30 @@ class EvaluationController:
             Lista de evaluaciones
         """
         return self.evaluation_dao.list_all(db, skip, limit)
+
+    def list_evaluations_paginated(
+        self, db: Session, filters: EvaluationFilter
+    ) -> tuple[list[Evaluation], int]:
+        """Listar evaluaciones con paginación y filtros básicos."""
+        query = db.query(Evaluation).filter(Evaluation.is_active)
+
+        if filters.user_id:
+            query = query.filter(Evaluation.user_id == filters.user_id)
+
+        if filters.search:
+            like = f"%{filters.search.strip()}%"
+            query = query.filter(Evaluation.name.ilike(like))
+
+        total = query.with_entities(func.count()).scalar() or 0
+
+        items = (
+            query.order_by(desc(Evaluation.date))
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+
+        return items, total
 
     def list_evaluations_by_user(
         self, db: Session, user_id: int, skip: int = 0, limit: int = 100

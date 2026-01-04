@@ -1,12 +1,15 @@
 from datetime import datetime
 
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.technical_assessment_dao import TechnicalAssessmentDAO
 from app.dao.test_dao import TestDAO
+from app.models.technical_assessment import TechnicalAssessment
 from app.models.test import Test
+from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
 from app.utils.exceptions import DatabaseException
 
 
@@ -84,3 +87,27 @@ class TechnicalAssessmentController:
 
         self.technical_assessment_dao.delete(db, test_id)
         return True
+
+    def list_tests(
+        self, db: Session, filters: TechnicalAssessmentFilter
+    ) -> tuple[list[TechnicalAssessment], int]:
+        """Listar Technical Assessments con paginación y filtros básicos."""
+        query = db.query(TechnicalAssessment).filter(TechnicalAssessment.is_active)
+
+        if filters.evaluation_id:
+            query = query.filter(
+                TechnicalAssessment.evaluation_id == filters.evaluation_id
+            )
+        if filters.athlete_id:
+            query = query.filter(TechnicalAssessment.athlete_id == filters.athlete_id)
+
+        total = query.with_entities(func.count()).scalar() or 0
+
+        items = (
+            query.order_by(desc(TechnicalAssessment.date))
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+
+        return items, total

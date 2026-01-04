@@ -120,50 +120,50 @@ async def test_create_sprint_test_validation_error(admin_client):
 @pytest.mark.asyncio
 async def test_list_sprint_tests_success(admin_client, mock_db_session):
     """GET /sprint-tests/ debe listar Sprint Tests."""
-    mock_test = MagicMock()
-    mock_test.id = 1
-    mock_test.type = "sprint_test"
-    mock_test.test_type = "sprint_test"
-    mock_test.date = datetime.now()
-    mock_test.athlete_id = 5
-    mock_test.evaluation_id = 1
-    mock_test.distance_meters = 30
-    mock_test.time_0_10_s = 1.85
-    mock_test.time_0_30_s = 3.95
-    mock_test.observations = None
-    mock_test.created_at = datetime.now()
-    mock_test.updated_at = None
-    mock_test.is_active = True
+    with patch(
+        "app.services.routers.sprint_test_router.sprint_test_controller"
+    ) as mock_controller:
+        mock_test = MagicMock()
+        mock_test.id = 1
+        mock_test.type = "sprint_test"
+        mock_test.test_type = "sprint_test"
+        mock_test.date = datetime.now()
+        mock_test.athlete_id = 5
+        mock_test.evaluation_id = 1
+        mock_test.distance_meters = 30
+        mock_test.time_0_10_s = 1.85
+        mock_test.time_0_30_s = 3.95
+        mock_test.observations = None
+        mock_test.created_at = datetime.now()
+        mock_test.updated_at = None
+        mock_test.is_active = True
 
-    query_mock = mock_db_session.query.return_value
-    filter_mock = query_mock.filter.return_value
-    offset_mock = filter_mock.offset.return_value
-    limit_mock = offset_mock.limit.return_value
-    limit_mock.all.return_value = [mock_test]
+        mock_controller.list_tests.return_value = ([mock_test], 1)
 
-    response = await admin_client.get("/api/v1/sprint-tests/")
+        response = await admin_client.get("/api/v1/sprint-tests/")
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert len(data["data"]) == 1
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["data"]["total"] == 1
+        assert len(data["data"]["items"]) == 1
 
 
 @pytest.mark.asyncio
 async def test_list_sprint_tests_empty(admin_client, mock_db_session):
     """GET /sprint-tests/ debe retornar lista vacía."""
-    query_mock = mock_db_session.query.return_value
-    filter_mock = query_mock.filter.return_value
-    offset_mock = filter_mock.offset.return_value
-    limit_mock = offset_mock.limit.return_value
-    limit_mock.all.return_value = []
+    with patch(
+        "app.services.routers.sprint_test_router.sprint_test_controller"
+    ) as mock_controller:
+        mock_controller.list_tests.return_value = ([], 0)
 
-    response = await admin_client.get("/api/v1/sprint-tests/")
+        response = await admin_client.get("/api/v1/sprint-tests/")
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert len(data["data"]) == 0
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["data"]["total"] == 0
+        assert len(data["data"]["items"]) == 0
 
 
 # ==============================================
