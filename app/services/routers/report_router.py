@@ -19,9 +19,9 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 report_controller = ReportController()
 
 
-@router.post(
-    "/generate",
-    response_model=ResponseSchema,
+@router.get(
+    "",
+    response_model=None,
     status_code=status.HTTP_200_OK,
     summary="Generar reporte deportivo",
     description=(
@@ -31,209 +31,79 @@ report_controller = ReportController()
     ),
 )
 def generate_report(
-    filters: ReportFilter,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Account, Depends(get_current_account)],
+    format: Annotated[str, Query(...)] = "PDF",
+    start_date: Annotated[str | None, Query()] = None,
+    end_date: Annotated[str | None, Query()] = None,
+    club_id: Annotated[int | None, Query()] = None,
+    athlete_id: Annotated[int | None, Query()] = None,
+    report_type: Annotated[str, Query()] = "all",
+    db: Annotated[Session, Depends(get_db)] = None,
+    current_user: Annotated[Account, Depends(get_current_account)] = None,
 ):
     """
     Genera un reporte deportivo con los filtros especificados.
 
+    - **format**: Formato del archivo: PDF, CSV, XLSX (requerido)
     - **club_id**: Opcional. Filtra por club/escuela
     - **athlete_id**: Opcional. Filtra por deportista específico
     - **start_date**: Opcional. Fecha de inicio (YYYY-MM-DD)
     - **end_date**: Opcional. Fecha de fin (YYYY-MM-DD)
-    - **include_attendance**: Incluir datos de asistencia (default: true)
-    - **include_evaluations**: Incluir datos de evaluaciones (default: true)
-    - **include_tests**: Incluir resultados de pruebas (default: true)
-    - **format**: Formato del archivo: pdf, csv, xlsx (default: xlsx)
+    - **report_type**: Tipo de reporte: attendance, evaluation, results, all (default: all)
     """
     try:
-        # Validación de permisos (admin o coach)
-        if current_user.user.role not in ["admin", "coach"]:
+        # Validación de formato
+        if format.upper() not in ["PDF", "CSV", "XLSX"]:
+            raise ValidationException(f"Formato inválido: {format}. Use PDF, CSV o XLSX")
+
+        # Validación de permisos
+        if current_user.user.role not in ["ADMINISTRATOR", "COACH"]:
             raise ValidationException("No tiene permisos para generar reportes")
-
-        # Si es coach, solo puede ver su club
-        if current_user.user.role == "coach" and filters.club_id:
-            if current_user.user.club_id != filters.club_id:
-                raise ValidationException("No tiene permiso para acceder a este club")
-        elif current_user.user.role == "coach":
-            filters.club_id = current_user.user.club_id
-
-        # Generar reporte
-        report_info = report_controller.generate_report(
-            db=db,
-            filters=filters,
-            user_dni=current_user.user.dni,
-        )
-
-        return ResponseSchema(
-            status="success",
-            data=report_info.model_dump(),
-            message="Reporte generado exitosamente",
-        )
-
-    except ValidationException as e:
-        return ResponseSchema(
-            status="error",
-            message=str(e),
-        )
-    except Exception as e:
-        return ResponseSchema(
-            status="error",
-            message=f"Error al generar reporte: {str(e)}",
-        )
-
-
-@router.get(
-    "/preview",
-    status_code=status.HTTP_200_OK,
-    summary="Vista previa de reporte",
-    description="Obtiene una vista previa en formato CSV de los datos que tendrá el reporte",
-)
-def preview_report(
-    club_id: int | None = Query(None),
-    athlete_id: int | None = Query(None),
-    start_date: date | None = Query(None),
-    end_date: date | None = Query(None),
-    db: Annotated[Session, Depends(get_db)] = None,
-    current_user: Annotated[Account, Depends(get_current_account)] = None,
-):
-    """
-    Obtiene una vista previa de los datos que contendrá el reporte.
-
-    Parámetros:
-    - **club_id**: Opcional. Filtra por club/escuela
-    - **athlete_id**: Opcional. Filtra por deportista específico
-    - **start_date**: Opcional. Fecha de inicio (YYYY-MM-DD)
-    - **end_date**: Opcional. Fecha de fin (YYYY-MM-DD)
-    """
-    try:
-        # Validación de permisos
-        if current_user.user.role not in ["admin", "coach"]:
-            raise ValidationException("No tiene permisos para ver reportes")
-
-        # Si es coach, solo puede ver su club
-        if current_user.user.role == "coach":
-            if club_id and current_user.user.club_id != club_id:
-                raise ValidationException("No tiene permiso para acceder a este club")
-            club_id = current_user.user.club_id
-
-        # Crear filtros para preview
-        filters = ReportFilter(
-            club_id=club_id,
-            athlete_id=athlete_id,
-            start_date=start_date,
-            end_date=end_date,
-            format="csv",
-            include_attendance=True,
-            include_evaluations=True,
-            include_tests=True,
-        )
-
-        # Recolectar datos
-        report_data = report_controller.collect_report_data(db=db, filters=filters)
-
-        # Generar CSV para preview
-        csv_content = report_controller.generate_csv_report(report_data, filters)
-
-        return StreamingResponse(
-            iter([csv_content.getvalue()]),
-            media_type="text/csv",
-            headers={
-                "Content-Disposition": "attachment; filename=reporte_preview.csv"
-            },
-        )
-
-    except ValidationException as e:
-        return ResponseSchema(
-            status="error",
-            message=str(e),
-        )
-    except Exception as e:
-        return ResponseSchema(
-            status="error",
-            message=f"Error al generar vista previa: {str(e)}",
-        )
-
-
-@router.get(
-    "/stats",
-    response_model=ResponseSchema,
-    status_code=status.HTTP_200_OK,
-    summary="Estadísticas de reportes",
-    description="Obtiene estadísticas de datos disponibles para reportes",
-)
-def get_report_stats(
-    club_id: int | None = Query(None),
-    athlete_id: int | None = Query(None),
-    start_date: date | None = Query(None),
-    end_date: date | None = Query(None),
-    db: Annotated[Session, Depends(get_db)] = None,
-    current_user: Annotated[Account, Depends(get_current_account)] = None,
-):
-    """
-    Obtiene estadísticas sobre los datos disponibles para generar reportes.
-
-    Retorna:
-    - Total de atletas
-    - Total de registros de asistencia
-    - Total de evaluaciones
-    - Total de resultados de pruebas
-    """
-    try:
-        # Validación de permisos
-        if current_user.user.role not in ["admin", "coach"]:
-            raise ValidationException("No tiene permisos para ver estadísticas")
-
-        # Si es coach, solo puede ver su club
-        if current_user.user.role == "coach":
-            if club_id and current_user.user.club_id != club_id:
-                raise ValidationException("No tiene permiso para acceder a este club")
-            club_id = current_user.user.club_id
 
         # Crear filtros
         filters = ReportFilter(
-            club_id=club_id,
-            athlete_id=athlete_id,
+            format=format.upper(),
             start_date=start_date,
             end_date=end_date,
-            format="csv",
+            club_id=club_id,
+            athlete_id=athlete_id,
+            report_type=report_type,
         )
 
-        # Obtener datos
-        report_data = report_controller.collect_report_data(db=db, filters=filters)
+        # Si es coach, solo puede ver su club
+        if current_user.user.role == "COACH":
+            if club_id and current_user.club_id != club_id:
+                raise ValidationException("No tiene permiso para acceder a este club")
+            filters.club_id = current_user.club_id
 
-        stats = {
-            "total_athletes": len(report_data.get("athletes", [])),
-            "total_attendance_records": len(report_data.get("attendance", [])),
-            "total_evaluations": len(report_data.get("evaluations", [])),
-            "total_sprint_tests": len(report_data["tests"].get("sprint", [])),
-            "total_endurance_tests": len(report_data["tests"].get("endurance", [])),
-            "total_yoyo_tests": len(report_data["tests"].get("yoyo", [])),
-            "total_technical_assessments": len(
-                report_data["tests"].get("technical", [])
-            ),
-            "total_tests": (
-                len(report_data["tests"].get("sprint", []))
-                + len(report_data["tests"].get("endurance", []))
-                + len(report_data["tests"].get("yoyo", []))
-                + len(report_data["tests"].get("technical", []))
-            ),
+        # Generar reporte
+        file_content = report_controller.generate_report(db=db, filters=filters)
+
+        # Determinar content type
+        content_types = {
+            "PDF": "application/pdf",
+            "CSV": "text/csv",
+            "XLSX": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
+        content_type = content_types.get(format.upper(), "application/octet-stream")
 
-        return ResponseSchema(
-            status="success",
-            data=stats,
-            message="Estadísticas obtenidas exitosamente",
+        # Determinar extensión
+        extensions = {
+            "PDF": "pdf",
+            "CSV": "csv",
+            "XLSX": "xlsx",
+        }
+        ext = extensions.get(format.upper(), "file")
+
+        return StreamingResponse(
+            iter([file_content]),
+            media_type=content_type,
+            headers={"Content-Disposition": f"attachment; filename=reporte.{ext}"},
         )
 
     except ValidationException as e:
-        return ResponseSchema(
-            status="error",
-            message=str(e),
-        )
+        raise AppException(status_code=400, message=str(e))
     except Exception as e:
-        return ResponseSchema(
-            status="error",
-            message=f"Error al obtener estadísticas: {str(e)}",
-        )
+        raise AppException(status_code=500, message=f"Error al generar reporte: {str(e)}")
+
+
+
