@@ -317,3 +317,71 @@ def test_list_tests_with_filters(endurance_test_controller, mock_db):
 
     assert items == []
     assert total == 3
+
+
+def test_list_tests_with_search(
+    endurance_test_controller, mock_db, mock_endurance_test
+):
+    """Lista endurance tests filtrando por nombre de atleta (search)."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join1 = MagicMock()  # Primer join(EnduranceTest)
+    mock_filter1 = MagicMock()
+    mock_join2 = MagicMock()  # Segundo join(Athlete) cuando hay search
+    mock_filter2 = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join1
+    mock_join1.filter.return_value = mock_filter1
+    mock_filter1.join.return_value = mock_join2
+    mock_join2.filter.return_value = mock_filter2
+    mock_filter2.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter2.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_endurance_test]
+
+    filters = EnduranceTestFilter(page=1, limit=10, search="Pedro")
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_search_no_match(endurance_test_controller, mock_db):
+    """Lista endurance tests con search que no coincide devuelve lista vacía."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join1 = MagicMock()  # Primer join(EnduranceTest)
+    mock_filter1 = MagicMock()
+    mock_join2 = MagicMock()  # Segundo join(Athlete) cuando hay search
+    mock_filter2 = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join1
+    mock_join1.filter.return_value = mock_filter1
+    mock_filter1.join.return_value = mock_join2
+    mock_join2.filter.return_value = mock_filter2
+    mock_filter2.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter2.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EnduranceTestFilter(page=1, limit=10, search="NoExiste")
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 0

@@ -353,6 +353,96 @@ def test_list_evaluations_paginated_with_user_filter(evaluation_controller, mock
     assert total == 5
 
 
+def test_list_evaluations_paginated_with_date(
+    evaluation_controller, mock_db, mock_evaluation
+):
+    """Lista evaluaciones filtrando por fecha exacta."""
+    from app.schemas.evaluation_schema import EvaluationFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 2
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_evaluation]
+
+    filters = EvaluationFilter(page=1, limit=10, date="2025-01-04")
+    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 2
+
+
+def test_list_evaluations_paginated_with_location(evaluation_controller, mock_db):
+    """Lista evaluaciones filtrando por ubicación (case-insensitive)."""
+    from app.schemas.evaluation_schema import EvaluationFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 3
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EvaluationFilter(page=1, limit=10, location="Cancha")
+    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
+
+    assert items == []
+    assert total == 3
+
+
+def test_list_evaluations_paginated_with_multiple_filters(
+    evaluation_controller, mock_db, mock_evaluation
+):
+    """Lista evaluaciones con múltiples filtros aplicados."""
+    from app.schemas.evaluation_schema import EvaluationFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter  # Encadenar filters
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_evaluation]
+
+    filters = EvaluationFilter(
+        page=1, limit=10, search="Física", date="2025-01-04", location="Cancha"
+    )
+    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
 # Nota: Tests para test_management (add_sprint_test, add_yoyo_test, etc.)
 # han sido movidos a sus controladores específicos:
 # - sprint_test_controller

@@ -8,6 +8,7 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.endurance_test_dao import EnduranceTestDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
+from app.models.athlete import Athlete
 from app.models.endurance_test import EnduranceTest
 from app.models.test import Test
 from app.schemas.endurance_test_schema import EnduranceTestFilter
@@ -91,12 +92,16 @@ class EnduranceTestController:
         self, db: Session, filters: EnduranceTestFilter
     ) -> tuple[list[Test], int]:
         """Listar EnduranceTests con paginación y filtros."""
-        query = db.query(Test).join(EnduranceTest).filter(Test.is_active == True)
+        query = db.query(Test).join(EnduranceTest).filter(Test.is_active)
 
         if filters.evaluation_id is not None:
             query = query.filter(Test.evaluation_id == filters.evaluation_id)
         if filters.athlete_id is not None:
             query = query.filter(Test.athlete_id == filters.athlete_id)
+        if filters.search:
+            query = query.join(Athlete).filter(
+                Athlete.full_name.ilike(f"%{filters.search}%")
+            )
 
         total = query.with_entities(func.count(Test.id)).scalar()
 

@@ -7,6 +7,7 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.technical_assessment_dao import TechnicalAssessmentDAO
 from app.dao.test_dao import TestDAO
+from app.models.athlete import Athlete
 from app.models.technical_assessment import TechnicalAssessment
 from app.models.test import Test
 from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
@@ -100,6 +101,10 @@ class TechnicalAssessmentController:
             )
         if filters.athlete_id:
             query = query.filter(TechnicalAssessment.athlete_id == filters.athlete_id)
+        if filters.search:
+            query = query.join(Athlete).filter(
+                Athlete.full_name.ilike(f"%{filters.search}%")
+            )
 
         total = query.with_entities(func.count()).scalar() or 0
 

@@ -70,6 +70,8 @@ class EvaluationFilter(BaseModel):
     limit: int = Field(10, ge=1, le=100, description="Registros por página")
     search: Optional[str] = Field(None, description="Buscar por nombre")
     user_id: Optional[int] = Field(None, gt=0, description="Filtrar por usuario")
+    date: Optional[str] = Field(None, description="Filtrar por fecha (YYYY-MM-DD)")
+    location: Optional[str] = Field(None, description="Filtrar por ubicación")
 
     @property
     def skip(self) -> int:

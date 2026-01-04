@@ -8,6 +8,7 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
 from app.dao.yoyo_test_dao import YoyoTestDAO
+from app.models.athlete import Athlete
 from app.models.test import Test
 from app.models.yoyo_test import YoyoTest
 from app.schemas.yoyo_test_schema import YoyoTestFilter
@@ -100,6 +101,10 @@ class YoyoTestController:
             query = query.filter(YoyoTest.evaluation_id == filters.evaluation_id)
         if filters.athlete_id:
             query = query.filter(YoyoTest.athlete_id == filters.athlete_id)
+        if filters.search:
+            query = query.join(Athlete).filter(
+                Athlete.full_name.ilike(f"%{filters.search}%")
+            )
 
         total = query.with_entities(func.count()).scalar() or 0
 

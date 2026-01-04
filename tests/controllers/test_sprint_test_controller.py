@@ -300,3 +300,63 @@ def test_list_tests_with_filters(sprint_test_controller, mock_db):
 
     assert items == []
     assert total == 1
+
+
+def test_list_tests_with_search(sprint_test_controller, mock_db, mock_sprint_test):
+    """Lista sprint tests filtrando por nombre de atleta (search)."""
+    from app.schemas.sprint_test_schema import SprintTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_sprint_test]
+
+    filters = SprintTestFilter(page=1, limit=10, search="Carlos")
+    items, total = sprint_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_search_no_match(sprint_test_controller, mock_db):
+    """Lista sprint tests con search que no coincide devuelve lista vacía."""
+    from app.schemas.sprint_test_schema import SprintTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = SprintTestFilter(page=1, limit=10, search="NoExiste")
+    items, total = sprint_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 0

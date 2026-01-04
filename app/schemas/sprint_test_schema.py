@@ -38,6 +38,7 @@ class SprintTestFilter(BaseModel):
     limit: int = Field(10, ge=1, le=100)
     evaluation_id: Optional[int] = Field(None, gt=0)
     athlete_id: Optional[int] = Field(None, gt=0)
+    search: Optional[str] = Field(None, description="Buscar por nombre de atleta")
 
     @property
     def skip(self) -> int:

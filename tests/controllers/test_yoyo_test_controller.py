@@ -301,3 +301,90 @@ def test_list_tests_with_filters(yoyo_test_controller, mock_db):
 
     assert items == []
     assert total == 2
+
+
+def test_list_tests_with_search(yoyo_test_controller, mock_db, mock_yoyo_test):
+    """Lista yoyo tests filtrando por nombre de atleta (search)."""
+    from app.schemas.yoyo_test_schema import YoyoTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_yoyo_test]
+
+    filters = YoyoTestFilter(page=1, limit=10, search="Juan")
+    items, total = yoyo_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_empty_search(yoyo_test_controller, mock_db):
+    """Lista yoyo tests con search vacío trae todos los registros."""
+    from app.schemas.yoyo_test_schema import YoyoTestFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 5
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = YoyoTestFilter(page=1, limit=10, search="")
+    items, total = yoyo_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 5
+
+
+def test_list_tests_with_search_no_match(yoyo_test_controller, mock_db):
+    """Lista yoyo tests con search que no coincide devuelve lista vacía."""
+    from app.schemas.yoyo_test_schema import YoyoTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = YoyoTestFilter(page=1, limit=10, search="NoExiste")
+    items, total = yoyo_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 0

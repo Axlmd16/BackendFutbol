@@ -8,6 +8,7 @@ from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.sprint_test_dao import SprintTestDAO
 from app.dao.test_dao import TestDAO
+from app.models.athlete import Athlete
 from app.models.sprint_test import SprintTest
 from app.models.test import Test
 from app.schemas.sprint_test_schema import SprintTestFilter
@@ -103,6 +104,10 @@ class SprintTestController:
             query = query.filter(SprintTest.evaluation_id == filters.evaluation_id)
         if filters.athlete_id:
             query = query.filter(SprintTest.athlete_id == filters.athlete_id)
+        if filters.search:
+            query = query.join(Athlete).filter(
+                Athlete.full_name.ilike(f"%{filters.search}%")
+            )
 
         total = query.with_entities(func.count()).scalar() or 0
 

@@ -96,6 +96,14 @@ class EvaluationController:
             like = f"%{filters.search.strip()}%"
             query = query.filter(Evaluation.name.ilike(like))
 
+        if filters.date:
+            # Filtrar por fecha (solo la parte de fecha, sin hora)
+            query = query.filter(func.date(Evaluation.date) == filters.date)
+
+        if filters.location:
+            like = f"%{filters.location.strip()}%"
+            query = query.filter(Evaluation.location.ilike(like))
+
         total = query.with_entities(func.count()).scalar() or 0
 
         items = (
