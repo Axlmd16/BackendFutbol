@@ -588,9 +588,9 @@ class ReportService:
             ):
                 period = filters.start_date.strftime("%B %Y")
             else:
-                period = f"{filters.start_date.strftime('%d/%m/%Y')} - {
-                    filters.end_date.strftime('%d/%m/%Y')
-                }"
+                start_str = filters.start_date.strftime("%d/%m/%Y")
+                end_str = filters.end_date.strftime("%d/%m/%Y")
+                period = f"{start_str} - {end_str}"
 
         filters_dict = {}
         if filters.athlete_id:
