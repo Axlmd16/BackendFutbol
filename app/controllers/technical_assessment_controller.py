@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
+from app.controllers.statistic_controller import statistic_controller
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.technical_assessment_dao import TechnicalAssessmentDAO
@@ -87,6 +88,10 @@ class TechnicalAssessmentController:
             return False
 
         self.technical_assessment_dao.delete(db, test_id)
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, existing.athlete_id)
+
         return True
 
     def list_tests(

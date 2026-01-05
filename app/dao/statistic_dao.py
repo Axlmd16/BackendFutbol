@@ -446,6 +446,7 @@ class StatisticDAO(BaseDAO[Statistic]):
             sprint_count = (
                 db.query(func.count(SprintTest.id))
                 .filter(SprintTest.athlete_id == athlete_id)
+                .filter(SprintTest.is_active.is_(True))
                 .scalar()
                 or 0
             )
@@ -453,6 +454,7 @@ class StatisticDAO(BaseDAO[Statistic]):
                 avg_time = (
                     db.query(func.avg(SprintTest.time_0_30_s))
                     .filter(SprintTest.athlete_id == athlete_id)
+                    .filter(SprintTest.is_active.is_(True))
                     .scalar()
                 )
                 tests_by_type.append(
@@ -467,6 +469,7 @@ class StatisticDAO(BaseDAO[Statistic]):
             yoyo_count = (
                 db.query(func.count(YoyoTest.id))
                 .filter(YoyoTest.athlete_id == athlete_id)
+                .filter(YoyoTest.is_active.is_(True))
                 .scalar()
                 or 0
             )
@@ -474,6 +477,7 @@ class StatisticDAO(BaseDAO[Statistic]):
                 avg_shuttle = (
                     db.query(func.avg(YoyoTest.shuttle_count))
                     .filter(YoyoTest.athlete_id == athlete_id)
+                    .filter(YoyoTest.is_active.is_(True))
                     .scalar()
                 )
                 tests_by_type.append(
@@ -488,6 +492,7 @@ class StatisticDAO(BaseDAO[Statistic]):
             endurance_count = (
                 db.query(func.count(EnduranceTest.id))
                 .filter(EnduranceTest.athlete_id == athlete_id)
+                .filter(EnduranceTest.is_active.is_(True))
                 .scalar()
                 or 0
             )
@@ -495,6 +500,7 @@ class StatisticDAO(BaseDAO[Statistic]):
                 avg_distance = (
                     db.query(func.avg(EnduranceTest.total_distance_m))
                     .filter(EnduranceTest.athlete_id == athlete_id)
+                    .filter(EnduranceTest.is_active.is_(True))
                     .scalar()
                 )
                 tests_by_type.append(
@@ -509,15 +515,18 @@ class StatisticDAO(BaseDAO[Statistic]):
             tech_count = (
                 db.query(func.count(TechnicalAssessment.id))
                 .filter(TechnicalAssessment.athlete_id == athlete_id)
+                .filter(TechnicalAssessment.is_active.is_(True))
                 .scalar()
                 or 0
             )
             if tech_count > 0:
+                # Formula: 10 pts per test (same as controller)
+                score = min(100, tech_count * 10)
                 tests_by_type.append(
                     {
                         "test_type": "Technical Assessment",
                         "count": tech_count,
-                        "avg_score": None,
+                        "avg_score": score,
                     }
                 )
 
@@ -630,7 +639,7 @@ class StatisticDAO(BaseDAO[Statistic]):
         """Actualiza los campos de un registro Statistic."""
         try:
             for key, value in fields.items():
-                if hasattr(statistic, key) and value is not None:
+                if hasattr(statistic, key):
                     setattr(statistic, key, value)
             db.commit()
             db.refresh(statistic)

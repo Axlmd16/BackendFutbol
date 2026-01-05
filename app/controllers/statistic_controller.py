@@ -178,6 +178,8 @@ class StatisticController:
                 speed_score = max(0, min(100, 100 - ((sprint_avg - 4) * 25)))
                 updates["speed"] = round(speed_score, 1)
                 print(f"[DEBUG] Speed score calculado: {speed_score}")
+            else:
+                updates["speed"] = None
 
             # RESISTENCIA (YoyoTest + EnduranceTest)
             yoyo_avg = self.statistic_dao.get_yoyo_avg_shuttles(db, athlete_id)
@@ -198,12 +200,16 @@ class StatisticController:
 
             if stamina_scores:
                 updates["stamina"] = round(sum(stamina_scores) / len(stamina_scores), 1)
+            else:
+                updates["stamina"] = None
 
             # AGILIDAD (TechnicalAssessment)
             tech_count = self.statistic_dao.get_technical_count(db, athlete_id)
             if tech_count > 0:
                 # Cada evaluación técnica suma 10 puntos (máximo 100)
                 updates["agility"] = min(100, tech_count * 10)
+            else:
+                updates["agility"] = None
 
             # Actualizar en la base de datos
             if updates:
