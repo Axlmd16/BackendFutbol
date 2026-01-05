@@ -23,6 +23,7 @@ from app.services.routers import (
     attendance_router,
     endurance_test_router,
     evaluation_router,
+    report_router,
     representative_router,
     sprint_test_router,
     statistic_router,
@@ -39,6 +40,12 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+# Suprimir logs ruidosos de librerías externas
+logging.getLogger("fontTools").setLevel(logging.WARNING)
+logging.getLogger("weasyprint").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("multipart").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 
@@ -171,6 +178,7 @@ def create_application() -> FastAPI:
     app.include_router(yoyo_test_router, prefix=API_PREFIX)
     app.include_router(technical_assessment_router, prefix=API_PREFIX)
     app.include_router(representative_router, prefix=API_PREFIX)
+    app.include_router(report_router, prefix=API_PREFIX)
 
     @app.get("/", include_in_schema=False)
     async def root():

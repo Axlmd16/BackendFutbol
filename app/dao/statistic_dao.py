@@ -125,6 +125,7 @@ class StatisticDAO(BaseDAO[Statistic]):
         end_date: Optional[date] = None,
         type_athlete: Optional[str] = None,
         sex: Optional[str] = None,
+        athlete_id: Optional[int] = None,
     ) -> dict:
         """
         Obtener estadísticas de asistencia con filtros.
@@ -144,13 +145,15 @@ class StatisticDAO(BaseDAO[Statistic]):
                 end_dt = datetime.combine(end_date, datetime.max.time())
                 query = query.filter(Attendance.date <= end_dt)
 
-            # Join with athlete for type/sex filters
-            if type_athlete or sex:
+            # Join with athlete for type/sex/id filters
+            if type_athlete or sex or athlete_id:
                 query = query.join(Athlete, Attendance.athlete_id == Athlete.id)
                 if type_athlete:
                     query = query.filter(Athlete.type_athlete == type_athlete)
                 if sex:
                     query = query.filter(Athlete.sex == sex)
+                if athlete_id:
+                    query = query.filter(Athlete.id == athlete_id)
 
             # Total records
             total = query.count()
@@ -234,6 +237,7 @@ class StatisticDAO(BaseDAO[Statistic]):
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         type_athlete: Optional[str] = None,
+        athlete_id: Optional[int] = None,
     ) -> dict:
         """
         Obtener estadísticas de rendimiento en tests.
@@ -245,68 +249,104 @@ class StatisticDAO(BaseDAO[Statistic]):
             tests_by_type = []
 
             # Sprint tests
-            sprint_count = db.query(func.count(SprintTest.id)).scalar() or 0
-            if sprint_count > 0:
+            sprint_query = db.query(
+                func.count(SprintTest.id),
+                func.avg(SprintTest.time_0_30_s),
+                func.min(SprintTest.time_0_30_s),
+                func.max(SprintTest.time_0_30_s),
+            )
+            if athlete_id:
+                sprint_query = sprint_query.filter(SprintTest.athlete_id == athlete_id)
+
+            sprint_stats = sprint_query.first()
+            if sprint_stats and sprint_stats[0] > 0:
+                # Formula: 4s = 100, 8s = 0
+                avg_time = float(sprint_stats[1]) if sprint_stats[1] else 0
+                score = (
+                    max(0, min(100, 100 - ((avg_time - 4) * 25))) if avg_time > 0 else 0
+                )
+
                 tests_by_type.append(
                     {
                         "test_type": "Sprint Test",
-                        "total_tests": sprint_count,
-                        "avg_score": None,
-                        "min_score": None,
-                        "max_score": None,
+                        "total_tests": sprint_stats[0],
+                        "avg_score": round(score, 1),
+                        "min_score": float(sprint_stats[2])
+                        if sprint_stats[2]
+                        else None,  # Raw time
+                        "max_score": float(sprint_stats[3])
+                        if sprint_stats[3]
+                        else None,  # Raw time
                     }
                 )
 
-            # YoYo tests - using shuttle_count as numeric metric
+            # YoYo tests
             yoyo_query = db.query(
                 func.count(YoyoTest.id),
                 func.avg(YoyoTest.shuttle_count),
                 func.min(YoyoTest.shuttle_count),
                 func.max(YoyoTest.shuttle_count),
             )
+            if athlete_id:
+                yoyo_query = yoyo_query.filter(YoyoTest.athlete_id == athlete_id)
             yoyo_stats = yoyo_query.first()
             if yoyo_stats and yoyo_stats[0] > 0:
+                # Formula: 20 shuttles = 30 pts
+                avg_shuttles = float(yoyo_stats[1]) if yoyo_stats[1] else 0
+                score = min(100, max(0, 30 + (avg_shuttles - 20) * 1.17))
+
                 tests_by_type.append(
                     {
                         "test_type": "YoYo Test",
                         "total_tests": yoyo_stats[0],
-                        "avg_score": round(float(yoyo_stats[1]), 2)
-                        if yoyo_stats[1]
-                        else None,
+                        "avg_score": round(score, 1),
                         "min_score": float(yoyo_stats[2]) if yoyo_stats[2] else None,
                         "max_score": float(yoyo_stats[3]) if yoyo_stats[3] else None,
                     }
                 )
 
-            # Endurance tests - using total_distance_m
+            # Endurance tests
             endurance_query = db.query(
                 func.count(EnduranceTest.id),
                 func.avg(EnduranceTest.total_distance_m),
                 func.min(EnduranceTest.total_distance_m),
                 func.max(EnduranceTest.total_distance_m),
             )
+            if athlete_id:
+                endurance_query = endurance_query.filter(
+                    EnduranceTest.athlete_id == athlete_id
+                )
             end_stats = endurance_query.first()
             if end_stats and end_stats[0] > 0:
+                # Formula: 1000m = 30 pts
+                avg_dist = float(end_stats[1]) if end_stats[1] else 0
+                score = min(100, max(0, 30 + (avg_dist - 1000) * 0.035))
+
                 tests_by_type.append(
                     {
                         "test_type": "Endurance Test",
                         "total_tests": end_stats[0],
-                        "avg_score": round(float(end_stats[1]), 2)
-                        if end_stats[1]
-                        else None,
+                        "avg_score": round(score, 1),
                         "min_score": float(end_stats[2]) if end_stats[2] else None,
                         "max_score": float(end_stats[3]) if end_stats[3] else None,
                     }
                 )
 
-            # Technical assessments - no numeric score, just count
-            tech_count = db.query(func.count(TechnicalAssessment.id)).scalar() or 0
+            # Technical assessments
+            tech_query = db.query(func.count(TechnicalAssessment.id))
+            if athlete_id:
+                tech_query = tech_query.filter(
+                    TechnicalAssessment.athlete_id == athlete_id
+                )
+            tech_count = tech_query.scalar() or 0
             if tech_count > 0:
+                # Formula: 10 pts per test
+                score = min(100, tech_count * 10)
                 tests_by_type.append(
                     {
                         "test_type": "Technical Assessment",
                         "total_tests": tech_count,
-                        "avg_score": None,
+                        "avg_score": score,
                         "min_score": None,
                         "max_score": None,
                     }
@@ -325,7 +365,12 @@ class StatisticDAO(BaseDAO[Statistic]):
                 )
                 .join(Test, Test.athlete_id == Athlete.id)
                 .filter(Athlete.is_active.is_(True))
-                .group_by(Athlete.id, Athlete.full_name, Athlete.type_athlete)
+            )
+            if athlete_id:
+                top_query = top_query.filter(Athlete.id == athlete_id)
+
+            top_query = (
+                top_query.group_by(Athlete.id, Athlete.full_name, Athlete.type_athlete)
                 .order_by(func.count(Test.id).desc())
                 .limit(5)
                 .all()

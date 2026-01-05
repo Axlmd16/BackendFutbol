@@ -52,6 +52,7 @@ class StatisticController:
         end_date: Optional[date] = None,
         type_athlete: Optional[str] = None,
         sex: Optional[str] = None,
+        athlete_id: Optional[int] = None,
     ) -> dict:
         """
         Obtener estadísticas de asistencia.
@@ -62,6 +63,7 @@ class StatisticController:
             end_date: Fecha de fin
             type_athlete: Filtro por tipo de atleta
             sex: Filtro por sexo
+            athlete_id: Filtro por atleta específico
 
         Returns:
             Dict con estadísticas de asistencia
@@ -73,6 +75,7 @@ class StatisticController:
                 end_date=end_date,
                 type_athlete=type_athlete,
                 sex=sex,
+                athlete_id=athlete_id,
             )
         except Exception as e:
             logger.error(f"Error getting attendance statistics: {str(e)}")
@@ -86,6 +89,7 @@ class StatisticController:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         type_athlete: Optional[str] = None,
+        athlete_id: Optional[int] = None,
     ) -> dict:
         """
         Obtener estadísticas de rendimiento en tests.
@@ -95,6 +99,7 @@ class StatisticController:
             start_date: Fecha de inicio
             end_date: Fecha de fin
             type_athlete: Filtro por tipo de atleta
+            athlete_id: Filtro por atleta específico
 
         Returns:
             Dict con estadísticas de tests
@@ -105,6 +110,7 @@ class StatisticController:
                 start_date=start_date,
                 end_date=end_date,
                 type_athlete=type_athlete,
+                athlete_id=athlete_id,
             )
         except Exception as e:
             logger.error(f"Error getting test performance: {str(e)}")
