@@ -40,6 +40,12 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+# Suprimir logs ruidosos de librerías externas
+logging.getLogger("fontTools").setLevel(logging.WARNING)
+logging.getLogger("weasyprint").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("multipart").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 
