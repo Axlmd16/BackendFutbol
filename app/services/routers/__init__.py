@@ -1,26 +1,31 @@
+from app.services.routers.account_router import router as account_router
 from app.services.routers.athlete_router import router as athlete_router
 from app.services.routers.attendance_router import router as attendance_router
-from app.services.routers.evaluation_router import router as evaluation_router
-from app.services.routers.test_router import router as test_router
-from app.services.routers.statistic_router import router as statistic_router
-from app.services.routers.sprint_test_router import router as sprint_test_router
 from app.services.routers.endurance_test_router import router as endurance_test_router
-from app.services.routers.yoyo_test_router import router as yoyo_test_router
-from app.services.routers.technical_assessment_router import router as technical_assessment_router
+from app.services.routers.evaluation_router import router as evaluation_router
+from app.services.routers.report_router import router as report_router
+from app.services.routers.representative_router import router as representative_router
+from app.services.routers.sprint_test_router import router as sprint_test_router
+from app.services.routers.statistic_router import router as statistic_router
+from app.services.routers.technical_assessment_router import (
+    router as technical_assessment_router,
+)
+from app.services.routers.test_router import router as test_router
 from app.services.routers.user_router import router as user_router
-from app.services.routers.account_router import router as account_router
+from app.services.routers.yoyo_test_router import router as yoyo_test_router
 
 __all__ = [
-	"athlete_router",
-	"attendance_router",
-	"evaluator_router",
-	"evaluation_router",
-	"test_router",
-	"statistic_router",
-	"sprint_test_router",
-	"endurance_test_router",
-	"yoyo_test_router",
-	"technical_assessment_router",
-	"user_router",
-	"account_router",
+    "athlete_router",
+    "attendance_router",
+    "evaluation_router",
+    "test_router",
+    "statistic_router",
+    "sprint_test_router",
+    "endurance_test_router",
+    "yoyo_test_router",
+    "technical_assessment_router",
+    "user_router",
+    "report_router",
+    "account_router",
+    "representative_router",
 ]

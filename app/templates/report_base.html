@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+            @top-right {
+                content: "SISTEMA KALLPA UNL";
+                font-family: 'Helvetica', sans-serif;
+                font-size: 9pt;
+                color: #BF0811;
+                font-weight: bold;
+            }
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-family: 'Helvetica', sans-serif;
+                font-size: 9pt;
+                color: #666666;
+            }
+        }
+        
+        body {
+            font-family: 'Helvetica', sans-serif;
+            color: #211915;
+            line-height: 1.4;
+        }
+
+        /* Encabezado Corporativo UNL */
+        .header {
+            border-bottom: 3px solid #BF0811; /* Rojo UNL */
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .header-title {
+            color: #4F8E3A; /* Verde UNL */
+            font-size: 22px;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin: 0;
+        }
+        .header-subtitle {
+            font-size: 12px;
+            color: #666666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        /* Bloque de Metadatos */
+        .metadata-box {
+            background-color: #F8F9FA;
+            border-left: 4px solid #004C7B; /* Azul UNL */
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .meta-col strong { color: #004C7B; }
+
+        /* Tarjetas de KPI (Dashboard) */
+        .kpi-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .kpi-card {
+            flex: 1;
+            padding: 10px 5px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 85px;
+        }
+        .kpi-value {
+            font-size: 22px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            line-height: 1.1;
+        }
+        .kpi-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #666666;
+            letter-spacing: 0.5px;
+            display: block;
+            line-height: 1.2;
+        }
+
+        /* Contenedor de Gráfico */
+        .chart-section {
+            text-align: center;
+            margin: 20px 0 30px 0;
+            padding: 5px;
+            background: #fff;
+        }
+        .chart-img {
+            max-width: 95%;
+            height: auto;
+            max-height: 350px;
+        }
+
+        /* Tablas */
+        h2 {
+            font-size: 14px;
+            color: #211915;
+            border-bottom: 2px solid #4F8E3A;
+            padding-bottom: 5px;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+            margin-bottom: 20px;
+        }
+        
+        th {
+            background-color: #004C7B;
+            color: white;
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+            color: #444;
+        }
+        
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        
+        /* Pie de página */
+        .footer-info {
+            margin-top: 40px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 7pt;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="header-title">{{ title }}</h1>
+        <div class="header-subtitle">Universidad Nacional de Loja - Educamos para Transformar</div>
+    </div>
+
+    <div class="metadata-box">
+        <div class="meta-col">
+            <strong>Generado por:</strong> {{ metadata.generated_by }}<br>
+            <strong>Fecha:</strong> {{ metadata.generated_at.strftime('%d/%m/%Y %H:%M') }}<br>
+            <strong>Período:</strong> {{ metadata.period }}
+        </div>
+        <div class="meta-col" style="text-align: right;">
+            {% if metadata.filters_applied %}
+                {% for key, value in metadata.filters_applied.items() %}
+                    <strong>{{ key }}:</strong> {{ value }}<br>
+                {% endfor %}
+            {% else %}
+                <em>Sin filtros adicionales</em>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if athlete_info %}
+    <div style="background-color: #f0fdf4; border-left: 4px solid #4F8E3A; padding: 15px; margin-bottom: 30px; border-radius: 4px;">
+        <h3 style="color: #166534; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Información del Deportista</h3>
+        <table style="width: 100%; border: none; margin: 0;">
+            <tr style="background-color: transparent;">
+                <td style="border: none; padding: 4px; width: 33%;"><strong>Nombre:</strong> {{ athlete_info.name }}</td>
+                <td style="border: none; padding: 4px; width: 33%;"><strong>DNI:</strong> {{ athlete_info.dni }}</td>
+                <td style="border: none; padding: 4px; width: 33%;"><strong>Categoría:</strong> {{ athlete_info.category }}</td>
+            </tr>
+            <tr style="background-color: transparent;">
+                <td style="border: none; padding: 4px;"><strong>Edad:</strong> {{ athlete_info.age if athlete_info.age else 'N/A' }} años</td>
+                <td style="border: none; padding: 4px;"><strong>Sexo:</strong> {{ athlete_info.sex }}</td>
+                <td style="border: none; padding: 4px;"><strong>Medidas:</strong> {{ athlete_info.height if athlete_info.height else '-' }}cm / {{ athlete_info.weight if athlete_info.weight else '-' }}kg</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if kpi_cards %}
+    <div class="kpi-container">
+        {% for card in kpi_cards %}
+        <div class="kpi-card" style="border-top: 4px solid {{ card.color }};">
+            <span class="kpi-value" style="color: {{ card.color }}">{{ card.value }}</span>
+            <span class="kpi-label">{{ card.label }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if main_chart %}
+    <div class="chart-section">
+        <img src="data:image/png;base64,{{ main_chart }}" class="chart-img"/>
+    </div>
+    {% endif %}
+
+    {% for table in tables %}
+        {% if table.rows %}
+        <h2>{{ table.title }}</h2>
+        <table>
+            <thead>
+                <tr>
+                    {% for header in table.headers %}
+                    <th>{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table.rows %}
+                <tr>
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    {% endfor %}
+
+    <div class="footer-info">
+        Universidad Nacional de Loja - Loja, Ecuador<br>
+        Sistema Kallpa UNL
+    </div>
+</body>
+</html>

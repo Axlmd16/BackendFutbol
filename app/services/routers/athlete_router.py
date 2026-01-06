@@ -1,9 +1,318 @@
+import logging
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+
 from app.controllers.athlete_controller import AthleteController
 from app.core.database import get_db
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from typing import List
+from app.models.account import Account
+from app.schemas.athlete_schema import (
+    AthleteDetailResponse,
+    AthleteFilter,
+    AthleteInscriptionDTO,
+    AthleteInscriptionResponseDTO,
+    AthleteUpdateDTO,
+    AthleteUpdateResponse,
+    MinorAthleteInscriptionDTO,
+    MinorAthleteInscriptionResponseDTO,
+)
+from app.schemas.response import PaginatedResponse, ResponseSchema
+from app.utils.exceptions import AppException
+from app.utils.security import get_current_account
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/athletes", tags=["Athletes"])
 athlete_controller = AthleteController()
 
+
+# ==========================================
+# ENDPOINTS PÚBLICOS
+
+
+@router.post(
+    "/register-minor",
+    response_model=ResponseSchema[MinorAthleteInscriptionResponseDTO],
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar deportista menor de edad",
+    description="Inscribe un deportista menor de edad junto con su representante. "
+    "Endpoint público para auto-registro. Si el representante ya existe (por DNI), "
+    "se reutiliza automáticamente.",
+)
+async def register_minor_athlete(
+    payload: MinorAthleteInscriptionDTO,
+    db: Annotated[Session, Depends(get_db)],
+) -> ResponseSchema[MinorAthleteInscriptionResponseDTO]:
+    """
+    Registra un deportista menor de edad con su representante.
+
+    - Si el representante ya existe (por DNI), se reutiliza.
+    - Si no existe, se crea nuevo representante.
+    - Crea el atleta menor con la referencia al representante.
+    - Crea estadísticas iniciales para el atleta.
+    """
+    try:
+        result = await athlete_controller.register_minor_athlete(db=db, data=payload)
+        return ResponseSchema(
+            status="success",
+            message="Deportista menor registrado exitosamente",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Error inesperado: {str(exc)}"
+        ) from exc
+
+
+@router.post(
+    "/register-unl",
+    response_model=ResponseSchema[AthleteInscriptionResponseDTO],
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar deportista UNL",
+    description="Inscribe un nuevo deportista de la Universidad Nacional de Loja",
+)
+async def register_athlete_unl(
+    payload: AthleteInscriptionDTO,
+    db: Annotated[Session, Depends(get_db)],
+) -> ResponseSchema[AthleteInscriptionResponseDTO]:
+    """Registra un deportista de la UNL en el sistema."""
+    try:
+        result = await athlete_controller.register_athlete_unl(db=db, data=payload)
+        return ResponseSchema(
+            status="success",
+            message="Deportista registrado exitosamente",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(
+            status_code=500, detail=f"Error inesperado: {str(exc)}"
+        ) from exc
+
+
+# ==========================================
+# ENDPOINTS CON AUTENTICACIÓN
+
+
+@router.get(
+    "/all",
+    response_model=ResponseSchema[PaginatedResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Obtener todos los atletas con paginación",
+    description=(
+        "Obtiene una lista paginada de todos los atletas, "
+        "con opción de búsqueda y filtrado. Requiere autenticación."
+    ),
+)
+def get_all_athletes(
+    db: Annotated[Session, Depends(get_db)],
+    filters: Annotated[AthleteFilter, Depends()],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Obtiene todos los atletas con filtros y paginación."""
+    try:
+        result = athlete_controller.get_all_athletes(db=db, filters=filters)
+        return ResponseSchema(
+            status="success",
+            message="Atletas obtenidos correctamente",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.get(
+    "/{athlete_id}",
+    response_model=ResponseSchema[AthleteDetailResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Obtener atleta por ID",
+    description="Obtiene los detalles completos de un atleta por su ID con información"
+    "local y del MS de usuarios. Requiere autenticación.",
+)
+async def get_by_id(
+    athlete_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Obtiene un atleta por su ID con toda la información disponible."""
+    try:
+        result = await athlete_controller.get_athlete_with_ms_info(
+            db=db, athlete_id=athlete_id
+        )
+        return ResponseSchema(
+            status="success",
+            message="Atleta obtenido correctamente",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.put(
+    "/update/{athlete_id}",
+    response_model=ResponseSchema[AthleteUpdateResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar atleta",
+    description="Actualiza los datos básicos de un atleta. Requiere autenticación.",
+)
+async def update_athlete(
+    athlete_id: int,
+    payload: AthleteUpdateDTO,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Actualiza los datos básicos de un atleta."""
+    try:
+        update_data = payload.model_dump(exclude_unset=True)
+        result = await athlete_controller.update_athlete(
+            db=db, athlete_id=athlete_id, update_data=update_data
+        )
+        return ResponseSchema(
+            status="success",
+            message="Atleta actualizado correctamente",
+            data=result.model_dump(),
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.patch(
+    "/desactivate/{athlete_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Desactivar atleta",
+    description="Desactiva un atleta (soft delete). Requiere autenticación.",
+)
+def desactivate_athlete(
+    athlete_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Desactiva un atleta (soft delete)."""
+    try:
+        athlete_controller.desactivate_athlete(db=db, athlete_id=athlete_id)
+        return ResponseSchema(
+            status="success",
+            message="Atleta desactivado correctamente",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.patch(
+    "/activate/{athlete_id}",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Activar atleta",
+    description="Activa un atleta (revierte soft delete). Requiere autenticación.",
+)
+def activate_athlete(
+    athlete_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Activa un atleta (soft undelete)."""
+    try:
+        athlete_controller.activate_athlete(db=db, athlete_id=athlete_id)
+        return ResponseSchema(
+            status="success",
+            message="Atleta activado correctamente",
+            data=None,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )

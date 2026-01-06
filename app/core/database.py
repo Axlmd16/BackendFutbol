@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from app.core.config import settings
 
-# Motor de base de datos
+# ================= DATABASE ENGINE =================
 engine = create_engine(
     settings.DATABASE_URL,
     echo=False,
@@ -11,16 +11,21 @@ engine = create_engine(
     max_overflow=20,
     pool_pre_ping=True,
     pool_recycle=3600,
-    connect_args={"client_encoding": "utf8"} 
+    connect_args={"client_encoding": "utf8"},
 )
 
-# Sesión local
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# ================= SESSION =================
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+)
 
-# Base declarativa
+# ================= BASE =================
 Base = declarative_base()
 
-# Dependency para obtener la sesión
+
+# ================= DEPENDENCY =================
 def get_db():
     db = SessionLocal()
     try:
