@@ -27,7 +27,9 @@ jobs:
       - name: Análisis de Vulnerabilidades en Dependencias (Safety)
         run: |
           # Escanea dependencias instaladas en busca de vulnerabilidades conocidas
-          uv run safety check
+          # Ignoramos 64459 y 64396 (ecdsa): Vulnerabilidades de canal lateral en python-ecdsa.
+          # No usamos ECDSA (usamos HS256) y el maintainer no planea arreglarlo.
+          uv run safety check -i 64459 -i 64396
 
       - name: Análisis de Seguridad Estático (Bandit)
         run: |

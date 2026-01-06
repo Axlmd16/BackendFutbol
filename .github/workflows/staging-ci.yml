@@ -22,7 +22,7 @@ jobs:
         run: |
           uv sync --all-extras --dev
           # Instalar bandit y pytest-cov si no están en dev-dependencies
-          uv pip install bandit pytest-cov
+          uv pip install bandit safety pytest-cov
 
       - name: Análisis de Seguridad (Bandit)
         run: |
