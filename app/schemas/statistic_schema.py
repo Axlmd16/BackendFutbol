@@ -137,3 +137,13 @@ class AthleteIndividualStatsResponse(BaseModel):
     # Resumen de tests
     tests_completed: int = 0
     tests_by_type: List[AthleteTestSummary] = []
+
+
+class UpdateSportsStatsRequest(BaseModel):
+    """Request para actualizar estadísticas deportivas de un atleta."""
+
+    matches_played: Optional[int] = Field(None, ge=0, description="Partidos jugados")
+    goals: Optional[int] = Field(None, ge=0, description="Goles")
+    assists: Optional[int] = Field(None, ge=0, description="Asistencias")
+    yellow_cards: Optional[int] = Field(None, ge=0, description="Tarjetas amarillas")
+    red_cards: Optional[int] = Field(None, ge=0, description="Tarjetas rojas")

@@ -224,6 +224,62 @@ class StatisticController:
                 f"Error al actualizar estadísticas del atleta: {str(e)}"
             ) from e
 
+    def update_sports_stats(
+        self, db: Session, athlete_id: int, updates: dict
+    ) -> dict | None:
+        """
+        Actualiza las estadísticas deportivas de un atleta.
+
+        Args:
+            db: Sesión de base de datos
+            athlete_id: ID del atleta
+            updates: Dict con campos a actualizar (matches_played, goals, etc.)
+
+        Returns:
+            Dict con estadísticas actualizadas o None si no existe
+        """
+        try:
+            statistic = self.statistic_dao.get_athlete_statistic(db, athlete_id)
+            if not statistic:
+                logger.warning(f"Statistic no encontrado para atleta {athlete_id}")
+                return None
+
+            # Filtrar solo los campos no-None del request
+            valid_fields = {
+                "matches_played",
+                "goals",
+                "assists",
+                "yellow_cards",
+                "red_cards",
+            }
+            filtered_updates = {
+                k: v for k, v in updates.items() if k in valid_fields and v is not None
+            }
+
+            if filtered_updates:
+                self.statistic_dao.update_statistic_fields(
+                    db, statistic, filtered_updates
+                )
+                logger.info(
+                    f"Stats deportivas actualizadas para atleta {athlete_id}: "
+                    f"{filtered_updates}"
+                )
+
+            return {
+                "athlete_id": athlete_id,
+                "matches_played": statistic.matches_played,
+                "goals": statistic.goals,
+                "assists": statistic.assists,
+                "yellow_cards": statistic.yellow_cards,
+                "red_cards": statistic.red_cards,
+            }
+
+        except Exception as e:
+            logger.error(f"Error updating sports stats: {str(e)}")
+            raise AppException(
+                f"Error al actualizar estadísticas deportivas: {str(e)}"
+            ) from e
+
 
 # Singleton para uso en otros controladores
 statistic_controller = StatisticController()
