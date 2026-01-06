@@ -32,7 +32,8 @@ jobs:
       - name: Análisis de Seguridad Estático (Bandit)
         run: |
           # Escaneo riguroso
-          uv run bandit -r . -x ./tests
+          # Escaneo riguroso usando configuración
+          uv run bandit -c pyproject.toml -r .
 
       - name: Verificar Formato y Linter (Ruff)
         run: |

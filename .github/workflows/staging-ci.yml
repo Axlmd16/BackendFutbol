@@ -27,7 +27,8 @@ jobs:
       - name: Análisis de Seguridad (Bandit)
         run: |
           # -r: recursivo, -x: excluir carpetas de tests
-          uv run bandit -r . -x ./tests
+          # -c: usar configuración, -r: recursivo
+          uv run bandit -c pyproject.toml -r .
 
       - name: Verificar Formato y Linter (Ruff)
         run: |
