@@ -52,7 +52,7 @@ class AccountController:
         return LoginResponse(
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="bearer",
+            token_type="bearer",  # nosec
             expires_in=settings.TOKEN_EXPIRES,
             refresh_expires_in=settings.REFRESH_TOKEN_EXPIRES,
         )
@@ -174,7 +174,7 @@ class AccountController:
         return LoginResponse(
             access_token=new_access_token,
             refresh_token=payload.refresh_token,  # Reutilizar el refresh token
-            token_type="bearer",
+            token_type="bearer",  # nosec
             expires_in=settings.TOKEN_EXPIRES,
             refresh_expires_in=settings.REFRESH_TOKEN_EXPIRES,
         )

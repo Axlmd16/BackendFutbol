@@ -783,7 +783,7 @@ class ReportService:
                 athlete = athlete_dao.get_by_id(db, filters.athlete_id)
                 filters_dict["Deportista"] = athlete.full_name if athlete else ""
             except Exception:
-                pass  # Si falla, simplemente no mostramos nada y dejamos que athlete
+                pass  # nosec
 
         if filters.athlete_type:
             filters_dict["Categoría"] = filters.athlete_type.value

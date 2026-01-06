@@ -1,7 +1,7 @@
 """Servicio para gestionar operaciones con el MS de personas/usuarios."""
 
 import logging
-import random
+import secrets
 import unicodedata
 from typing import Optional
 
@@ -133,9 +133,8 @@ class PersonMSService:
             "type_identification": data.type_identification,
             "type_stament": data.type_stament,
             "direction": data.direction or "S/N",
-            "phono": data.phone or "S/N",
-            "email": f"user{random.randint(10000, 99999)}@example.com",
-            "password": f"Pass{random.randint(10000, 99999)}!",
+            "email": f"user{secrets.randbelow(89999) + 10000}@example.com",
+            "password": f"Pass{secrets.randbelow(89999) + 10000}!",
         }
 
     async def _handle_create_response(

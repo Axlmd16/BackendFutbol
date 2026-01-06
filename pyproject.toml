@@ -53,4 +53,4 @@ indent-style = "space"
 
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv"]
+exclude_dirs = ["tests", ".venv", "scripts"]

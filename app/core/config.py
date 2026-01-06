@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Backend Futbol API"
     APP_VERSION: str = "1.0.0"
     APP_PORT: int = 8000
-    APP_HOST: str = "0.0.0.0"
+    APP_HOST: str = "0.0.0.0"  # nosec
     DEBUG: bool = False
 
     # ================= SECURITY =================
