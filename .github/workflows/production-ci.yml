@@ -1,0 +1,55 @@
+name: Production Branch CI
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  production-readiness:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: |
+          uv sync --all-extras --dev
+          # Herramientas adicionales para revisión de producción
+          uv pip install bandit safety pytest-cov
+
+      - name: Análisis de Vulnerabilidades en Dependencias (Safety)
+        run: |
+          # Escanea dependencias instaladas en busca de vulnerabilidades conocidas
+          uv run safety check
+
+      - name: Análisis de Seguridad Estático (Bandit)
+        run: |
+          # Escaneo riguroso
+          uv run bandit -r . -x ./tests
+
+      - name: Verificar Formato y Linter (Ruff)
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+
+      - name: Ejecutar Tests con Coverage Estricto
+        env:
+          DB_HOST: "localhost"
+          DB_PORT: "5432"
+          DB_USER: "ci_user"
+          DB_PASSWORD: "ci_password"
+          DB_NAME: "ci_db"
+          JWT_SECRET: "secreto_prod_ci"
+          JWT_ALGORITHM: "HS256"
+          PYTHONPATH: .
+
+        run: |
+          # Mismo umbral (60%) pero en Prod es crítico que pase
+          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=60

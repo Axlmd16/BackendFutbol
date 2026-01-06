@@ -11,6 +11,7 @@ from app.controllers.statistic_controller import StatisticController
 from app.core.database import get_db
 from app.models.account import Account
 from app.schemas.response import ResponseSchema
+from app.schemas.statistic_schema import UpdateSportsStatsRequest
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -218,6 +219,69 @@ def get_athlete_individual_stats(
         return ResponseSchema(
             status="success",
             message="Estadísticas del atleta obtenidas correctamente",
+            data=data,
+        )
+    except AppException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+
+
+@router.patch(
+    "/athlete/{athlete_id}/sports-stats",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar estadísticas deportivas de un atleta",
+    description=(
+        "Actualiza las estadísticas de rendimiento deportivo (partidos, goles, "
+        "asistencias, tarjetas) de un atleta específico. Solo Coach o Admin."
+    ),
+)
+def update_sports_stats(
+    athlete_id: int,
+    payload: "UpdateSportsStatsRequest",
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Actualiza estadísticas deportivas de un atleta."""
+
+    try:
+        data = statistic_controller.update_sports_stats(
+            db=db,
+            athlete_id=athlete_id,
+            updates=payload.model_dump(exclude_none=True),
+        )
+
+        if data is None:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content=ResponseSchema(
+                    status="error",
+                    message="Atleta o estadísticas no encontradas",
+                    data=None,
+                    errors=None,
+                ).model_dump(),
+            )
+
+        return ResponseSchema(
+            status="success",
+            message="Estadísticas deportivas actualizadas correctamente",
             data=data,
         )
     except AppException as exc:

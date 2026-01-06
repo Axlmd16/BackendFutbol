@@ -182,7 +182,9 @@ class ReportService:
         df_tests = pd.DataFrame(stats_data.get("tests_by_type", []))
 
         if filters.format in ["xlsx", "csv"]:
-            return self._generate_tabular_report(df_tests, metadata, filters.format)
+            return self._generate_tabular_report(
+                df_tests, metadata, filters.format, stats_data
+            )
 
         athlete_info = None
         if filters.athlete_id:
@@ -487,9 +489,28 @@ class ReportService:
                 )
 
         if filters.format in ["xlsx", "csv"]:
-            # Para exportar, creamos un DF simple con lo que tengamos
-            df_export = pd.DataFrame(kpi_cards)
-            return self._generate_tabular_report(df_export, metadata, filters.format)
+            # Para exportar, creamos un DF con todas las métricas principales
+            # y pasamos stats_data como extra_data para las hojas adicionales
+            if filters.athlete_id and athlete_info and kpi_cards:
+                # Reporte individual: incluir info del atleta y KPIs
+                export_rows = [["Deportista", athlete_info.get("name", "")]]
+                export_rows.append(["DNI", athlete_info.get("dni", "")])
+                export_rows.append(["Categoría", athlete_info.get("category", "")])
+                export_rows.append(["Edad", athlete_info.get("age", "")])
+                export_rows.append(["Sexo", athlete_info.get("sex", "")])
+                export_rows.append(["", ""])  # Separador
+                for kpi in kpi_cards:
+                    export_rows.append([kpi["label"], kpi["value"]])
+                df_export = pd.DataFrame(export_rows, columns=["Campo", "Valor"])
+                return self._generate_tabular_report(
+                    df_export, metadata, filters.format
+                )
+            else:
+                # Reporte del club: usar stats_data existente
+                df_export = pd.DataFrame(kpi_cards)
+                return self._generate_tabular_report(
+                    df_export, metadata, filters.format, stats_data
+                )
 
         return self._render_pdf(
             template_name="report_base.html",
@@ -536,37 +557,195 @@ class ReportService:
         fmt: str,
         extra_data: dict = None,
     ) -> BytesIO:
-        """Genera Excel o CSV usando Pandas (mucho más robusto que openpyxl manual)."""
+        """Genera Excel o CSV usando Pandas con todos los datos relevantes."""
         buffer = BytesIO()
 
         if fmt == "csv":
+            # Para CSV, exportar el DataFrame principal
             df.to_csv(buffer, index=False, encoding="utf-8-sig")
 
         elif fmt == "xlsx":
             with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
                 # Hoja 1: Información / Metadata
-                info_data = {
-                    "Reporte": [metadata.title],
-                    "Generado Por": [metadata.generated_by],
-                    "Fecha": [metadata.generated_at.strftime("%d/%m/%Y %H:%M")],
-                    "Período": [metadata.period or "Todo el histórico"],
-                }
-                # Añadir filtros
+                info_rows = [
+                    ["Reporte", metadata.title],
+                    ["Generado Por", metadata.generated_by],
+                    ["Fecha", metadata.generated_at.strftime("%d/%m/%Y %H:%M")],
+                    ["Período", metadata.period or "Todo el histórico"],
+                ]
+                # Añadir filtros aplicados
                 if metadata.filters_applied:
                     for k, v in metadata.filters_applied.items():
-                        info_data[f"Filtro: {k}"] = [v]
+                        info_rows.append([f"Filtro: {k}", v])
 
-                pd.DataFrame(
-                    list(info_data.items()), columns=["Campo", "Valor"]
-                ).to_excel(writer, sheet_name="Información", index=False)
+                pd.DataFrame(info_rows, columns=["Campo", "Valor"]).to_excel(
+                    writer, sheet_name="Información", index=False
+                )
 
-                # Hoja 2: Datos Principales
-                df.to_excel(writer, sheet_name="Datos Detallados", index=False)
-
-                # Hoja 3 (Opcional): Extra data si existe
+                # Hoja 2: Resumen (KPIs y estadísticas principales)
                 if extra_data:
-                    # Lógica simple para volcar datos extra si es necesario
-                    pass
+                    summary_rows = []
+                    # Extraer datos de resumen del extra_data
+                    if "total_records" in extra_data:
+                        summary_rows.append(
+                            ["Total Registros", extra_data.get("total_records", 0)]
+                        )
+                    if "total_present" in extra_data:
+                        summary_rows.append(
+                            ["Presentes", extra_data.get("total_present", 0)]
+                        )
+                    if "total_absent" in extra_data:
+                        summary_rows.append(
+                            ["Ausentes", extra_data.get("total_absent", 0)]
+                        )
+                    if "overall_attendance_rate" in extra_data:
+                        summary_rows.append(
+                            [
+                                "Tasa de Asistencia (%)",
+                                f"{extra_data.get('overall_attendance_rate', 0):.1f}%",
+                            ]
+                        )
+                    if "total_tests" in extra_data:
+                        summary_rows.append(
+                            ["Total Tests", extra_data.get("total_tests", 0)]
+                        )
+                    if "total_athletes" in extra_data:
+                        summary_rows.append(
+                            ["Total Deportistas", extra_data.get("total_athletes", 0)]
+                        )
+                    if "active_athletes" in extra_data:
+                        summary_rows.append(
+                            [
+                                "Deportistas Activos",
+                                extra_data.get("active_athletes", 0),
+                            ]
+                        )
+                    if "inactive_athletes" in extra_data:
+                        summary_rows.append(
+                            [
+                                "Deportistas Inactivos",
+                                extra_data.get("inactive_athletes", 0),
+                            ]
+                        )
+                    if "total_evaluations" in extra_data:
+                        summary_rows.append(
+                            [
+                                "Total Evaluaciones",
+                                extra_data.get("total_evaluations", 0),
+                            ]
+                        )
+
+                    if summary_rows:
+                        pd.DataFrame(
+                            summary_rows, columns=["Métrica", "Valor"]
+                        ).to_excel(writer, sheet_name="Resumen", index=False)
+
+                    # Hoja adicional: Distribución por tipo si existe
+                    if (
+                        "attendance_by_type" in extra_data
+                        and extra_data["attendance_by_type"]
+                    ):
+                        df_by_type = pd.DataFrame(extra_data["attendance_by_type"])
+                        if not df_by_type.empty:
+                            # Renombrar columnas para mejor lectura
+                            df_by_type.columns = [
+                                col.replace("_", " ").title()
+                                for col in df_by_type.columns
+                            ]
+                            df_by_type.to_excel(
+                                writer,
+                                sheet_name="Por Categoría",
+                                index=False,
+                            )
+
+                    # Hoja adicional: Distribución por atleta tipo
+                    if (
+                        "athletes_by_type" in extra_data
+                        and extra_data["athletes_by_type"]
+                    ):
+                        df_athletes = pd.DataFrame(extra_data["athletes_by_type"])
+                        if not df_athletes.empty:
+                            df_athletes.columns = [
+                                col.replace("_", " ").title()
+                                for col in df_athletes.columns
+                            ]
+                            df_athletes.to_excel(
+                                writer,
+                                sheet_name="Deportistas por Tipo",
+                                index=False,
+                            )
+
+                    # Hoja adicional: Distribución por género
+                    if (
+                        "athletes_by_gender" in extra_data
+                        and extra_data["athletes_by_gender"]
+                    ):
+                        df_gender = pd.DataFrame(extra_data["athletes_by_gender"])
+                        if not df_gender.empty:
+                            df_gender.columns = [
+                                col.replace("_", " ").title()
+                                for col in df_gender.columns
+                            ]
+                            df_gender.to_excel(
+                                writer,
+                                sheet_name="Deportistas por Género",
+                                index=False,
+                            )
+
+                    # Hoja adicional: Tests por tipo
+                    if "tests_by_type" in extra_data and extra_data["tests_by_type"]:
+                        df_tests = pd.DataFrame(extra_data["tests_by_type"])
+                        if not df_tests.empty:
+                            df_tests.columns = [
+                                col.replace("_", " ").title()
+                                for col in df_tests.columns
+                            ]
+                            df_tests.to_excel(
+                                writer,
+                                sheet_name="Tests por Tipo",
+                                index=False,
+                            )
+
+                    # Hoja adicional: Top performers
+                    if "top_performers" in extra_data and extra_data["top_performers"]:
+                        df_top = pd.DataFrame(extra_data["top_performers"])
+                        if not df_top.empty:
+                            df_top.columns = [
+                                col.replace("_", " ").title() for col in df_top.columns
+                            ]
+                            df_top.to_excel(
+                                writer,
+                                sheet_name="Mejores Deportistas",
+                                index=False,
+                            )
+
+                    # Hoja adicional: Asistencia por período
+                    if (
+                        "attendance_by_period" in extra_data
+                        and extra_data["attendance_by_period"]
+                    ):
+                        df_period = pd.DataFrame(extra_data["attendance_by_period"])
+                        if not df_period.empty:
+                            df_period.columns = [
+                                col.replace("_", " ").title()
+                                for col in df_period.columns
+                            ]
+                            df_period.to_excel(
+                                writer,
+                                sheet_name="Asistencia por Fecha",
+                                index=False,
+                            )
+
+                # Hoja final: Datos Detallados (el DataFrame principal)
+                if not df.empty:
+                    # Renombrar columnas para mejor lectura
+                    df_export = df.copy()
+                    df_export.columns = [
+                        col.replace("_", " ").title() for col in df_export.columns
+                    ]
+                    df_export.to_excel(
+                        writer, sheet_name="Datos Detallados", index=False
+                    )
 
         buffer.seek(0)
         return buffer

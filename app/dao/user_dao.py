@@ -48,7 +48,11 @@ class UserDAO(BaseDAO[User]):
     def get_all_with_filters(
         self, db: Session, filters: UserFilter
     ) -> Tuple[List[User], int]:
-        query = db.query(self.model).filter(self.model.is_active.is_(True))
+        query = db.query(self.model)
+
+        # Filtrar por estado activo/inactivo (None = todos)
+        if filters.is_active is not None:
+            query = query.filter(self.model.is_active.is_(filters.is_active))
 
         if filters.role:
             role_enum = self._resolve_role(filters.role)

@@ -95,6 +95,9 @@ class UserFilter(BaseModel):
     role: Optional[str] = Field(
         None, description="Filtrar por rol (Administrator/Coach)"
     )
+    is_active: Optional[bool] = Field(
+        None, description="Filtrar por estado (True=activo, False=inactivo, None=todos)"
+    )
 
     @property
     def skip(self) -> int:

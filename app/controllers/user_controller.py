@@ -254,7 +254,8 @@ class UserController:
         """
         Activa un usuario (soft delete).
         """
-        user = self.user_dao.get_by_id(db=db, id=user_id)
+        # Buscar incluyendo inactivos para poder activarlos
+        user = self.user_dao.get_by_id(db=db, id=user_id, only_active=False)
         if not user:
             raise ValidationException("El usuario a activar no existe")
 
