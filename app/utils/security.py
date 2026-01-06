@@ -62,7 +62,7 @@ def validate_ec_dni(value: str) -> str:
 
     check_digit = (10 - (total % 10)) % 10
     if check_digit != int(digits[9]):
-        raise ValidationException("Dígito verificador del DNI inválido")
+        raise ValidationException("Dni invalido")
 
     return digits
 
