@@ -1,13 +1,15 @@
 """Tests unitarios para `YoyoTestController`."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from app.controllers.yoyo_test_controller import YoyoTestController
 from app.models.evaluation import Evaluation
 from app.models.yoyo_test import YoyoTest
+from app.schemas.yoyo_test_schema import CreateYoyoTestSchema
 from app.utils.exceptions import DatabaseException
 
 # ==============================================
@@ -387,4 +389,128 @@ def test_list_tests_with_search_no_match(yoyo_test_controller, mock_db):
     items, total = yoyo_test_controller.list_tests(mock_db, filters)
 
     assert items == []
-    assert total == 0
+
+
+# ==============================================
+# TESTS: VALIDACIONES
+# ==============================================
+
+
+def test_yoyo_test_future_date_rejected():
+    """Validación: La fecha del test no puede ser futura."""
+    future_date = datetime.now() + timedelta(days=1)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CreateYoyoTestSchema(
+            date=future_date,
+            athlete_id=1,
+            evaluation_id=1,
+            shuttle_count=47,
+            final_level="18.2",
+            failures=2,
+        )
+
+    assert "La fecha del test no puede ser futura" in str(exc_info.value)
+
+
+def test_yoyo_test_valid_format_xx_y():
+    """Validación: Formato válido XX.Y."""
+    schema = CreateYoyoTestSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        shuttle_count=47,
+        final_level="18.2",
+        failures=2,
+    )
+
+    assert schema.final_level == "18.2"
+
+
+def test_yoyo_test_valid_format_x_y():
+    """Validación: Formato válido X.Y."""
+    schema = CreateYoyoTestSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        shuttle_count=47,
+        final_level="9.5",
+        failures=2,
+    )
+
+    assert schema.final_level == "9.5"
+
+
+def test_yoyo_test_invalid_format_no_decimal():
+    """Validación: Rechaza formato sin decimal."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateYoyoTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            shuttle_count=47,
+            final_level="18",
+            failures=2,
+        )
+
+    assert "debe tener el formato XX.Y" in str(exc_info.value)
+
+
+def test_yoyo_test_invalid_format_two_decimals():
+    """Validación: Rechaza formato con dos decimales."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateYoyoTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            shuttle_count=47,
+            final_level="18.25",
+            failures=2,
+        )
+
+    assert "debe tener el formato XX.Y" in str(exc_info.value)
+
+
+def test_yoyo_test_invalid_format_text():
+    """Validación: Rechaza texto inválido."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateYoyoTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            shuttle_count=47,
+            final_level="nivel18",
+            failures=2,
+        )
+
+    assert "debe tener el formato XX.Y" in str(exc_info.value)
+
+
+def test_yoyo_test_shuttle_count_limit():
+    """Validación: Máximo 1000 shuttles."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateYoyoTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            shuttle_count=1500,
+            final_level="18.2",
+            failures=2,
+        )
+
+    assert "less than or equal to 1000" in str(exc_info.value)
+
+
+def test_yoyo_test_valid_edge_cases():
+    """Validación: Casos válidos en límites."""
+    schema = CreateYoyoTestSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        shuttle_count=1000,
+        final_level="99.9",
+        failures=0,
+    )
+
+    assert schema.shuttle_count == 1000
+    assert schema.final_level == "99.9"

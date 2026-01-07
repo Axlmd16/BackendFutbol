@@ -134,6 +134,13 @@ class StatisticDAO(BaseDAO[Statistic]):
             Dict con tasas y tendencias de asistencia
         """
         try:
+            # Validar coherencia temporal
+            if start_date and end_date and start_date > end_date:
+                raise ValueError(
+                    f"La fecha de inicio ({start_date}) no puede ser posterior "
+                    f"a la fecha de fin ({end_date})"
+                )
+
             # Base query
             query = db.query(Attendance).filter(Attendance.is_active.is_(True))
 

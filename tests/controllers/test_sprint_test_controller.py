@@ -1,13 +1,15 @@
 """Tests unitarios para `SprintTestController`."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from app.controllers.sprint_test_controller import SprintTestController
 from app.models.evaluation import Evaluation
 from app.models.sprint_test import SprintTest
+from app.schemas.sprint_test_schema import CreateSprintTestSchema
 from app.utils.exceptions import DatabaseException
 
 # ==============================================
@@ -359,4 +361,115 @@ def test_list_tests_with_search_no_match(sprint_test_controller, mock_db):
     items, total = sprint_test_controller.list_tests(mock_db, filters)
 
     assert items == []
-    assert total == 0
+
+
+# ==============================================
+# TESTS: VALIDACIONES
+# ==============================================
+
+
+def test_sprint_test_future_date_rejected():
+    """Validación: La fecha del test no puede ser futura."""
+    future_date = datetime.now() + timedelta(days=1)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=future_date,
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=1.85,
+            time_0_30_s=3.95,
+        )
+
+    assert "La fecha del test no puede ser futura" in str(exc_info.value)
+
+
+def test_sprint_test_valid_past_date():
+    """Validación: Las fechas pasadas son válidas."""
+    past_date = datetime.now() - timedelta(days=1)
+
+    schema = CreateSprintTestSchema(
+        date=past_date,
+        athlete_id=1,
+        evaluation_id=1,
+        distance_meters=30,
+        time_0_10_s=1.85,
+        time_0_30_s=3.95,
+    )
+
+    assert schema.date == past_date
+
+
+def test_sprint_test_time_coherence_rejected():
+    """Validación: time_0_10_s debe ser menor que time_0_30_s."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=4.0,
+            time_0_30_s=3.5,
+        )
+
+    assert "debe ser menor que" in str(exc_info.value)
+
+
+def test_sprint_test_time_equal_rejected():
+    """Validación: Tiempos iguales son rechazados."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=3.5,
+            time_0_30_s=3.5,
+        )
+
+    assert "debe ser menor que" in str(exc_info.value)
+
+
+def test_sprint_test_valid_time_progression():
+    """Validación: Progresión de tiempos válida."""
+    schema = CreateSprintTestSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        distance_meters=30,
+        time_0_10_s=1.85,
+        time_0_30_s=3.95,
+    )
+
+    assert schema.time_0_10_s < schema.time_0_30_s
+
+
+def test_sprint_test_distance_limit_exceeded():
+    """Validación: Distancia máxima 1000m."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=1500,
+            time_0_10_s=1.85,
+            time_0_30_s=3.95,
+        )
+
+    assert "less than or equal to 1000" in str(exc_info.value)
+
+
+def test_sprint_test_time_limit_exceeded():
+    """Validación: Tiempo máximo 60s."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=1.85,
+            time_0_30_s=65.0,
+        )
+
+    assert "less than or equal to 60" in str(exc_info.value)

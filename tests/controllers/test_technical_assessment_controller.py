@@ -1,15 +1,20 @@
 """Tests unitarios para `TechnicalAssessmentController`."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from app.controllers.technical_assessment_controller import (
     TechnicalAssessmentController,
 )
+from app.models.enums.scale import Scale
 from app.models.evaluation import Evaluation
 from app.models.technical_assessment import TechnicalAssessment
+from app.schemas.technical_assessment_schema import (
+    CreateTechnicalAssessmentSchema,
+)
 from app.utils.exceptions import DatabaseException
 
 # ==============================================
@@ -404,3 +409,89 @@ def test_list_tests_with_search_no_match(technical_assessment_controller, mock_d
 
     assert items == []
     assert total == 0
+
+
+# ==============================================
+# TESTS: VALIDACIONES
+# ==============================================
+
+
+def test_technical_assessment_future_date_rejected():
+    """Validación: La fecha del test no puede ser futura."""
+    future_date = datetime.now() + timedelta(days=1)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CreateTechnicalAssessmentSchema(
+            date=future_date,
+            athlete_id=1,
+            evaluation_id=1,
+            ball_control=Scale.GOOD,
+        )
+
+    assert "La fecha del test no puede ser futura" in str(exc_info.value)
+
+
+def test_technical_assessment_all_skills_none_rejected():
+    """Validación: Rechaza evaluación sin ninguna habilidad."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateTechnicalAssessmentSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            ball_control=None,
+            short_pass=None,
+            long_pass=None,
+            shooting=None,
+            dribbling=None,
+        )
+
+    assert "Debe evaluar al menos una habilidad técnica" in str(exc_info.value)
+
+
+def test_technical_assessment_one_skill_valid():
+    """Validación: Válido con solo una habilidad."""
+    schema = CreateTechnicalAssessmentSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        ball_control=Scale.GOOD,
+    )
+
+    assert schema.ball_control == Scale.GOOD
+    assert schema.short_pass is None
+
+
+def test_technical_assessment_multiple_skills_valid():
+    """Validación: Válido con múltiples habilidades."""
+    schema = CreateTechnicalAssessmentSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        ball_control=Scale.GOOD,
+        short_pass=Scale.EXCELLENT,
+        shooting=Scale.AVERAGE,
+    )
+
+    assert schema.ball_control == Scale.GOOD
+    assert schema.short_pass == Scale.EXCELLENT
+    assert schema.shooting == Scale.AVERAGE
+
+
+def test_technical_assessment_all_skills_valid():
+    """Validación: Válido con todas las habilidades evaluadas."""
+    schema = CreateTechnicalAssessmentSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        ball_control=Scale.GOOD,
+        short_pass=Scale.EXCELLENT,
+        long_pass=Scale.AVERAGE,
+        shooting=Scale.GOOD,
+        dribbling=Scale.EXCELLENT,
+    )
+
+    assert schema.ball_control == Scale.GOOD
+    assert schema.short_pass == Scale.EXCELLENT
+    assert schema.long_pass == Scale.AVERAGE
+    assert schema.shooting == Scale.GOOD
+    assert schema.dribbling == Scale.EXCELLENT
