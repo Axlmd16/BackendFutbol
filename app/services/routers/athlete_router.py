@@ -119,7 +119,7 @@ def get_all_athletes(
     """Obtiene todos los atletas con filtros y paginación."""
     try:
         result = athlete_controller.get_all_athletes(db=db, filters=filters)
-        
+
         # Generar mensaje contextual según filtros aplicados
         message = ""
         if filters.search:
@@ -157,7 +157,7 @@ def get_all_athletes(
                 "Lista de atletas cargada exitosamente. "
                 f"Mostrando {page_size} registros por página."
             )
-        
+
         return ResponseSchema(
             status="success",
             message=message,
