@@ -212,6 +212,29 @@ DB_NAME=futbol_db
 
 > **Nota**: Las tablas se crean automáticamente al iniciar la aplicación gracias a `Base.metadata.create_all()` en `main.py`.
 
+### 7. Usuario Administrador por Defecto
+
+Al iniciar la aplicación por primera vez, se crea automáticamente un usuario administrador si no existe:
+
+| Campo        | Valor por defecto       |
+| ------------ | ----------------------- |
+| **Email**    | `admin@unl.edu.ec`      |
+| **Password** | `Admin123!`             |
+| **DNI**      | `0000000000`            |
+| **Nombre**   | `Administrador Sistema` |
+
+Para personalizar estas credenciales, agrega las siguientes variables a tu `.env`:
+
+```env
+# ================= ADMIN POR DEFECTO =================
+DEFAULT_ADMIN_EMAIL=tu_email_admin@unl.edu.ec
+DEFAULT_ADMIN_PASSWORD=TuPasswordSeguro123!
+DEFAULT_ADMIN_DNI=1234567890
+DEFAULT_ADMIN_NAME=Tu Nombre Admin
+```
+
+> **Importante**: Si el admin ya existe, no se sobrescribirá. Para cambiar las credenciales de un admin existente, hazlo directamente en la base de datos o a través de la API.
+
 ### 6. Iniciar el microservicio externo (opcional)
 
 Levantar el microservicio de usuarios externo:
