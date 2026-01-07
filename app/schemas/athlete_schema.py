@@ -38,7 +38,11 @@ class AthleteInscriptionDTO(PersonBase):
     )
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
     weight: Optional[float] = Field(default=None, ge=0)
-    height: Optional[float] = Field(default=None, ge=0)
+    height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Altura en metros (no puede ser negativa)",
+    )
 
     @field_validator("dni", mode="before")
     @classmethod
@@ -82,7 +86,11 @@ class AthleteUpdateRequest(BaseModel):
     sex: Optional[SexInput] = None
     type_athlete: Optional[TypeStament] = None
     weight: Optional[float] = Field(default=None, ge=0)
-    height: Optional[float] = Field(default=None, ge=0)
+    height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Altura en metros (no puede ser negativa)",
+    )
 
 
 class AthleteUpdateDTO(BaseModel):
@@ -102,7 +110,12 @@ class AthleteUpdateDTO(BaseModel):
     direction: Optional[str] = Field(default=None, description="Dirección")
     phone: Optional[str] = Field(default=None, description="Teléfono")
     # Datos físicos
-    height: Optional[float] = Field(default=None, ge=0)
+    height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Altura en metros (no puede ser negativa)",
+    )
+
     weight: Optional[float] = Field(default=None, ge=0)
 
 
@@ -258,7 +271,9 @@ class MinorAthleteDataDTO(BaseModel):
     dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
     birth_date: date = Field(..., description="Fecha de nacimiento (YYYY-MM-DD)")
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
-    height: Optional[float] = Field(default=None, ge=0, description="Altura en metros")
+    height: Optional[float] = Field(
+        default=None, ge=0, le=1.75, description="Altura en metros (máximo 1.75 m)"
+    )
     weight: Optional[float] = Field(default=None, ge=0, description="Peso en kg")
     direction: Optional[str] = Field(default="S/N", description="Dirección")
     phone: Optional[str] = Field(default="S/N", description="Teléfono")
