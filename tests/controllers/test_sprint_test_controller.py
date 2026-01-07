@@ -9,8 +9,6 @@ from pydantic import ValidationError
 from app.controllers.sprint_test_controller import SprintTestController
 from app.models.evaluation import Evaluation
 from app.models.sprint_test import SprintTest
-from app.schemas.sprint_test_schema import CreateSprintTestSchema
-from app.utils.exceptions import DatabaseException
 from app.schemas.sprint_test_schema import (
     CreateSprintTestSchema,
     UpdateSprintTestSchema,

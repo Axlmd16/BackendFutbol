@@ -134,7 +134,7 @@ async def test_minor_athlete_valid_age_5_years():
     athlete_data = MinorAthleteDataDTO(
         first_name="María",
         last_name="González",
-        dni="1234567890",
+        dni="1710034065",
         birth_date=birth_date,
         sex="FEMALE",
         height=1.10,
@@ -154,7 +154,7 @@ async def test_minor_athlete_valid_age_17_years():
     athlete_data = MinorAthleteDataDTO(
         first_name="Carlos",
         last_name="Rodríguez",
-        dni="0987654321",
+        dni="1700000019",
         birth_date=birth_date,
         sex="MALE",
         height=1.75,
@@ -174,7 +174,7 @@ async def test_minor_athlete_invalid_age_4_years():
         MinorAthleteDataDTO(
             first_name="Niño",
             last_name="Muy Joven",
-            dni="1111111111",
+            dni="1700000027",
             birth_date=birth_date,
             sex="MALE",
             height=1.00,
@@ -226,7 +226,7 @@ async def test_minor_athlete_boundary_turns_18_tomorrow():
     athlete_data = MinorAthleteDataDTO(
         first_name="Casi",
         last_name="Mayor",
-        dni="3333333333",
+        dni="1700000035",
         birth_date=birth_date,
         sex="FEMALE",
         height=1.65,
@@ -246,7 +246,7 @@ async def test_minor_athlete_invalid_future_date():
         MinorAthleteDataDTO(
             first_name="Del",
             last_name="Futuro",
-            dni="4444444444",
+            dni="1700000043",
             birth_date=birth_date,
             sex="MALE",
             height=1.50,
@@ -272,7 +272,7 @@ async def test_minor_athlete_height_below_minimum():
         MinorAthleteDataDTO(
             first_name="Muy",
             last_name="Bajo",
-            dni="5555555555",
+            dni="1700000050",
             birth_date=birth_date,
             sex="MALE",
             height=0.85,
@@ -297,7 +297,7 @@ async def test_minor_athlete_height_above_maximum():
         MinorAthleteDataDTO(
             first_name="Muy",
             last_name="Alto",
-            dni="6666666666",
+            dni="1700000068",
             birth_date=birth_date,
             sex="MALE",
             height=2.10,
@@ -321,7 +321,7 @@ async def test_minor_athlete_valid_height_minimum():
     minor = MinorAthleteDataDTO(
         first_name="Altura",
         last_name="Minima",
-        dni="7777777777",
+        dni="1700000076",
         birth_date=birth_date,
         sex="MALE",
         height=1.0,
@@ -341,7 +341,7 @@ async def test_minor_athlete_valid_height_maximum():
     minor = MinorAthleteDataDTO(
         first_name="Altura",
         last_name="Maxima",
-        dni="8888888888",
+        dni="1700000084",
         birth_date=birth_date,
         sex="MALE",
         height=1.90,
@@ -362,7 +362,7 @@ async def test_minor_athlete_weight_below_minimum():
         MinorAthleteDataDTO(
             first_name="Peso",
             last_name="Bajo",
-            dni="9999999999",
+            dni="1700000092",
             birth_date=birth_date,
             sex="MALE",
             height=1.20,
@@ -387,7 +387,7 @@ async def test_minor_athlete_weight_above_maximum():
         MinorAthleteDataDTO(
             first_name="Peso",
             last_name="Alto",
-            dni="0000000001",
+            dni="1700000100",
             birth_date=birth_date,
             sex="MALE",
             height=1.75,
@@ -411,7 +411,7 @@ async def test_minor_athlete_valid_weight_minimum():
     minor = MinorAthleteDataDTO(
         first_name="Peso",
         last_name="Minimo",
-        dni="0000000002",
+        dni="1700000118",
         birth_date=birth_date,
         sex="MALE",
         height=1.10,
@@ -431,7 +431,7 @@ async def test_minor_athlete_valid_weight_maximum():
     minor = MinorAthleteDataDTO(
         first_name="Peso",
         last_name="Maximo",
-        dni="0000000003",
+        dni="1700000126",
         birth_date=birth_date,
         sex="MALE",
         height=1.85,
@@ -451,7 +451,7 @@ async def test_minor_athlete_height_weight_none_valid():
     minor = MinorAthleteDataDTO(
         first_name="Sin",
         last_name="Medidas",
-        dni="0000000004",
+        dni="1700000134",
         birth_date=birth_date,
         sex="MALE",
         height=None,
