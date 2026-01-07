@@ -38,13 +38,7 @@ async def create_yoyo_test(
     try:
         test = yoyo_test_controller.add_test(
             db=db,
-            evaluation_id=payload.evaluation_id,
-            athlete_id=payload.athlete_id,
-            date=payload.date,
-            shuttle_count=payload.shuttle_count,
-            final_level=payload.final_level,
-            failures=payload.failures,
-            observations=payload.observations,
+            payload=payload,
         )
 
         return ResponseSchema(
@@ -140,7 +134,11 @@ async def update_yoyo_test(
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
 
     try:
-        updated = yoyo_test_controller.update_test(db=db, test_id=test_id, **data)
+        updated = yoyo_test_controller.update_test(
+            db=db,
+            test_id=test_id,
+            payload=payload,
+        )
 
         if not updated:
             raise HTTPException(status_code=404, detail="Yoyo Test no encontrado")

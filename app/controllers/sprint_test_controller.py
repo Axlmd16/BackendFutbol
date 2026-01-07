@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
@@ -11,7 +9,11 @@ from app.dao.test_dao import TestDAO
 from app.models.athlete import Athlete
 from app.models.sprint_test import SprintTest
 from app.models.test import Test
-from app.schemas.sprint_test_schema import SprintTestFilter
+from app.schemas.sprint_test_schema import (
+    CreateSprintTestSchema,
+    SprintTestFilter,
+    UpdateSprintTestSchema,
+)
 from app.utils.exceptions import DatabaseException
 
 
@@ -27,51 +29,52 @@ class SprintTestController:
     def add_test(
         self,
         db: Session,
-        evaluation_id: int,
-        athlete_id: int,
-        date: datetime,
-        distance_meters: float,
-        time_0_10_s: float,
-        time_0_30_s: float,
-        observations: str | None = None,
+        payload: CreateSprintTestSchema,
     ) -> Test:
         """Crear SprintTest para una evaluación y atleta dados."""
-        if not self.evaluation_dao.get_by_id(db, evaluation_id):
-            raise DatabaseException(f"Evaluación {evaluation_id} no existe")
-        if not self.athlete_dao.get_by_id(db, athlete_id):
-            raise DatabaseException(f"Atleta {athlete_id} no existe")
+        if not self.evaluation_dao.get_by_id(db, payload.evaluation_id):
+            raise DatabaseException(f"Evaluación {payload.evaluation_id} no existe")
+        if not self.athlete_dao.get_by_id(db, payload.athlete_id):
+            raise DatabaseException(f"Atleta {payload.athlete_id} no existe")
 
         test = self.test_dao.create_sprint_test(
             db=db,
-            date=date,
-            athlete_id=athlete_id,
-            evaluation_id=evaluation_id,
-            distance_meters=distance_meters,
-            time_0_10_s=time_0_10_s,
-            time_0_30_s=time_0_30_s,
-            observations=observations,
+            date=payload.date,
+            athlete_id=payload.athlete_id,
+            evaluation_id=payload.evaluation_id,
+            distance_meters=payload.distance_meters,
+            time_0_10_s=payload.time_0_10_s,
+            time_0_30_s=payload.time_0_30_s,
+            observations=payload.observations,
         )
 
         # Actualizar estadísticas del atleta
         print(
-            f"[DEBUG] SprintTest creado. Llamando update_stats para atleta {athlete_id}"
+            f"[DEBUG] SprintTest creado. Llamando update_stats para atleta {payload.athlete_id}"
         )
-        result = statistic_controller.update_athlete_stats(db, athlete_id)
+        result = statistic_controller.update_athlete_stats(db, payload.athlete_id)
         print(f"[DEBUG] Resultado de update_athlete_stats: {result}")
 
         return test
 
-    def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
+    def update_test(
+        self,
+        db: Session,
+        test_id: int,
+        payload: UpdateSprintTestSchema,
+    ) -> Test | None:
         """Actualizar un SprintTest existente."""
-        if "evaluation_id" in fields and fields["evaluation_id"] is not None:
-            if not self.evaluation_dao.get_by_id(db, fields["evaluation_id"]):
-                raise DatabaseException(
-                    f"Evaluación {fields['evaluation_id']} no existe"
-                )
+        fields = payload.model_dump(exclude_none=True)
 
-        if "athlete_id" in fields and fields["athlete_id"] is not None:
-            if not self.athlete_dao.get_by_id(db, fields["athlete_id"]):
-                raise DatabaseException(f"Atleta {fields['athlete_id']} no existe")
+        evaluation_id = fields.get("evaluation_id")
+        if evaluation_id is not None and not self.evaluation_dao.get_by_id(
+            db, evaluation_id
+        ):
+            raise DatabaseException(f"Evaluación {evaluation_id} no existe")
+
+        athlete_id = fields.get("athlete_id")
+        if athlete_id is not None and not self.athlete_dao.get_by_id(db, athlete_id):
+            raise DatabaseException(f"Atleta {athlete_id} no existe")
 
         existing = self.sprint_test_dao.get_by_id(db, test_id, only_active=True)
         if not existing:

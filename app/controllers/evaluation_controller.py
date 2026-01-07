@@ -1,5 +1,6 @@
 """Controller para gestión de Evaluaciones."""
 
+import re
 from datetime import datetime
 from typing import List, Optional
 
@@ -8,7 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.dao.evaluation_dao import EvaluationDAO
 from app.models.evaluation import Evaluation
-from app.schemas.evaluation_schema import EvaluationFilter
+from app.schemas.evaluation_schema import (
+    CreateEvaluationSchema,
+    EvaluationFilter,
+    UpdateEvaluationSchema,
+)
+from app.utils.exceptions import DatabaseException
 
 
 class EvaluationController:
@@ -22,38 +28,18 @@ class EvaluationController:
     def create_evaluation(
         self,
         db: Session,
-        name: str,
-        date: datetime,
-        time: str,
-        user_id: int,
-        location: Optional[str] = None,
-        observations: Optional[str] = None,
+        payload: CreateEvaluationSchema,
     ) -> Evaluation:
-        """Crear una nueva evaluación.
+        """Crear una nueva evaluación."""
 
-        Args:
-            db: Sesión de base de datos
-            name: Nombre de la evaluación
-            date: Fecha y hora
-            time: Hora en formato HH:MM
-            user_id: ID del evaluador
-            location: Ubicación opcional
-            observations: Observaciones generales
-
-        Returns:
-            La evaluación creada
-
-        Raises:
-            DatabaseException: Si hay errores de validación o BD
-        """
         return self.evaluation_dao.create(
             db=db,
-            name=name,
-            date=date,
-            time=time,
-            user_id=user_id,
-            location=location,
-            observations=observations,
+            name=payload.name,
+            date=payload.date,
+            time=payload.time,
+            user_id=payload.user_id,
+            location=payload.location,
+            observations=payload.observations,
         )
 
     def get_evaluation(self, db: Session, evaluation_id: int) -> Optional[Evaluation]:
@@ -132,14 +118,7 @@ class EvaluationController:
         return self.evaluation_dao.list_by_user(db, user_id, skip, limit)
 
     def update_evaluation(
-        self,
-        db: Session,
-        evaluation_id: int,
-        name: Optional[str] = None,
-        date: Optional[datetime] = None,
-        time: Optional[str] = None,
-        location: Optional[str] = None,
-        observations: Optional[str] = None,
+        self, db: Session, evaluation_id: int, payload: UpdateEvaluationSchema
     ) -> Optional[Evaluation]:
         """Actualizar una evaluación existente.
 
@@ -155,14 +134,24 @@ class EvaluationController:
         Returns:
             La evaluación actualizada o None
         """
+        if payload.date is not None and not isinstance(payload.date, datetime):
+            raise DatabaseException("La fecha de evaluación es inválida")
+
+        if payload.time is not None:
+            if not re.match(r"^\d{2}:\d{2}$", payload.time or ""):
+                raise DatabaseException("La hora de evaluación es inválida")
+            hour, minute = map(int, payload.time.split(":"))
+            if hour not in range(24) or minute not in range(60):
+                raise DatabaseException("La hora de evaluación es inválida")
+
         return self.evaluation_dao.update(
             db=db,
             evaluation_id=evaluation_id,
-            name=name,
-            date=date,
-            time=time,
-            location=location,
-            observations=observations,
+            name=payload.name,
+            date=payload.date,
+            time=payload.time,
+            location=payload.location,
+            observations=payload.observations,
         )
 
     def delete_evaluation(self, db: Session, evaluation_id: int) -> bool:

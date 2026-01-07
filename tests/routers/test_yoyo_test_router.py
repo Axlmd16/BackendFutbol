@@ -63,6 +63,9 @@ async def test_create_yoyo_test_success(admin_client, yoyo_test_payload):
         data = response.json()
         assert data["status"] == "success"
         assert data["data"]["shuttle_count"] == 47
+        mock_controller.add_test.assert_called_once()
+        called_payload = mock_controller.add_test.call_args.kwargs["payload"]
+        assert called_payload.shuttle_count == yoyo_test_payload["shuttle_count"]
 
 
 @pytest.mark.asyncio
