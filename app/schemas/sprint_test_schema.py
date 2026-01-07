@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
@@ -12,9 +12,26 @@ from app.schemas.test_base_schema import CreateTestBaseSchema
 class CreateSprintTestSchema(CreateTestBaseSchema):
     """Schema para crear un Sprint Test (velocidad)."""
 
-    distance_meters: float = Field(..., gt=0, description="Distancia en metros")
-    time_0_10_s: float = Field(..., gt=0, description="Tiempo 0-10 metros")
-    time_0_30_s: float = Field(..., gt=0, description="Tiempo 0-30 metros")
+    distance_meters: float = Field(
+        ..., gt=0, le=1000, description="Distancia en metros (máx 1000m)"
+    )
+    time_0_10_s: float = Field(
+        ..., gt=0, le=60, description="Tiempo 0-10 metros (máx 60s)"
+    )
+    time_0_30_s: float = Field(
+        ..., gt=0, le=60, description="Tiempo 0-30 metros (máx 60s)"
+    )
+
+    @model_validator(mode="after")
+    def validate_sprint_times(self):
+        """Validar lógica física de tiempos de sprint."""
+        if self.time_0_10_s >= self.time_0_30_s:
+            raise ValueError(
+                f"El tiempo 0-10m ({self.time_0_10_s}s) debe ser menor que "
+                f"el tiempo 0-30m ({self.time_0_30_s}s). "
+                "Revise los valores ingresados."
+            )
+        return self
 
 
 class UpdateSprintTestSchema(BaseModel):

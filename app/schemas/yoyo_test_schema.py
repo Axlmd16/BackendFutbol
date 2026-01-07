@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
@@ -12,9 +12,25 @@ from app.schemas.test_base_schema import CreateTestBaseSchema
 class CreateYoyoTestSchema(CreateTestBaseSchema):
     """Schema para crear un Yoyo Test (resistencia aerobia)."""
 
-    shuttle_count: int = Field(..., gt=0, description="Número de shuttles completados")
+    shuttle_count: int = Field(
+        ..., gt=0, le=1000, description="Número de shuttles completados (máx 1000)"
+    )
     final_level: str = Field(..., description="Nivel final alcanzado (ej: 16.3, 18.2)")
     failures: int = Field(..., ge=0, description="Número de fallos")
+
+    @field_validator("final_level")
+    @classmethod
+    def validate_final_level_format(cls, v: str) -> str:
+        """Validar formato estricto XX.Y del nivel final."""
+        import re
+
+        pattern = r"^\d{1,2}\.\d{1}$"
+        if not re.match(pattern, v):
+            raise ValueError(
+                f"El nivel final debe tener el formato XX.Y (ej: 16.3, 18.2). "
+                f"Valor ingresado: '{v}'"
+            )
+        return v
 
 
 class UpdateYoyoTestSchema(BaseModel):

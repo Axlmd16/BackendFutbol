@@ -120,11 +120,11 @@ class AthleteUpdateDTO(BaseModel):
 
 
 class AthleteFilter(BaseModel):
-    """Filtros para bÃºsqueda/paginaciÃ³n de atletas."""
+    """Filtros para busqueda/paginación de atletas."""
 
     page: int = Field(1, ge=1)
     limit: int = Field(10, ge=1, le=100)
-    search: Optional[str] = Field(None, description="BÃºsqueda por nombre o DNI")
+    search: Optional[str] = Field(None, description="Búsqueda por nombre o DNI")
     type_athlete: Optional[TypeStament] = None
     sex: Optional[SexInput] = None
     is_active: Optional[bool] = Field(
@@ -252,13 +252,13 @@ class RepresentativeDataDTO(BaseModel):
         ..., description="Tipo de relación: FATHER, MOTHER, LEGAL_GUARDIAN"
     )
 
-    # @field_validator("dni", mode="before")
-    # @classmethod
-    # def _normalize_and_validate_dni(cls, value: Any) -> str:
-    #     try:
-    #         return validate_ec_dni(str(value))
-    #     except ValidationException as exc:
-    #         raise ValueError(exc.message) from exc
+    @field_validator("dni", mode="before")
+    @classmethod
+    def _normalize_and_validate_dni(cls, value: Any) -> str:
+        try:
+            return validate_ec_dni(str(value))
+        except ValidationException as exc:
+            raise ValueError(exc.message) from exc
 
 
 class MinorAthleteDataDTO(BaseModel):
@@ -272,43 +272,95 @@ class MinorAthleteDataDTO(BaseModel):
     birth_date: date = Field(..., description="Fecha de nacimiento (YYYY-MM-DD)")
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
     height: Optional[float] = Field(
-        default=None, ge=0, le=1.75, description="Altura en metros (máximo 1.75 m)"
+        default=None,
+        description="Altura en metros (mínimo 1.0 m, máximo 1.90 m)",
     )
-    weight: Optional[float] = Field(default=None, ge=0, description="Peso en kg")
+    weight: Optional[float] = Field(
+        default=None, description="Peso en kg (mínimo 15 kg, máximo 90 kg)"
+    )
     direction: Optional[str] = Field(default="S/N", description="Dirección")
     phone: Optional[str] = Field(default="S/N", description="Teléfono")
     type_identification: str = Field(default="CEDULA")
+
     # type_stament siempre será EXTERNOS para menores de edad
 
-    # @field_validator("dni", mode="before")
-    # @classmethod
-    # def _normalize_and_validate_dni(cls, value: Any) -> str:
-    #     try:
-    #         return validate_ec_dni(str(value))
-    #     except ValidationException as exc:
-    #         raise ValueError(exc.message) from exc
+    @field_validator("dni", mode="before")
+    @classmethod
+    def _normalize_and_validate_dni(cls, value: Any) -> str:
+        try:
+            return validate_ec_dni(str(value))
+        except ValidationException as exc:
+            raise ValueError(exc.message) from exc
 
     @field_validator("birth_date", mode="after")
     @classmethod
     def _validate_minor_age(cls, value: date) -> date:
-        """Valida que el atleta sea menor de edad (menos de 18 años)."""
+        """Valida que el atleta sea menor de edad (entre 5 y 17 años)."""
         from datetime import date as date_type
 
         today = date_type.today()
-        # Calcular edad
+
+        if value > today:
+            raise ValueError("La fecha de nacimiento no puede ser en el futuro")
+
         age = (
             today.year
             - value.year
             - ((today.month, today.day) < (value.month, value.day))
         )
+
         if age >= 18:
             raise ValueError(
                 f"El deportista debe ser menor de 18 años. Edad calculada: {age} años"
             )
-        if age < 3:
+
+        if age < 5:
             raise ValueError(
-                f"La fecha de nacimiento no es válida. Edad calculada: {age} años"
+                f"El deportista debe tener al menos 5 años. Edad calculada: {age} años"
             )
+
+        return value
+
+    @field_validator("height")
+    @classmethod
+    def _validate_minor_height(cls, value: Optional[float]) -> Optional[float]:
+        """Valida que la altura esté dentro de los límites para menores."""
+        if value is None:
+            return value
+
+        if value < 1.0:
+            raise ValueError(
+                f"La altura mínima para atletas menores es 1.0 metro. "
+                f"Altura ingresada: {value} m"
+            )
+
+        if value > 1.90:
+            raise ValueError(
+                f"La altura máxima para atletas menores es 1.90 metros. "
+                f"Altura ingresada: {value} m"
+            )
+
+        return value
+
+    @field_validator("weight")
+    @classmethod
+    def _validate_minor_weight(cls, value: Optional[float]) -> Optional[float]:
+        """Valida que el peso esté dentro de los límites para menores."""
+        if value is None:
+            return value
+
+        if value < 15:
+            raise ValueError(
+                f"El peso mínimo para atletas menores es 15 kg. "
+                f"Peso ingresado: {value} kg"
+            )
+
+        if value > 90:
+            raise ValueError(
+                f"El peso máximo para atletas menores es 90 kg. "
+                f"Peso ingresado: {value} kg"
+            )
+
         return value
 
     @field_validator("sex", mode="before")
