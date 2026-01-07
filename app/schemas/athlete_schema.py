@@ -40,16 +40,42 @@ class AthleteInscriptionDTO(PersonBase):
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
     weight: Optional[float] = Field(
         default=None,
-        ge=18,
-        le=200,
         description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
     )
     height: Optional[float] = Field(
         default=None,
-        ge=1.0,
-        le=2.5,
         description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
+
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _validate_weight(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("El peso debe ser un número válido")
+        if val < 18:
+            raise ValueError("El peso debe ser m�nimo 18 kg")
+        if val > 200:
+            raise ValueError("El peso no puede exceder 200 kg")
+        return val
+
+    @field_validator("height", mode="before")
+    @classmethod
+    def _validate_height(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("La altura debe ser un número válido")
+        if val < 1.0:
+            raise ValueError("La altura debe ser m�nimo 1 metro")
+        if val > 2.5:
+            raise ValueError("La altura no puede exceder 2.5 metros")
+        return val
 
     @field_validator("birth_date", mode="after")
     @classmethod
@@ -110,16 +136,42 @@ class AthleteUpdateRequest(BaseModel):
     type_athlete: Optional[TypeStament] = None
     weight: Optional[float] = Field(
         default=None,
-        ge=18,
-        le=200,
         description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
     )
     height: Optional[float] = Field(
         default=None,
-        ge=1.0,
-        le=2.5,
         description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
+
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _validate_weight(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("El peso debe ser un número válido")
+        if val < 18:
+            raise ValueError("El peso debe ser m�nimo 18 kg")
+        if val > 200:
+            raise ValueError("El peso no puede exceder 200 kg")
+        return val
+
+    @field_validator("height", mode="before")
+    @classmethod
+    def _validate_height(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("La altura debe ser un número válido")
+        if val < 1.0:
+            raise ValueError("La altura debe ser m�nimo 1 metro")
+        if val > 2.5:
+            raise ValueError("La altura no puede exceder 2.5 metros")
+        return val
 
     @field_validator("birth_date", mode="after")
     @classmethod
@@ -154,16 +206,42 @@ class AthleteUpdateDTO(BaseModel):
     # Datos físicos
     height: Optional[float] = Field(
         default=None,
-        ge=1.0,
-        le=2.5,
         description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
     weight: Optional[float] = Field(
         default=None,
-        ge=18,
-        le=200,
         description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
     )
+
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _validate_weight(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("El peso debe ser un número válido")
+        if val < 18:
+            raise ValueError("El peso debe ser m�nimo 18 kg")
+        if val > 200:
+            raise ValueError("El peso no puede exceder 200 kg")
+        return val
+
+    @field_validator("height", mode="before")
+    @classmethod
+    def _validate_height(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("La altura debe ser un número válido")
+        if val < 1.0:
+            raise ValueError("La altura debe ser m�nimo 1 metro")
+        if val > 2.5:
+            raise ValueError("La altura no puede exceder 2.5 metros")
+        return val
 
     @field_validator("birth_date", mode="after")
     @classmethod

@@ -119,46 +119,9 @@ def get_all_athletes(
     """Obtiene todos los atletas con filtros y paginación."""
     try:
         result = athlete_controller.get_all_athletes(db=db, filters=filters)
-
-        # Generar mensaje contextual según filtros aplicados
-        message = ""
-        if filters.search:
-            message = (
-                "Resultados de búsqueda: "
-                "Se muestran los atletas que coinciden con "
-                f"'{filters.search}'."
-            )
-        elif filters.gender:
-            gender_label = "masculino" if filters.gender.lower() == "m" else "femenino"
-            message = (
-                "Filtro aplicado: Mostrando únicamente atletas de género "
-                f"{gender_label}."
-            )
-        elif filters.is_active is not None:
-            message = (
-                "Vista actualizada: Mostrando solo los deportistas que "
-                "se encuentran activos actualmente."
-                if filters.is_active
-                else "Vista actualizada: Mostrando deportistas inactivos."
-            )
-        elif filters.athlete_type:
-            message = (
-                "Filtro por categoría: Mostrando deportistas pertenecientes "
-                "al estamento UNL."
-                if filters.athlete_type.upper() == "UNL"
-                else "Filtro por categoría: Mostrando deportistas de tipo "
-                f"{filters.athlete_type}."
-            )
-        else:
-            page_size = filters.page_size or 10
-            message = (
-                "Lista de atletas cargada exitosamente. "
-                f"Mostrando {page_size} registros por página."
-            )
-
         return ResponseSchema(
             status="success",
-            message=message,
+            message="Atletas obtenidos correctamente",
             data=result.model_dump(),
         )
     except AppException as exc:
