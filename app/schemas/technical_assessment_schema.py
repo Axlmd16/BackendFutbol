@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.enums.scale import Scale
 from app.schemas.base_schema import BaseResponseSchema
@@ -18,6 +18,24 @@ class CreateTechnicalAssessmentSchema(CreateTestBaseSchema):
     long_pass: Optional[Scale] = None
     shooting: Optional[Scale] = None
     dribbling: Optional[Scale] = None
+
+    @model_validator(mode="after")
+    def validate_at_least_one_skill(self):
+        """Validar que al menos una habilidad esté evaluada."""
+        skills = [
+            self.ball_control,
+            self.short_pass,
+            self.long_pass,
+            self.shooting,
+            self.dribbling,
+        ]
+
+        if all(skill is None for skill in skills):
+            raise ValueError(
+                "Debe evaluar al menos una habilidad técnica. "
+                "Todas las habilidades están vacías."
+            )
+        return self
 
 
 class TechnicalAssessmentResponseSchema(BaseResponseSchema):

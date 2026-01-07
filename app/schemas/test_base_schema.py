@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CreateTestBaseSchema(BaseModel):
@@ -15,3 +15,14 @@ class CreateTestBaseSchema(BaseModel):
     evaluation_id: int = Field(
         ..., description="ID de la evaluación a la que pertenece"
     )
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_not_future(cls, v: datetime) -> datetime:
+        """Validar que la fecha del test no sea futura."""
+        if v > datetime.now():
+            raise ValueError(
+                "La fecha del test no puede ser futura. "
+                f"Fecha ingresada: {v.strftime('%Y-%m-%d %H:%M')}"
+            )
+        return v

@@ -1,9 +1,10 @@
 """Tests unitarios para `SprintTestController`."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from app.controllers.sprint_test_controller import SprintTestController
 from app.models.evaluation import Evaluation
@@ -181,3 +182,245 @@ def test_delete_sprint_test_success(
     assert result is True
     sprint_test_controller.sprint_test_dao.delete.assert_called_once_with(mock_db, 1)
     assert called["stats"] is True
+
+
+def test_delete_sprint_test_not_found(sprint_test_controller, mock_db):
+    """Si no existe retorna False y no borra."""
+    sprint_test_controller.sprint_test_dao.get_by_id.return_value = None
+
+    result = sprint_test_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    sprint_test_controller.sprint_test_dao.delete.assert_not_called()
+
+
+# ==============================================
+# TESTS: LIST SPRINT TESTS
+# ==============================================
+
+
+def test_list_tests_success(sprint_test_controller, mock_db, mock_sprint_test):
+    """Lista sprint tests con paginación y filtros."""
+    from app.schemas.sprint_test_schema import SprintTestFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 3
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_sprint_test]
+
+    filters = SprintTestFilter(page=1, limit=10)
+    items, total = sprint_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 3
+    assert items[0] is mock_sprint_test
+
+
+def test_list_tests_with_filters(sprint_test_controller, mock_db):
+    """Lista sprint tests filtrando por evaluation_id y athlete_id."""
+    from app.schemas.sprint_test_schema import SprintTestFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = SprintTestFilter(page=1, limit=10, evaluation_id=1, athlete_id=5)
+    items, total = sprint_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 1
+
+
+def test_list_tests_with_search(sprint_test_controller, mock_db, mock_sprint_test):
+    """Lista sprint tests filtrando por nombre de atleta (search)."""
+    from app.schemas.sprint_test_schema import SprintTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_sprint_test]
+
+    filters = SprintTestFilter(page=1, limit=10, search="Carlos")
+    items, total = sprint_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_search_no_match(sprint_test_controller, mock_db):
+    """Lista sprint tests con search que no coincide devuelve lista vacía."""
+    from app.schemas.sprint_test_schema import SprintTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = SprintTestFilter(page=1, limit=10, search="NoExiste")
+    items, total = sprint_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+
+
+# ==============================================
+# TESTS: VALIDACIONES
+# ==============================================
+
+
+def test_sprint_test_future_date_rejected():
+    """Validación: La fecha del test no puede ser futura."""
+    future_date = datetime.now() + timedelta(days=1)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=future_date,
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=1.85,
+            time_0_30_s=3.95,
+        )
+
+    assert "La fecha del test no puede ser futura" in str(exc_info.value)
+
+
+def test_sprint_test_valid_past_date():
+    """Validación: Las fechas pasadas son válidas."""
+    past_date = datetime.now() - timedelta(days=1)
+
+    schema = CreateSprintTestSchema(
+        date=past_date,
+        athlete_id=1,
+        evaluation_id=1,
+        distance_meters=30,
+        time_0_10_s=1.85,
+        time_0_30_s=3.95,
+    )
+
+    assert schema.date == past_date
+
+
+def test_sprint_test_time_coherence_rejected():
+    """Validación: time_0_10_s debe ser menor que time_0_30_s."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=4.0,
+            time_0_30_s=3.5,
+        )
+
+    assert "debe ser menor que" in str(exc_info.value)
+
+
+def test_sprint_test_time_equal_rejected():
+    """Validación: Tiempos iguales son rechazados."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=3.5,
+            time_0_30_s=3.5,
+        )
+
+    assert "debe ser menor que" in str(exc_info.value)
+
+
+def test_sprint_test_valid_time_progression():
+    """Validación: Progresión de tiempos válida."""
+    schema = CreateSprintTestSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        distance_meters=30,
+        time_0_10_s=1.85,
+        time_0_30_s=3.95,
+    )
+
+    assert schema.time_0_10_s < schema.time_0_30_s
+
+
+def test_sprint_test_distance_limit_exceeded():
+    """Validación: Distancia máxima 1000m."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=1500,
+            time_0_10_s=1.85,
+            time_0_30_s=3.95,
+        )
+
+    assert "less than or equal to 1000" in str(exc_info.value)
+
+
+def test_sprint_test_time_limit_exceeded():
+    """Validación: Tiempo máximo 60s."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateSprintTestSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            distance_meters=30,
+            time_0_10_s=1.85,
+            time_0_30_s=65.0,
+        )
+
+    assert "less than or equal to 60" in str(exc_info.value)
