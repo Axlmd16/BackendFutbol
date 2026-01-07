@@ -264,8 +264,7 @@ async def update_athlete(
         update_data = payload.model_dump(exclude_unset=True)
         if "height" in update_data and update_data["height"] < 0:
             raise HTTPException(
-                status_code=422,
-                detail="Altura inválida: no puede ser negativa."
+                status_code=422, detail="Altura inválida: no puede ser negativa."
             )
         result = await athlete_controller.update_athlete(
             db=db, athlete_id=athlete_id, update_data=update_data
