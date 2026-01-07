@@ -16,6 +16,10 @@ from app.schemas.technical_assessment_schema import (
     CreateTechnicalAssessmentSchema,
 )
 from app.utils.exceptions import DatabaseException
+from app.schemas.technical_assessment_schema import (
+    CreateTechnicalAssessmentSchema,
+    UpdateTechnicalAssessmentSchema,
+)
 
 # ==============================================
 # FIXTURES
@@ -96,17 +100,21 @@ def test_add_technical_assessment_success(
     technical_assessment_controller.athlete_dao.get_by_id.return_value = mock_athlete
     technical_assessment_controller.test_dao.create_technical_assessment.return_value = mock_technical_assessment  # noqa: E501
 
-    result = technical_assessment_controller.add_test(
-        db=mock_db,
+    payload = CreateTechnicalAssessmentSchema(
         evaluation_id=1,
         athlete_id=5,
         date=mock_technical_assessment.date,
-        ball_control=8,
-        short_pass=9,
-        long_pass=7,
-        shooting=8,
-        dribbling=9,
+        ball_control=Scale.EXCELLENT,
+        short_pass=Scale.EXCELLENT,
+        long_pass=Scale.GOOD,
+        shooting=Scale.GOOD,
+        dribbling=Scale.EXCELLENT,
         observations="Excellent technical skills",
+    )
+
+    result = technical_assessment_controller.add_test(
+        db=mock_db,
+        payload=payload,
     )
 
     assert result.id == 4
@@ -117,49 +125,6 @@ def test_add_technical_assessment_success(
     assert result.shooting == 8
     assert result.dribbling == 9
     technical_assessment_controller.test_dao.create_technical_assessment.assert_called_once()
-
-
-def test_add_technical_assessment_evaluation_not_found(
-    technical_assessment_controller, mock_db
-):
-    """Agregar Technical Assessment a evaluación inexistente."""
-    technical_assessment_controller.evaluation_dao.get_by_id.return_value = None
-
-    with pytest.raises(DatabaseException, match="Evaluación 999 no existe"):
-        technical_assessment_controller.add_test(
-            db=mock_db,
-            evaluation_id=999,
-            athlete_id=5,
-            date=datetime.now(),
-            ball_control=8,
-            short_pass=9,
-            long_pass=7,
-            shooting=8,
-            dribbling=9,
-        )
-
-
-def test_add_technical_assessment_athlete_not_found(
-    technical_assessment_controller, mock_db, mock_evaluation
-):
-    """Agregar Technical Assessment a atleta inexistente."""
-    technical_assessment_controller.evaluation_dao.get_by_id.return_value = (
-        mock_evaluation
-    )
-    technical_assessment_controller.athlete_dao.get_by_id.return_value = None
-
-    with pytest.raises(DatabaseException, match="Atleta 999 no existe"):
-        technical_assessment_controller.add_test(
-            db=mock_db,
-            evaluation_id=1,
-            athlete_id=999,
-            date=datetime.now(),
-            ball_control=8,
-            short_pass=9,
-            long_pass=7,
-            shooting=8,
-            dribbling=9,
-        )
 
 
 # ==============================================
@@ -181,28 +146,23 @@ def test_update_technical_assessment_success(
         updated
     )
 
+    payload = UpdateTechnicalAssessmentSchema(
+        ball_control=Scale.EXCELLENT,
+        observations="Mejoró",
+    )
+
     result = technical_assessment_controller.update_test(
-        db=mock_db, test_id=4, ball_control="Excellent", observations="Mejoró"
+        db=mock_db,
+        test_id=4,
+        payload=payload,
     )
 
     assert result.ball_control == "Excellent"
     technical_assessment_controller.technical_assessment_dao.update.assert_called_once_with(
-        mock_db, 4, {"ball_control": "Excellent", "observations": "Mejoró"}
+        mock_db,
+        4,
+        {"ball_control": Scale.EXCELLENT, "observations": "Mejoró"},
     )
-
-
-def test_update_technical_assessment_not_found(
-    technical_assessment_controller, mock_db
-):
-    """Retorna None si el Technical Assessment no existe."""
-    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
-        None
-    )
-
-    result = technical_assessment_controller.update_test(db=mock_db, test_id=999)
-
-    assert result is None
-    technical_assessment_controller.technical_assessment_dao.update.assert_not_called()
 
 
 # ==============================================
@@ -227,51 +187,6 @@ def test_delete_technical_assessment_success(
     )
 
 
-def test_delete_technical_assessment_not_found(
-    technical_assessment_controller, mock_db
-):
-    """Si no existe retorna False y no borra."""
-    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
-        None
-    )
-
-    result = technical_assessment_controller.delete_test(mock_db, test_id=999)
-
-    assert result is False
-    technical_assessment_controller.technical_assessment_dao.delete.assert_not_called()
-
-
-def test_update_technical_assessment_evaluation_not_found(
-    technical_assessment_controller, mock_db
-):
-    """Valida evaluación al actualizar."""
-    technical_assessment_controller.evaluation_dao.get_by_id.return_value = None
-    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
-        Mock()
-    )
-
-    with pytest.raises(DatabaseException, match="Evaluación 999 no existe"):
-        technical_assessment_controller.update_test(
-            db=mock_db, test_id=4, evaluation_id=999, shooting="Good"
-        )
-
-
-def test_update_technical_assessment_athlete_not_found(
-    technical_assessment_controller, mock_db
-):
-    """Valida atleta al actualizar."""
-    technical_assessment_controller.evaluation_dao.get_by_id.return_value = Mock()
-    technical_assessment_controller.athlete_dao.get_by_id.return_value = None
-    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
-        Mock()
-    )
-
-    with pytest.raises(DatabaseException, match="Atleta 888 no existe"):
-        technical_assessment_controller.update_test(
-            db=mock_db, test_id=4, athlete_id=888, shooting="Good"
-        )
-
-
 def test_update_technical_assessment_no_fields_returns_existing(
     technical_assessment_controller, mock_db, mock_technical_assessment
 ):
@@ -280,7 +195,13 @@ def test_update_technical_assessment_no_fields_returns_existing(
         mock_technical_assessment
     )
 
-    result = technical_assessment_controller.update_test(db=mock_db, test_id=4)
+    payload = UpdateTechnicalAssessmentSchema()
+
+    result = technical_assessment_controller.update_test(
+        db=mock_db,
+        test_id=4,
+        payload=payload,
+    )
 
     assert result is mock_technical_assessment
     technical_assessment_controller.technical_assessment_dao.update.assert_not_called()

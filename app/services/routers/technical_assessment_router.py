@@ -40,15 +40,7 @@ async def create_technical_assessment(
     try:
         test = technical_assessment_controller.add_test(
             db=db,
-            evaluation_id=payload.evaluation_id,
-            athlete_id=payload.athlete_id,
-            date=payload.date,
-            ball_control=payload.ball_control,
-            short_pass=payload.short_pass,
-            long_pass=payload.long_pass,
-            shooting=payload.shooting,
-            dribbling=payload.dribbling,
-            observations=payload.observations,
+            payload=payload,
         )
 
         return ResponseSchema(
@@ -149,7 +141,9 @@ async def update_technical_assessment(
 
     try:
         updated = technical_assessment_controller.update_test(
-            db=db, test_id=test_id, **data
+            db=db,
+            test_id=test_id,
+            payload=payload,
         )
 
         if not updated:

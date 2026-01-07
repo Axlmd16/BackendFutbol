@@ -69,6 +69,12 @@ async def test_create_technical_assessment_success(
         data = response.json()
         assert data["status"] == "success"
         assert data["data"]["ball_control"] == "Excellent"
+        mock_controller.add_test.assert_called_once()
+        called_payload = mock_controller.add_test.call_args.kwargs["payload"]
+        assert (
+            called_payload.ball_control.value
+            == technical_assessment_payload["ball_control"]
+        )
 
 
 @pytest.mark.asyncio

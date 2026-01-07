@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.dao.statistic_dao import StatisticDAO
+from app.schemas.statistic_schema import UpdateSportsStatsRequest
 from app.utils.exceptions import AppException
 
 logger = logging.getLogger(__name__)
@@ -225,7 +226,7 @@ class StatisticController:
             ) from e
 
     def update_sports_stats(
-        self, db: Session, athlete_id: int, updates: dict
+        self, db: Session, athlete_id: int, payload: UpdateSportsStatsRequest
     ) -> dict | None:
         """
         Actualiza las estadísticas deportivas de un atleta.
@@ -233,7 +234,7 @@ class StatisticController:
         Args:
             db: Sesión de base de datos
             athlete_id: ID del atleta
-            updates: Dict con campos a actualizar (matches_played, goals, etc.)
+            payload: Schema con campos a actualizar (matches_played, goals, etc.)
 
         Returns:
             Dict con estadísticas actualizadas o None si no existe
@@ -253,7 +254,9 @@ class StatisticController:
                 "red_cards",
             }
             filtered_updates = {
-                k: v for k, v in updates.items() if k in valid_fields and v is not None
+                k: v
+                for k, v in payload.model_dump(exclude_none=True).items()
+                if k in valid_fields
             }
 
             if filtered_updates:

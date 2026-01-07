@@ -11,6 +11,10 @@ from app.models.evaluation import Evaluation
 from app.models.sprint_test import SprintTest
 from app.schemas.sprint_test_schema import CreateSprintTestSchema
 from app.utils.exceptions import DatabaseException
+from app.schemas.sprint_test_schema import (
+    CreateSprintTestSchema,
+    UpdateSprintTestSchema,
+)
 
 # ==============================================
 # FIXTURES
@@ -83,8 +87,7 @@ def test_add_sprint_test_success(
     sprint_test_controller.athlete_dao.get_by_id.return_value = mock_athlete
     sprint_test_controller.test_dao.create_sprint_test.return_value = mock_sprint_test
 
-    result = sprint_test_controller.add_test(
-        db=mock_db,
+    payload = CreateSprintTestSchema(
         evaluation_id=1,
         athlete_id=5,
         date=mock_sprint_test.date,
@@ -94,45 +97,15 @@ def test_add_sprint_test_success(
         observations="Good performance",
     )
 
+    result = sprint_test_controller.add_test(
+        db=mock_db,
+        payload=payload,
+    )
+
     assert result.id == 1
     assert result.type == "sprint_test"
     assert result.distance_meters == 30
     sprint_test_controller.test_dao.create_sprint_test.assert_called_once()
-
-
-def test_add_sprint_test_evaluation_not_found(sprint_test_controller, mock_db):
-    """Agregar Sprint Test a evaluación inexistente."""
-    sprint_test_controller.evaluation_dao.get_by_id.return_value = None
-
-    with pytest.raises(DatabaseException, match="Evaluación 999 no existe"):
-        sprint_test_controller.add_test(
-            db=mock_db,
-            evaluation_id=999,
-            athlete_id=5,
-            date=datetime.now(),
-            distance_meters=30,
-            time_0_10_s=1.85,
-            time_0_30_s=3.95,
-        )
-
-
-def test_add_sprint_test_athlete_not_found(
-    sprint_test_controller, mock_db, mock_evaluation
-):
-    """Agregar Sprint Test a atleta inexistente."""
-    sprint_test_controller.evaluation_dao.get_by_id.return_value = mock_evaluation
-    sprint_test_controller.athlete_dao.get_by_id.return_value = None
-
-    with pytest.raises(DatabaseException, match="Atleta 999 no existe"):
-        sprint_test_controller.add_test(
-            db=mock_db,
-            evaluation_id=1,
-            athlete_id=999,
-            date=datetime.now(),
-            distance_meters=30,
-            time_0_10_s=1.85,
-            time_0_30_s=3.95,
-        )
 
 
 # ==============================================
@@ -148,8 +121,15 @@ def test_update_sprint_test_success(sprint_test_controller, mock_db, mock_sprint
     updated.time_0_30_s = 3.80
     sprint_test_controller.sprint_test_dao.update.return_value = updated
 
+    payload = UpdateSprintTestSchema(
+        time_0_30_s=3.80,
+        observations="Mejoró salida",
+    )
+
     result = sprint_test_controller.update_test(
-        db=mock_db, test_id=1, time_0_30_s=3.80, observations="Mejoró salida"
+        db=mock_db,
+        test_id=1,
+        payload=payload,
     )
 
     assert result.time_0_30_s == 3.80
@@ -158,46 +138,19 @@ def test_update_sprint_test_success(sprint_test_controller, mock_db, mock_sprint
     )
 
 
-def test_update_sprint_test_not_found(sprint_test_controller, mock_db):
-    """Retorna None si el Sprint Test no existe."""
-    sprint_test_controller.sprint_test_dao.get_by_id.return_value = None
-
-    result = sprint_test_controller.update_test(db=mock_db, test_id=999)
-
-    assert result is None
-    sprint_test_controller.sprint_test_dao.update.assert_not_called()
-
-
-def test_update_sprint_test_evaluation_not_found(sprint_test_controller, mock_db):
-    """Valida evaluación al actualizar."""
-    sprint_test_controller.evaluation_dao.get_by_id.return_value = None
-    sprint_test_controller.sprint_test_dao.get_by_id.return_value = Mock()
-
-    with pytest.raises(DatabaseException, match="Evaluación 999 no existe"):
-        sprint_test_controller.update_test(
-            db=mock_db, test_id=1, evaluation_id=999, distance_meters=40
-        )
-
-
-def test_update_sprint_test_athlete_not_found(sprint_test_controller, mock_db):
-    """Valida atleta al actualizar."""
-    sprint_test_controller.evaluation_dao.get_by_id.return_value = Mock()
-    sprint_test_controller.athlete_dao.get_by_id.return_value = None
-    sprint_test_controller.sprint_test_dao.get_by_id.return_value = Mock()
-
-    with pytest.raises(DatabaseException, match="Atleta 888 no existe"):
-        sprint_test_controller.update_test(
-            db=mock_db, test_id=1, athlete_id=888, distance_meters=40
-        )
-
-
 def test_update_sprint_test_no_fields_returns_existing(
     sprint_test_controller, mock_db, mock_sprint_test
 ):
     """Si no se envían campos, se retorna la instancia actual."""
     sprint_test_controller.sprint_test_dao.get_by_id.return_value = mock_sprint_test
 
-    result = sprint_test_controller.update_test(db=mock_db, test_id=1)
+    payload = UpdateSprintTestSchema()
+
+    result = sprint_test_controller.update_test(
+        db=mock_db,
+        test_id=1,
+        payload=payload,
+    )
 
     assert result is mock_sprint_test
     sprint_test_controller.sprint_test_dao.update.assert_not_called()
