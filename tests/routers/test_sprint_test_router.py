@@ -63,6 +63,9 @@ async def test_create_sprint_test_success(admin_client, sprint_test_payload):
         data = response.json()
         assert data["status"] == "success"
         assert data["data"]["distance_meters"] == 30
+        mock_controller.add_test.assert_called_once()
+        called_payload = mock_controller.add_test.call_args.kwargs["payload"]
+        assert called_payload.distance_meters == sprint_test_payload["distance_meters"]
 
 
 @pytest.mark.asyncio

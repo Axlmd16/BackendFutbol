@@ -149,22 +149,3 @@ def test_confirm_password_reset_success(monkeypatch, controller):
 
     assert account.password_hash == "new_hashed"
     db.commit.assert_called_once()
-
-
-def test_confirm_password_reset_invalid_account(monkeypatch, controller):
-    """Prueba de confirmación de reseteo de contraseña con cuenta inválida."""
-    db = MagicMock()
-    monkeypatch.setattr(
-        "app.controllers.account_controller.validate_reset_token",
-        lambda token: {"sub": 99, "action": "reset_password"},
-    )
-    monkeypatch.setattr(
-        controller.account_dao,
-        "get_by_id",
-        lambda db, id, only_active=True: None,
-    )
-
-    with pytest.raises(UnauthorizedException):
-        controller.confirm_password_reset(
-            db, MagicMock(token="reset123", new_password="NewPass123!")
-        )

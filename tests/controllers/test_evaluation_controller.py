@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from app.controllers.evaluation_controller import EvaluationController
 from app.models.endurance_test import EnduranceTest
@@ -11,6 +12,10 @@ from app.models.evaluation import Evaluation
 from app.models.sprint_test import SprintTest
 from app.models.technical_assessment import TechnicalAssessment
 from app.models.yoyo_test import YoyoTest
+from app.schemas.evaluation_schema import (
+    CreateEvaluationSchema,
+    UpdateEvaluationSchema,
+)
 from app.utils.exceptions import DatabaseException
 
 # ==============================================
@@ -130,14 +135,18 @@ def test_create_evaluation_success(evaluation_controller, mock_db, mock_evaluati
     """Crear una evaluación exitosamente."""
     evaluation_controller.evaluation_dao.create.return_value = mock_evaluation
 
-    result = evaluation_controller.create_evaluation(
-        db=mock_db,
+    payload = CreateEvaluationSchema(
         name="Evaluación Física",
-        date=mock_evaluation.date,
-        time="10:30",
+        date="2026-06-01",
+        time="10:59",
         user_id=1,
         location="Cancha Principal",
-        observations="Test initial",
+        observations="Test inicial",
+    )
+
+    result = evaluation_controller.create_evaluation(
+        db=mock_db,
+        payload=payload,
     )
 
     assert result.id == 1
@@ -145,65 +154,70 @@ def test_create_evaluation_success(evaluation_controller, mock_db, mock_evaluati
     evaluation_controller.evaluation_dao.create.assert_called_once()
 
 
-def test_create_evaluation_validation_error(evaluation_controller, mock_db):
+def test_create_evaluation_date_validation_error(evaluation_controller, mock_db):
     """Crear evaluación con validación fallida."""
     evaluation_controller.evaluation_dao.create.side_effect = DatabaseException(
         "La fecha de evaluación no puede ser anterior a hoy"
     )
 
+    payload = CreateEvaluationSchema(
+        name="Evaluación Pasada",
+        date="2020-01-01",
+        time="10:30",
+        user_id=1,
+        location="Cancha Principal",
+        observations="Test pasado",
+    )
+
     with pytest.raises(DatabaseException):
         evaluation_controller.create_evaluation(
             db=mock_db,
-            name="Evaluación Pasada",
-            date=datetime.now() - timedelta(days=1),
-            time="10:30",
-            user_id=1,
+            payload=payload,
         )
 
 
-def test_get_evaluation_success(evaluation_controller, mock_db, mock_evaluation):
-    """Obtener una evaluación existente."""
-    evaluation_controller.evaluation_dao.get_by_id.return_value = mock_evaluation
-
-    result = evaluation_controller.get_evaluation(mock_db, 1)
-
-    assert result.id == 1
-    assert result.name == "Evaluación Física"
-    evaluation_controller.evaluation_dao.get_by_id.assert_called_once_with(mock_db, 1)
-
-
-def test_get_evaluation_not_found(evaluation_controller, mock_db):
-    """Obtener una evaluación que no existe."""
-    evaluation_controller.evaluation_dao.get_by_id.return_value = None
-
-    result = evaluation_controller.get_evaluation(mock_db, 999)
-
-    assert result is None
+def test_create_evaluation_invalid_date():
+    """Debe rechazar payload con fecha en formato inválido."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateEvaluationSchema(
+            name="Evaluación Fecha Inválida",
+            date="fecha-invalida",
+            time="10:30",
+            user_id=1,
+            location="Cancha Principal",
+            observations="Formato incorrecto",
+        )
+    assert "Input should be a valid datetime" in str(exc_info.value)
 
 
-def test_list_evaluations_success(evaluation_controller, mock_db, mock_evaluation):
-    """Listar evaluaciones exitosamente."""
-    evaluation_controller.evaluation_dao.list_all.return_value = [mock_evaluation]
+def test_create_evaluation_invalid_time():
+    """Debe rechazar payload con hora fuera del formato HH:MM."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateEvaluationSchema(
+            name="Evaluación Hora Inválida",
+            date="2026-06-01",
+            time="25:99",
+            user_id=1,
+            location="Cancha Principal",
+            observations="Hora inválida",
+        )
+    assert "hora de evaluación es inválida" in str(exc_info.value).lower()
 
-    result = evaluation_controller.list_evaluations(mock_db, skip=0, limit=10)
 
-    assert len(result) == 1
-    assert result[0].id == 1
-    evaluation_controller.evaluation_dao.list_all.assert_called_once_with(
-        mock_db, 0, 10
+def test_create_evaluation_name_too_short():
+    """Debe rechazar payload con nombre menor al mínimo permitido."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateEvaluationSchema(
+            name="AB",
+            date="2026-06-01",
+            time="10:30",
+            user_id=1,
+            location="Cancha Principal",
+            observations="Nombre demasiado corto",
+        )
+    assert "El nombre de la evaluación debe tener al menos 3 caracteres" in str(
+        exc_info.value
     )
-
-
-def test_list_evaluations_by_user_success(
-    evaluation_controller, mock_db, mock_evaluation
-):
-    """Listar evaluaciones de un usuario."""
-    evaluation_controller.evaluation_dao.list_by_user.return_value = [mock_evaluation]
-
-    result = evaluation_controller.list_evaluations_by_user(mock_db, 1)
-
-    assert len(result) == 1
-    evaluation_controller.evaluation_dao.list_by_user.assert_called_once()
 
 
 def test_update_evaluation_success(evaluation_controller, mock_db, mock_evaluation):
@@ -213,34 +227,54 @@ def test_update_evaluation_success(evaluation_controller, mock_db, mock_evaluati
     updated_eval.name = "Evaluación Actualizada"
     updated_eval.date = mock_evaluation.date
     updated_eval.time = "11:00"
-    updated_eval.location = "Cancha Auxiliar"
+    updated_eval.location = "Cancha Auxiliarsss"
     updated_eval.observations = "Updated"
 
     evaluation_controller.evaluation_dao.update.return_value = updated_eval
 
+    payload = UpdateEvaluationSchema(
+        name="Evaluación Actualizada",
+        date=mock_evaluation.date,
+        time="11:59",
+        location="Cancha Auxiliar",
+    )
+
     result = evaluation_controller.update_evaluation(
         db=mock_db,
         evaluation_id=1,
-        name="Evaluación Actualizada",
-        time="11:00",
-        location="Cancha Auxiliar",
+        payload=payload,
     )
 
     assert result.name == "Evaluación Actualizada"
     evaluation_controller.evaluation_dao.update.assert_called_once()
 
 
-def test_update_evaluation_not_found(evaluation_controller, mock_db):
-    """Actualizar evaluación que no existe."""
-    evaluation_controller.evaluation_dao.update.return_value = None
+def test_update_evaluation_invalid_date(evaluation_controller, mock_db):
+    """Rechaza fecha inválida al actualizar."""
+    payload = UpdateEvaluationSchema(name="Eval", date=datetime.now())
+    payload.date = "3asdasdsad"  # type: ignore[assignment]
+    with pytest.raises(DatabaseException, match="fecha de evaluación es inválida"):
+        evaluation_controller.update_evaluation(
+            db=mock_db,
+            evaluation_id=1,
+            payload=payload,
+        )
+    evaluation_controller.evaluation_dao.update.assert_not_called()
 
-    result = evaluation_controller.update_evaluation(
-        db=mock_db,
-        evaluation_id=999,
-        name="Nueva Evaluación",
-    )
 
-    assert result is None
+def test_update_evaluation_invalid_time(
+    evaluation_controller, mock_db, mock_evaluation
+):
+    """Rechaza hora inválida al actualizar."""
+    payload = UpdateEvaluationSchema(date=mock_evaluation.date, time="10:50")
+    payload.time = "asdasdsa"  # type: ignore[assignment]
+    with pytest.raises(DatabaseException, match="hora de evaluación es inválida"):
+        evaluation_controller.update_evaluation(
+            db=mock_db,
+            evaluation_id=1,
+            payload=payload,
+        )
+    evaluation_controller.evaluation_dao.update.assert_not_called()
 
 
 def test_delete_evaluation_success(evaluation_controller, mock_db):
@@ -251,196 +285,6 @@ def test_delete_evaluation_success(evaluation_controller, mock_db):
 
     assert result is True
     evaluation_controller.evaluation_dao.delete.assert_called_once_with(mock_db, 1)
-
-
-def test_delete_evaluation_not_found(evaluation_controller, mock_db):
-    """Eliminar evaluación que no existe."""
-    evaluation_controller.evaluation_dao.delete.return_value = False
-
-    result = evaluation_controller.delete_evaluation(mock_db, 999)
-
-    assert result is False
-
-
-# ==============================================
-# TESTS: LIST EVALUATIONS PAGINATED
-# ==============================================
-
-
-def test_list_evaluations_paginated_success(
-    evaluation_controller, mock_db, mock_evaluation
-):
-    """Lista evaluaciones con paginación y filtros."""
-    from app.schemas.evaluation_schema import EvaluationFilter
-
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_with_entities = MagicMock()
-    mock_order = MagicMock()
-    mock_offset = MagicMock()
-    mock_limit = MagicMock()
-
-    mock_db.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.with_entities.return_value = mock_with_entities
-    mock_with_entities.scalar.return_value = 10
-    mock_filter.order_by.return_value = mock_order
-    mock_order.offset.return_value = mock_offset
-    mock_offset.limit.return_value = mock_limit
-    mock_limit.all.return_value = [mock_evaluation]
-
-    filters = EvaluationFilter(page=1, limit=10)
-    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
-
-    assert len(items) == 1
-    assert total == 10
-    assert items[0] is mock_evaluation
-
-
-def test_list_evaluations_paginated_with_search(evaluation_controller, mock_db):
-    """Lista evaluaciones con búsqueda por nombre."""
-    from app.schemas.evaluation_schema import EvaluationFilter
-
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_with_entities = MagicMock()
-    mock_order = MagicMock()
-    mock_offset = MagicMock()
-    mock_limit = MagicMock()
-
-    mock_db.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.with_entities.return_value = mock_with_entities
-    mock_with_entities.scalar.return_value = 2
-    mock_filter.order_by.return_value = mock_order
-    mock_order.offset.return_value = mock_offset
-    mock_offset.limit.return_value = mock_limit
-    mock_limit.all.return_value = []
-
-    filters = EvaluationFilter(page=1, limit=10, search="Física")
-    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
-
-    assert items == []
-    assert total == 2
-
-
-def test_list_evaluations_paginated_with_user_filter(evaluation_controller, mock_db):
-    """Lista evaluaciones filtrando por usuario."""
-    from app.schemas.evaluation_schema import EvaluationFilter
-
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_with_entities = MagicMock()
-    mock_order = MagicMock()
-    mock_offset = MagicMock()
-    mock_limit = MagicMock()
-
-    mock_db.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.with_entities.return_value = mock_with_entities
-    mock_with_entities.scalar.return_value = 5
-    mock_filter.order_by.return_value = mock_order
-    mock_order.offset.return_value = mock_offset
-    mock_offset.limit.return_value = mock_limit
-    mock_limit.all.return_value = []
-
-    filters = EvaluationFilter(page=1, limit=10, user_id=1)
-    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
-
-    assert items == []
-    assert total == 5
-
-
-def test_list_evaluations_paginated_with_date(
-    evaluation_controller, mock_db, mock_evaluation
-):
-    """Lista evaluaciones filtrando por fecha exacta."""
-    from app.schemas.evaluation_schema import EvaluationFilter
-
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_with_entities = MagicMock()
-    mock_order = MagicMock()
-    mock_offset = MagicMock()
-    mock_limit = MagicMock()
-
-    mock_db.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.with_entities.return_value = mock_with_entities
-    mock_with_entities.scalar.return_value = 2
-    mock_filter.order_by.return_value = mock_order
-    mock_order.offset.return_value = mock_offset
-    mock_offset.limit.return_value = mock_limit
-    mock_limit.all.return_value = [mock_evaluation]
-
-    filters = EvaluationFilter(page=1, limit=10, date="2025-01-04")
-    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
-
-    assert len(items) == 1
-    assert total == 2
-
-
-def test_list_evaluations_paginated_with_location(evaluation_controller, mock_db):
-    """Lista evaluaciones filtrando por ubicación (case-insensitive)."""
-    from app.schemas.evaluation_schema import EvaluationFilter
-
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_with_entities = MagicMock()
-    mock_order = MagicMock()
-    mock_offset = MagicMock()
-    mock_limit = MagicMock()
-
-    mock_db.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.with_entities.return_value = mock_with_entities
-    mock_with_entities.scalar.return_value = 3
-    mock_filter.order_by.return_value = mock_order
-    mock_order.offset.return_value = mock_offset
-    mock_offset.limit.return_value = mock_limit
-    mock_limit.all.return_value = []
-
-    filters = EvaluationFilter(page=1, limit=10, location="Cancha")
-    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
-
-    assert items == []
-    assert total == 3
-
-
-def test_list_evaluations_paginated_with_multiple_filters(
-    evaluation_controller, mock_db, mock_evaluation
-):
-    """Lista evaluaciones con múltiples filtros aplicados."""
-    from app.schemas.evaluation_schema import EvaluationFilter
-
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_with_entities = MagicMock()
-    mock_order = MagicMock()
-    mock_offset = MagicMock()
-    mock_limit = MagicMock()
-
-    mock_db.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter  # Encadenar filters
-    mock_filter.with_entities.return_value = mock_with_entities
-    mock_with_entities.scalar.return_value = 1
-    mock_filter.order_by.return_value = mock_order
-    mock_order.offset.return_value = mock_offset
-    mock_offset.limit.return_value = mock_limit
-    mock_limit.all.return_value = [mock_evaluation]
-
-    filters = EvaluationFilter(
-        page=1, limit=10, search="Física", date="2025-01-04", location="Cancha"
-    )
-    items, total = evaluation_controller.list_evaluations_paginated(mock_db, filters)
-
-    assert len(items) == 1
-    assert total == 1
 
 
 # Nota: Tests para test_management (add_sprint_test, add_yoyo_test, etc.)

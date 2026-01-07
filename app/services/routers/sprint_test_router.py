@@ -38,13 +38,7 @@ async def create_sprint_test(
     try:
         test = sprint_test_controller.add_test(
             db=db,
-            evaluation_id=payload.evaluation_id,
-            athlete_id=payload.athlete_id,
-            date=payload.date,
-            distance_meters=payload.distance_meters,
-            time_0_10_s=payload.time_0_10_s,
-            time_0_30_s=payload.time_0_30_s,
-            observations=payload.observations,
+            payload=payload,
         )
 
         return ResponseSchema(
@@ -140,7 +134,11 @@ async def update_sprint_test(
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
 
     try:
-        updated = sprint_test_controller.update_test(db=db, test_id=test_id, **data)
+        updated = sprint_test_controller.update_test(
+            db=db,
+            test_id=test_id,
+            payload=payload,
+        )
 
         if not updated:
             raise HTTPException(status_code=404, detail="Sprint Test no encontrado")
