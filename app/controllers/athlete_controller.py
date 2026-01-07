@@ -155,17 +155,24 @@ class AthleteController:
             representative_is_new = True
 
             # Crear persona del representante en MS de usuarios
-            rep_external_person_id = await self.person_ms_service.create_or_get_person(
-                CreatePersonInMSRequest(
-                    first_name=rep_data.first_name.strip(),
-                    last_name=rep_data.last_name.strip(),
-                    dni=rep_data.dni,
-                    direction=(rep_data.direction or "S/N").strip(),
-                    phone=(rep_data.phone or "S/N").strip(),
-                    type_identification=rep_data.type_identification,
-                    type_stament=TypeStament.EXTERNOS,  # Siempre EXTERNOS para menores
+            try:
+                rep_external_person_id = (
+                    await self.person_ms_service.create_or_get_person(
+                        CreatePersonInMSRequest(
+                            first_name=rep_data.first_name.strip(),
+                            last_name=rep_data.last_name.strip(),
+                            dni=rep_data.dni,
+                            direction=(rep_data.direction or "S/N").strip(),
+                            phone=(rep_data.phone or "S/N").strip(),
+                            type_identification=rep_data.type_identification,
+                            type_stament=TypeStament.EXTERNOS,
+                        )
+                    )
                 )
-            )
+            except ValidationException as e:
+                # Agregar contexto: el error es del REPRESENTANTE
+                error_msg = getattr(e, "message", str(e))
+                raise ValidationException(f"[REPRESENTANTE] {error_msg}") from e
 
             # Mapear relationship_type string -> Relationship enum
             relationship_mapping = {
@@ -205,17 +212,24 @@ class AthleteController:
             )
 
         # 3. Crear atleta menor en MS de usuarios
-        athlete_external_person_id = await self.person_ms_service.create_or_get_person(
-            CreatePersonInMSRequest(
-                first_name=athlete_data.first_name.strip(),
-                last_name=athlete_data.last_name.strip(),
-                dni=athlete_data.dni,
-                direction=(athlete_data.direction or "S/N").strip(),
-                phone=(athlete_data.phone or "S/N").strip(),
-                type_identification=athlete_data.type_identification,
-                type_stament=TypeStament.EXTERNOS,  # Siempre EXTERNOS para menores
+        try:
+            athlete_external_person_id = (
+                await self.person_ms_service.create_or_get_person(
+                    CreatePersonInMSRequest(
+                        first_name=athlete_data.first_name.strip(),
+                        last_name=athlete_data.last_name.strip(),
+                        dni=athlete_data.dni,
+                        direction=(athlete_data.direction or "S/N").strip(),
+                        phone=(athlete_data.phone or "S/N").strip(),
+                        type_identification=athlete_data.type_identification,
+                        type_stament=TypeStament.EXTERNOS,
+                    )
+                )
             )
-        )
+        except ValidationException as e:
+            # Agregar contexto: el error es del DEPORTISTA MENOR
+            error_msg = getattr(e, "message", str(e))
+            raise ValidationException(f"[DEPORTISTA] {error_msg}") from e
 
         # Convertir SexInput -> Sex del modelo
         sex_mapping = {

@@ -164,17 +164,22 @@ class PersonMSService:
             f"[DEBUG] MS response for DNI {data.dni}: "
             f"status={status}, message={raw_message}"
         )
+        logger.info(f"[DEBUG] Full MS response: {save_resp}")
 
         if status == "success":
             external = self._extract_external(save_resp)
             if external:
                 return external
 
-            logger.warning(
-                f"MS respondió 'success' sin external para DNI {data.dni}. "
-                "Intentando recuperar external por DNI..."
+            # Log más detallado cuando no se encuentra external
+            logger.error(
+                f"[DEBUG] MS respondió 'success' pero no se encontró external. "
+                f"Full response: {save_resp}"
             )
-            return await self._get_and_validate_existing_person(data)
+
+            # Intentar buscar directamente por DNI sin validar identidad
+            # ya que es una creación exitosa, solo necesitamos el external
+            return await self._get_external_by_dni(data.dni)
 
         if self._is_duplicate_message(raw_message):
             logger.info(f"Persona con DNI {data.dni} ya existe en MS usuarios")
