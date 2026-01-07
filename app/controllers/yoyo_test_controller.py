@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
@@ -11,7 +9,11 @@ from app.dao.yoyo_test_dao import YoyoTestDAO
 from app.models.athlete import Athlete
 from app.models.test import Test
 from app.models.yoyo_test import YoyoTest
-from app.schemas.yoyo_test_schema import YoyoTestFilter
+from app.schemas.yoyo_test_schema import (
+    CreateYoyoTestSchema,
+    UpdateYoyoTestSchema,
+    YoyoTestFilter,
+)
 from app.utils.exceptions import DatabaseException
 
 
@@ -27,47 +29,48 @@ class YoyoTestController:
     def add_test(
         self,
         db: Session,
-        evaluation_id: int,
-        athlete_id: int,
-        date: datetime,
-        shuttle_count: int,
-        final_level: str,
-        failures: int,
-        observations: str | None = None,
+        payload: CreateYoyoTestSchema,
     ) -> Test:
         """Crear YoyoTest para una evaluación y atleta dados."""
-        if not self.evaluation_dao.get_by_id(db, evaluation_id):
-            raise DatabaseException(f"Evaluación {evaluation_id} no existe")
-        if not self.athlete_dao.get_by_id(db, athlete_id):
-            raise DatabaseException(f"Atleta {athlete_id} no existe")
+        if not self.evaluation_dao.get_by_id(db, payload.evaluation_id):
+            raise DatabaseException(f"Evaluación {payload.evaluation_id} no existe")
+        if not self.athlete_dao.get_by_id(db, payload.athlete_id):
+            raise DatabaseException(f"Atleta {payload.athlete_id} no existe")
 
         test = self.test_dao.create_yoyo_test(
             db=db,
-            date=date,
-            athlete_id=athlete_id,
-            evaluation_id=evaluation_id,
-            shuttle_count=shuttle_count,
-            final_level=final_level,
-            failures=failures,
-            observations=observations,
+            date=payload.date,
+            athlete_id=payload.athlete_id,
+            evaluation_id=payload.evaluation_id,
+            shuttle_count=payload.shuttle_count,
+            final_level=payload.final_level,
+            failures=payload.failures,
+            observations=payload.observations,
         )
 
         # Actualizar estadísticas del atleta
-        statistic_controller.update_athlete_stats(db, athlete_id)
+        statistic_controller.update_athlete_stats(db, payload.athlete_id)
 
         return test
 
-    def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
+    def update_test(
+        self,
+        db: Session,
+        test_id: int,
+        payload: UpdateYoyoTestSchema,
+    ) -> Test | None:
         """Actualizar un YoyoTest existente."""
-        if "evaluation_id" in fields and fields["evaluation_id"] is not None:
-            if not self.evaluation_dao.get_by_id(db, fields["evaluation_id"]):
-                raise DatabaseException(
-                    f"Evaluación {fields['evaluation_id']} no existe"
-                )
+        fields = payload.model_dump(exclude_none=True)
 
-        if "athlete_id" in fields and fields["athlete_id"] is not None:
-            if not self.athlete_dao.get_by_id(db, fields["athlete_id"]):
-                raise DatabaseException(f"Atleta {fields['athlete_id']} no existe")
+        evaluation_id = fields.get("evaluation_id")
+        if evaluation_id is not None and not self.evaluation_dao.get_by_id(
+            db, evaluation_id
+        ):
+            raise DatabaseException(f"Evaluación {evaluation_id} no existe")
+
+        athlete_id = fields.get("athlete_id")
+        if athlete_id is not None and not self.athlete_dao.get_by_id(db, athlete_id):
+            raise DatabaseException(f"Atleta {athlete_id} no existe")
 
         existing = self.yoyo_test_dao.get_by_id(db, test_id, only_active=True)
         if not existing:

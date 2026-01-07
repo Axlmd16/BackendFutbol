@@ -67,6 +67,9 @@ async def test_create_evaluation_success(admin_client, mock_evaluation_data):
         data = response.json()
         assert data["status"] == "success"
         assert data["message"] == "Evaluación creada correctamente"
+        mock_controller.create_evaluation.assert_called_once()
+        called_payload = mock_controller.create_evaluation.call_args.kwargs["payload"]
+        assert called_payload.name == mock_evaluation_data["name"]
 
 
 @pytest.mark.asyncio
@@ -229,6 +232,9 @@ async def test_update_evaluation_success(admin_client):
         data = response.json()
         assert data["status"] == "success"
         assert data["data"]["name"] == "Evaluación Actualizada"
+        mock_controller.update_evaluation.assert_called_once()
+        called_payload = mock_controller.update_evaluation.call_args.kwargs["payload"]
+        assert called_payload.name == "Evaluación Actualizada"
 
 
 @pytest.mark.asyncio
