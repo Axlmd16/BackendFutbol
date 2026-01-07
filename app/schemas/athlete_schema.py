@@ -6,6 +6,7 @@ import enum
 from datetime import date
 from typing import Any, Optional
 
+from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums.sex import Sex
@@ -33,16 +34,35 @@ class AthleteInscriptionDTO(PersonBase):
     # Datos especÃ­ficos del atleta
     birth_date: Optional[date] = Field(
         default=None,
-        description="Fecha de nacimiento (YYYY-MM-DD)",
+        description="Fecha de nacimiento (YYYY-MM-DD). Debe ser mayor de 16 años.",
         examples=["2000-01-31"],
     )
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
-    weight: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(
+        default=None,
+        ge=18,
+        le=200,
+        description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
+    )
     height: Optional[float] = Field(
         default=None,
-        ge=0,
-        description="Altura en metros (no puede ser negativa)",
+        ge=1.0,
+        le=2.5,
+        description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_age(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        today = date.today()
+        if value >= today:
+            raise ValueError("La fecha de nacimiento no puede ser hoy ni en el futuro")
+        age = relativedelta(today, value).years
+        if age < 16:
+            raise ValueError("El atleta debe tener al menos 16 años de edad")
+        return value
 
     @field_validator("dni", mode="before")
     @classmethod
@@ -82,15 +102,37 @@ class AthleteUpdateRequest(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    birth_date: Optional[date] = Field(default=None, description="YYYY-MM-DD")
+    birth_date: Optional[date] = Field(
+        default=None,
+        description="YYYY-MM-DD. Debe ser mayor de 16 años.",
+    )
     sex: Optional[SexInput] = None
     type_athlete: Optional[TypeStament] = None
-    weight: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(
+        default=None,
+        ge=18,
+        le=200,
+        description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
+    )
     height: Optional[float] = Field(
         default=None,
-        ge=0,
-        description="Altura en metros (no puede ser negativa)",
+        ge=1.0,
+        le=2.5,
+        description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_age(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        today = date.today()
+        if value >= today:
+            raise ValueError("La fecha de nacimiento no puede ser hoy ni en el futuro")
+        age = relativedelta(today, value).years
+        if age < 16:
+            raise ValueError("El atleta debe tener al menos 16 años de edad")
+        return value
 
 
 class AthleteUpdateDTO(BaseModel):
@@ -112,11 +154,29 @@ class AthleteUpdateDTO(BaseModel):
     # Datos físicos
     height: Optional[float] = Field(
         default=None,
-        ge=0,
-        description="Altura en metros (no puede ser negativa)",
+        ge=1.0,
+        le=2.5,
+        description="Altura en metros (mínimo 1m, máximo 2.5m)",
+    )
+    weight: Optional[float] = Field(
+        default=None,
+        ge=18,
+        le=200,
+        description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
     )
 
-    weight: Optional[float] = Field(default=None, ge=0)
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_age(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        today = date.today()
+        if value >= today:
+            raise ValueError("La fecha de nacimiento no puede ser hoy ni en el futuro")
+        age = relativedelta(today, value).years
+        if age < 16:
+            raise ValueError("El atleta debe tener al menos 16 años de edad")
+        return value
 
 
 class AthleteFilter(BaseModel):
@@ -309,6 +369,10 @@ class MinorAthleteDataDTO(BaseModel):
             raise ValueError(
                 f"La fecha de nacimiento no es válida. Edad calculada: {age} años"
             )
+        if value == today:
+            raise ValueError("La fecha de nacimiento no puede ser la fecha actual.")
+        if value > today:
+            raise ValueError("La fecha de nacimiento no puede ser una fecha futura.")
         return value
 
     @field_validator("sex", mode="before")

@@ -55,7 +55,7 @@ async def test_register_athlete_unl_success(client):
                 "birth_date": "1998-05-15",
                 "sex": "MALE",
                 "weight": 75.5,
-                "height": 180.0,
+                "height": 1.80,
             },
         )
 
@@ -198,7 +198,7 @@ async def test_register_athlete_unl_dni_duplicado(client):
                 "birth_date": "1998-05-15",
                 "sex": "MALE",
                 "weight": 70.0,
-                "height": 175.0,
+                "height": 1.75,
             },
         )
 
@@ -269,3 +269,218 @@ async def test_register_athlete_unl_invalid_date_format(client):
 
     # Fecha inválida en la request causa validación de Pydantic (422)
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_height_out_of_range(client):
+    """Prueba de registro con altura fuera del rango permitido (1m - 2.5m)."""
+    # Altura menor a 1m
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "1998-05-15",
+            "sex": "MALE",
+            "weight": 70.0,
+            "height": 0.5,  # Altura inválida: menor a 1m
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "height" in str(data).lower()
+
+    # Altura mayor a 2.5m
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "1998-05-15",
+            "sex": "MALE",
+            "weight": 70.0,
+            "height": 3.0,  # Altura inválida: mayor a 2.5m
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "height" in str(data).lower()
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_weight_out_of_range(client):
+    """Prueba de registro con peso fuera del rango permitido (18kg - 200kg)."""
+    # Peso menor a 18kg
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "1998-05-15",
+            "sex": "MALE",
+            "weight": 10.0,  # Peso inválido: menor a 18kg
+            "height": 1.75,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "weight" in str(data).lower()
+
+    # Peso mayor a 200kg
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "1998-05-15",
+            "sex": "MALE",
+            "weight": 250.0,  # Peso inválido: mayor a 200kg
+            "height": 1.75,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "weight" in str(data).lower()
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_negative_height(client):
+    """Prueba de registro con altura negativa."""
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "1998-05-15",
+            "sex": "MALE",
+            "weight": 70.0,
+            "height": -1.5,  # Altura negativa
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "height" in str(data).lower()
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_negative_weight(client):
+    """Prueba de registro con peso negativo."""
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "1998-05-15",
+            "sex": "MALE",
+            "weight": -50.0,  # Peso negativo
+            "height": 1.75,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "weight" in str(data).lower()
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_underage(client):
+    """Prueba de registro con atleta menor de 16 años."""
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "2015-05-15",  # Menor de 16 años
+            "sex": "MALE",
+            "weight": 50.0,
+            "height": 1.60,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "16" in str(data) or "edad" in str(data).lower()
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_birth_date_today(client):
+    """Prueba de registro con fecha de nacimiento igual a hoy."""
+    from datetime import date
+
+    today = date.today().isoformat()
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": today,  # Fecha de hoy
+            "sex": "MALE",
+            "weight": 70.0,
+            "height": 1.75,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "hoy" in str(data).lower() or "futuro" in str(data).lower()
+
+
+@pytest.mark.asyncio
+async def test_register_athlete_unl_birth_date_future(client):
+    """Prueba de registro con fecha de nacimiento en el futuro."""
+    response = await client.post(
+        "/api/v1/athletes/register-unl",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "dni": "1710034065",
+            "phone": "0999123456",
+            "direction": "Calle Test",
+            "type_identification": "CEDULA",
+            "type_stament": "ESTUDIANTES",
+            "birth_date": "2030-05-15",  # Fecha futura
+            "sex": "MALE",
+            "weight": 70.0,
+            "height": 1.75,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "hoy" in str(data).lower() or "futuro" in str(data).lower()
