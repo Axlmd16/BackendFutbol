@@ -83,7 +83,10 @@ async def register_athlete_unl(
         result = await athlete_controller.register_athlete_unl(db=db, data=payload)
         return ResponseSchema(
             status="success",
-            message="Deportista registrado exitosamente. Se han generado sus estadísticas iniciales.",
+            message=(
+                "Deportista registrado exitosamente. "
+                "Se han generado sus estadísticas iniciales."
+            ),
             data=result.model_dump(),
         )
     except AppException as exc:
@@ -120,17 +123,40 @@ def get_all_athletes(
         # Generar mensaje contextual según filtros aplicados
         message = ""
         if filters.search:
-            message = f"Resultados de búsqueda: Se muestran los atletas que coinciden con '{filters.search}'."
+            message = (
+                "Resultados de búsqueda: "
+                "Se muestran los atletas que coinciden con "
+                f"'{filters.search}'."
+            )
         elif filters.gender:
-            gender_label = "masculino" if filters.gender.lower() == "m" else "femenino"
-            message = f"Filtro aplicado: Mostrando únicamente atletas de género {gender_label}."
+            gender_label = (
+                "masculino" if filters.gender.lower() == "m" else "femenino"
+            )
+            message = (
+                "Filtro aplicado: Mostrando únicamente atletas de género "
+                f"{gender_label}."
+            )
         elif filters.is_active is not None:
-            message = "Vista actualizada: Mostrando solo los deportistas que se encuentran activos actualmente." if filters.is_active else "Vista actualizada: Mostrando deportistas inactivos."
+            message = (
+                "Vista actualizada: Mostrando solo los deportistas que "
+                "se encuentran activos actualmente."
+                if filters.is_active
+                else "Vista actualizada: Mostrando deportistas inactivos."
+            )
         elif filters.athlete_type:
-            message = "Filtro por categoría: Mostrando deportistas pertenecientes al estamento UNL." if filters.athlete_type.upper() == "UNL" else f"Filtro por categoría: Mostrando deportistas de tipo {filters.athlete_type}."
+            message = (
+                "Filtro por categoría: Mostrando deportistas pertenecientes "
+                "al estamento UNL."
+                if filters.athlete_type.upper() == "UNL"
+                else "Filtro por categoría: Mostrando deportistas de tipo "
+                f"{filters.athlete_type}."
+            )
         else:
             page_size = filters.page_size or 10
-            message = f"Lista de atletas cargada exitosamente. Mostrando {page_size} registros por página."
+            message = (
+                "Lista de atletas cargada exitosamente. "
+                f"Mostrando {page_size} registros por página."
+            )
         
         return ResponseSchema(
             status="success",
@@ -182,14 +208,20 @@ async def get_by_id(
                 status_code=404,
                 content=ResponseSchema(
                     status="error",
-                    message="Deportista no encontrado: El registro solicitado no existe o no está disponible en este club.",
+                    message=(
+                        "Deportista no encontrado: El registro solicitado "
+                        "no existe o no está disponible en este club."
+                    ),
                     data=None,
                     errors=None,
                 ).model_dump(),
             )
         return ResponseSchema(
             status="success",
-            message="Información recuperada: Los datos del deportista se han cargado correctamente.",
+            message=(
+                "Información recuperada: "
+                "Los datos del deportista se han cargado correctamente."
+            ),
             data=result.model_dump(),
         )
     except AppException as exc:
@@ -238,14 +270,20 @@ async def update_athlete(
                 status_code=404,
                 content=ResponseSchema(
                     status="error",
-                    message="No se pudo completar la acción: El deportista que intenta editar no se encuentra registrado.",
+                    message=(
+                        "No se pudo completar la acción: "
+                        "El deportista que intenta editar no se encuentra registrado."
+                    ),
                     data=None,
                     errors=None,
                 ).model_dump(),
             )
         return ResponseSchema(
             status="success",
-            message="Actualización exitosa: El peso y la altura del deportista han sido registrados correctamente.",
+            message=(
+                "Actualización exitosa: "
+                "El peso y la altura del deportista han sido registrados correctamente."
+            ),
             data=result.model_dump(),
         )
     except AppException as exc:
@@ -287,7 +325,10 @@ def desactivate_athlete(
         athlete_controller.desactivate_athlete(db=db, athlete_id=athlete_id)
         return ResponseSchema(
             status="success",
-            message="Atleta desactivado: El deportista ya no aparecerá en las listas de entrenamiento activo.",
+            message=(
+                "Atleta desactivado: "
+                "El deportista ya no aparecerá en las listas de entrenamiento activo."
+            ),
             data=None,
         )
     except AppException as exc:
@@ -329,7 +370,11 @@ def activate_athlete(
         athlete_controller.activate_athlete(db=db, athlete_id=athlete_id)
         return ResponseSchema(
             status="success",
-            message="Atleta reactivado: El deportista se ha habilitado nuevamente para todas las actividades del club.",
+            message=(
+                "Atleta reactivado: "
+                "El deportista se ha habilitado nuevamente "
+                "para todas las actividades del club."
+            ),
             data=None,
         )
     except AppException as exc:
