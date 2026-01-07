@@ -6,17 +6,27 @@ from sqlalchemy.orm import Session
 
 from app.client.person_ms_service import PersonMSService
 from app.dao.account_dao import AccountDAO
+from app.dao.athlete_dao import AthleteDAO
 from app.dao.user_dao import UserDAO
+from app.models.enums.rol import Role
 from app.schemas.user_schema import (
     AdminCreateUserRequest,
     AdminCreateUserResponse,
     AdminUpdateUserRequest,
     AdminUpdateUserResponse,
     CreatePersonInMSRequest,
+    InternFilter,
+    InternResponse,
+    PromoteAthleteRequest,
+    PromoteAthleteResponse,
     UserDetailResponse,
     UserFilter,
 )
-from app.utils.exceptions import AlreadyExistsException, ValidationException
+from app.utils.exceptions import (
+    AlreadyExistsException,
+    NotFoundException,
+    ValidationException,
+)
 from app.utils.security import hash_password, validate_ec_dni
 
 logger = logging.getLogger(__name__)
@@ -30,6 +40,7 @@ class UserController:
     def __init__(self) -> None:
         self.user_dao = UserDAO()
         self.account_dao = AccountDAO()
+        self.athlete_dao = AthleteDAO()
         self.person_ms_service = PersonMSService()
 
     async def admin_create_user(
@@ -238,3 +249,134 @@ class UserController:
             raise ValidationException("El usuario a desactivar no existe")
 
         self.user_dao.update(db, user_id, {"is_active": False})
+
+    def activate_user(self, db: Session, user_id: int) -> None:
+        """
+        Activa un usuario (soft delete).
+        """
+        # Buscar incluyendo inactivos para poder activarlos
+        user = self.user_dao.get_by_id(db=db, id=user_id, only_active=False)
+        if not user:
+            raise ValidationException("El usuario a activar no existe")
+
+        self.user_dao.update(db, user_id, {"is_active": True})
+
+    # ==========================================
+    # MÉTODOS DE PASANTES (INTERNS)
+    # ==========================================
+
+    def promote_athlete_to_intern(
+        self,
+        db: Session,
+        athlete_id: int,
+        payload: PromoteAthleteRequest,
+    ) -> PromoteAthleteResponse:
+        """
+        Promueve un atleta existente a pasante.
+
+        Flujo:
+        1. Verificar que el atleta existe
+        2. Verificar que el atleta no tiene ya una cuenta
+        3. Crear User usando el external_person_id del atleta
+        4. Crear Account con role=INTERN
+        """
+        # Verificar que el atleta existe
+        athlete = self.athlete_dao.get_by_id(db=db, id=athlete_id)
+        if not athlete:
+            raise NotFoundException("El atleta no existe")
+
+        # Verificar que el atleta no tiene ya una cuenta
+        existing_user = self.user_dao.get_by_field(db, "dni", athlete.dni)
+        if existing_user:
+            raise AlreadyExistsException(
+                "Este atleta ya tiene una cuenta en el sistema"
+            )
+
+        # Verificar que el email no esté en uso
+        email = payload.email.strip().lower()
+        if self.account_dao.exists(db, "email", email):
+            raise AlreadyExistsException("Ya existe una cuenta con ese email")
+
+        # Crear usuario usando el external_person_id del atleta
+        new_user = self.user_dao.create(
+            db,
+            {
+                "external": athlete.external_person_id,
+                "full_name": athlete.full_name,
+                "dni": athlete.dni,
+            },
+        )
+
+        # Crear cuenta con rol INTERN
+        new_account = self.account_dao.create(
+            db,
+            {
+                "email": email,
+                "password_hash": hash_password(payload.password),
+                "role": Role.INTERN,
+                "user_id": new_user.id,
+            },
+        )
+
+        return PromoteAthleteResponse(
+            id=new_account.id,
+            user_id=new_user.id,
+            full_name=athlete.full_name,
+            email=email,
+            role=Role.INTERN.value,
+        )
+
+    def get_all_interns(
+        self, db: Session, filters: InternFilter
+    ) -> tuple[list[InternResponse], int]:
+        """
+        Obtiene todos los pasantes con paginación y búsqueda.
+        """
+        users, total = self.user_dao.get_interns_with_filters(db, filters=filters)
+
+        interns = []
+        for user in users:
+            # Buscar el atleta correspondiente por DNI
+            athlete = self.athlete_dao.get_by_field(db, "dni", user.dni)
+            athlete_id = athlete.id if athlete else 0
+
+            interns.append(
+                InternResponse(
+                    id=user.account.id,
+                    user_id=user.id,
+                    full_name=user.full_name,
+                    dni=user.dni,
+                    email=user.account.email,
+                    athlete_id=athlete_id,
+                    is_active=user.is_active,
+                    created_at=user.created_at,
+                )
+            )
+
+        return interns, total
+
+    def deactivate_intern(self, db: Session, account_id: int) -> None:
+        """
+        Desactiva un pasante (soft delete).
+        """
+        account = self.account_dao.get_by_id(db=db, id=account_id)
+        if not account:
+            raise NotFoundException("El pasante no existe")
+
+        if account.role != Role.INTERN:
+            raise ValidationException("El usuario no es un pasante")
+
+        self.user_dao.update(db, account.user_id, {"is_active": False})
+
+    def activate_intern(self, db: Session, account_id: int) -> None:
+        """
+        Activa un pasante.
+        """
+        account = self.account_dao.get_by_id(db=db, id=account_id)
+        if not account:
+            raise NotFoundException("El pasante no existe")
+
+        if account.role != Role.INTERN:
+            raise ValidationException("El usuario no es un pasante")
+
+        self.user_dao.update(db, account.user_id, {"is_active": True})

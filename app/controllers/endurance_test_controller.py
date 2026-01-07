@@ -1,12 +1,17 @@
 from datetime import datetime
 
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
+from app.controllers.statistic_controller import statistic_controller
 from app.dao.athlete_dao import AthleteDAO
 from app.dao.endurance_test_dao import EnduranceTestDAO
 from app.dao.evaluation_dao import EvaluationDAO
 from app.dao.test_dao import TestDAO
+from app.models.athlete import Athlete
+from app.models.endurance_test import EnduranceTest
 from app.models.test import Test
+from app.schemas.endurance_test_schema import EnduranceTestFilter
 from app.utils.exceptions import DatabaseException
 
 
@@ -35,7 +40,7 @@ class EnduranceTestController:
         if not self.athlete_dao.get_by_id(db, athlete_id):
             raise DatabaseException(f"Atleta {athlete_id} no existe")
 
-        return self.test_dao.create_endurance_test(
+        test = self.test_dao.create_endurance_test(
             db=db,
             date=date,
             athlete_id=athlete_id,
@@ -44,3 +49,67 @@ class EnduranceTestController:
             total_distance_m=total_distance_m,
             observations=observations,
         )
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, athlete_id)
+
+        return test
+
+    def update_test(self, db: Session, test_id: int, **fields) -> Test | None:
+        """Actualizar un EnduranceTest existente."""
+        if "evaluation_id" in fields and fields["evaluation_id"] is not None:
+            if not self.evaluation_dao.get_by_id(db, fields["evaluation_id"]):
+                raise DatabaseException(
+                    f"Evaluación {fields['evaluation_id']} no existe"
+                )
+
+        if "athlete_id" in fields and fields["athlete_id"] is not None:
+            if not self.athlete_dao.get_by_id(db, fields["athlete_id"]):
+                raise DatabaseException(f"Atleta {fields['athlete_id']} no existe")
+
+        existing = self.endurance_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return None
+
+        if not fields:
+            return existing
+
+        return self.endurance_test_dao.update(db, test_id, fields)
+
+    def delete_test(self, db: Session, test_id: int) -> bool:
+        """Eliminar un EnduranceTest existente."""
+        existing = self.endurance_test_dao.get_by_id(db, test_id, only_active=True)
+        if not existing:
+            return False
+
+        self.endurance_test_dao.delete(db, test_id)
+
+        # Actualizar estadísticas del atleta
+        statistic_controller.update_athlete_stats(db, existing.athlete_id)
+        return True
+
+    def list_tests(
+        self, db: Session, filters: EnduranceTestFilter
+    ) -> tuple[list[Test], int]:
+        """Listar EnduranceTests con paginación y filtros."""
+        query = db.query(Test).join(EnduranceTest).filter(Test.is_active)
+
+        if filters.evaluation_id is not None:
+            query = query.filter(Test.evaluation_id == filters.evaluation_id)
+        if filters.athlete_id is not None:
+            query = query.filter(Test.athlete_id == filters.athlete_id)
+        if filters.search:
+            query = query.join(Athlete).filter(
+                Athlete.full_name.ilike(f"%{filters.search}%")
+            )
+
+        total = query.with_entities(func.count(Test.id)).scalar()
+
+        items = (
+            query.order_by(desc(Test.date))
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+
+        return items, total

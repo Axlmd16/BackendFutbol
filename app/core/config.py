@@ -16,13 +16,14 @@ class Settings(BaseSettings):
     APP_NAME: str = "Backend Futbol API"
     APP_VERSION: str = "1.0.0"
     APP_PORT: int = 8000
-    APP_HOST: str = "0.0.0.0"
+    APP_HOST: str = "0.0.0.0"  # nosec
     DEBUG: bool = False
 
     # ================= SECURITY =================
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    TOKEN_EXPIRES: int = 3600
+    TOKEN_EXPIRES: int = 3600  # Access token: 1 hora
+    REFRESH_TOKEN_EXPIRES: int = 604800  # Refresh token: 7 días
 
     # ================= CORS =================
     ALLOWED_ORIGINS: List[str] = ["*"]

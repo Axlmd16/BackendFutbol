@@ -1,0 +1,55 @@
+name: Staging Branch CI
+
+on:
+  pull_request:
+    branches: ["staging"]
+
+jobs:
+  quality-and-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: |
+          uv sync --all-extras --dev
+          # Instalar bandit y pytest-cov si no están en dev-dependencies
+          uv pip install bandit pytest-cov
+
+      - name: Análisis de Seguridad (Bandit)
+        run: |
+          # -r: recursivo, -x: excluir carpetas de tests
+          # -c: usar configuración, -r: recursivo
+          uv run bandit -c pyproject.toml -r .
+
+      - name: Verificar Formato y Linter (Ruff)
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+
+      - name: Ejecutar Tests con Coverage
+        env:
+          # Configuración de Base de Datos para CI
+          DB_HOST: "localhost"
+          DB_PORT: "5432"
+          DB_USER: "ci_user"
+          DB_PASSWORD: "ci_password"
+          DB_NAME: "ci_db"
+
+          # Configuración Mock
+          JWT_SECRET: "secreto_staging"
+          JWT_ALGORITHM: "HS256"
+          PYTHONPATH: .
+
+        run: |
+          # Ejecuta tests y calcula cobertura para la carpeta 'app'
+          # Falla si el coverage es menor al 60%
+          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=60

@@ -261,7 +261,8 @@ class EvaluationDAO(BaseDAO[Evaluation]):
         Raises:
             DatabaseException: Si la fecha es inválida
         """
-        if date < datetime.now():
+        # Comparar solo las fechas (sin hora) para permitir evaluaciones de hoy
+        if date.date() < datetime.now().date():
             raise DatabaseException(
                 "La fecha de evaluación no puede ser anterior a hoy"
             )

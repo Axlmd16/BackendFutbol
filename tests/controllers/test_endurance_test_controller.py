@@ -19,6 +19,7 @@ from app.utils.exceptions import DatabaseException
 def endurance_test_controller():
     """Fixture para EnduranceTestController con DAOs mockeados."""
     controller = EnduranceTestController()
+    controller.endurance_test_dao = MagicMock()
     controller.test_dao = MagicMock()
     controller.evaluation_dao = MagicMock()
     controller.athlete_dao = MagicMock()
@@ -133,3 +134,254 @@ def test_add_endurance_test_athlete_not_found(
             min_duration=36,
             total_distance_m=6000,
         )
+
+
+# ==============================================
+# TESTS: UPDATE ENDURANCE TEST
+# ==============================================
+
+
+def test_update_endurance_test_success(
+    endurance_test_controller, mock_db, mock_endurance_test
+):
+    """Actualizar un Endurance Test existente."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = (
+        mock_endurance_test
+    )
+    updated = Mock()
+    updated.id = mock_endurance_test.id
+    updated.total_distance_m = 6200
+    endurance_test_controller.endurance_test_dao.update.return_value = updated
+
+    result = endurance_test_controller.update_test(
+        db=mock_db, test_id=3, total_distance_m=6200, observations="Subió el ritmo"
+    )
+
+    assert result.total_distance_m == 6200
+    endurance_test_controller.endurance_test_dao.update.assert_called_once_with(
+        mock_db, 3, {"total_distance_m": 6200, "observations": "Subió el ritmo"}
+    )
+
+
+def test_update_endurance_test_not_found(endurance_test_controller, mock_db):
+    """Retorna None si el Endurance Test no existe."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = None
+
+    result = endurance_test_controller.update_test(db=mock_db, test_id=999)
+
+    assert result is None
+    endurance_test_controller.endurance_test_dao.update.assert_not_called()
+
+
+def test_update_endurance_test_evaluation_not_found(endurance_test_controller, mock_db):
+    """Valida evaluación al actualizar."""
+    endurance_test_controller.evaluation_dao.get_by_id.return_value = None
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = Mock()
+
+    with pytest.raises(DatabaseException, match="Evaluación 999 no existe"):
+        endurance_test_controller.update_test(
+            db=mock_db, test_id=3, evaluation_id=999, min_duration=40
+        )
+
+
+def test_update_endurance_test_athlete_not_found(endurance_test_controller, mock_db):
+    """Valida atleta al actualizar."""
+    endurance_test_controller.evaluation_dao.get_by_id.return_value = Mock()
+    endurance_test_controller.athlete_dao.get_by_id.return_value = None
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = Mock()
+
+    with pytest.raises(DatabaseException, match="Atleta 888 no existe"):
+        endurance_test_controller.update_test(
+            db=mock_db, test_id=3, athlete_id=888, min_duration=40
+        )
+
+
+def test_update_endurance_test_no_fields_returns_existing(
+    endurance_test_controller, mock_db, mock_endurance_test
+):
+    """Sin campos a actualizar devuelve la entidad actual."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = (
+        mock_endurance_test
+    )
+
+    result = endurance_test_controller.update_test(db=mock_db, test_id=3)
+
+    assert result is mock_endurance_test
+    endurance_test_controller.endurance_test_dao.update.assert_not_called()
+
+
+# ==============================================
+# TESTS: DELETE ENDURANCE TEST
+# ==============================================
+
+
+def test_delete_endurance_test_success(
+    monkeypatch, endurance_test_controller, mock_db, mock_endurance_test
+):
+    """Elimina y actualiza estadísticas cuando existe."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = (
+        mock_endurance_test
+    )
+    endurance_test_controller.endurance_test_dao.delete.return_value = None
+
+    called = {"stats": False}
+
+    def _update_stats(db, athlete_id):
+        called["stats"] = True
+        assert athlete_id == mock_endurance_test.athlete_id
+
+    monkeypatch.setattr(
+        "app.controllers.endurance_test_controller.statistic_controller.update_athlete_stats",
+        _update_stats,
+    )
+
+    result = endurance_test_controller.delete_test(mock_db, test_id=3)
+
+    assert result is True
+    endurance_test_controller.endurance_test_dao.delete.assert_called_once_with(
+        mock_db, 3
+    )
+    assert called["stats"] is True
+
+
+def test_delete_endurance_test_not_found(endurance_test_controller, mock_db):
+    """Si no existe retorna False y no borra."""
+    endurance_test_controller.endurance_test_dao.get_by_id.return_value = None
+
+    result = endurance_test_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+    endurance_test_controller.endurance_test_dao.delete.assert_not_called()
+
+
+# ==============================================
+# TESTS: LIST ENDURANCE TESTS
+# ==============================================
+
+
+def test_list_tests_success(endurance_test_controller, mock_db, mock_endurance_test):
+    """Lista endurance tests con paginación y filtros."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 6
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_endurance_test]
+
+    filters = EnduranceTestFilter(page=1, limit=10)
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 6
+    assert items[0] is mock_endurance_test
+
+
+def test_list_tests_with_filters(endurance_test_controller, mock_db):
+    """Lista endurance tests filtrando por evaluation_id y athlete_id."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 3
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EnduranceTestFilter(page=1, limit=10, evaluation_id=1, athlete_id=5)
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 3
+
+
+def test_list_tests_with_search(
+    endurance_test_controller, mock_db, mock_endurance_test
+):
+    """Lista endurance tests filtrando por nombre de atleta (search)."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join1 = MagicMock()  # Primer join(EnduranceTest)
+    mock_filter1 = MagicMock()
+    mock_join2 = MagicMock()  # Segundo join(Athlete) cuando hay search
+    mock_filter2 = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join1
+    mock_join1.filter.return_value = mock_filter1
+    mock_filter1.join.return_value = mock_join2
+    mock_join2.filter.return_value = mock_filter2
+    mock_filter2.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter2.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_endurance_test]
+
+    filters = EnduranceTestFilter(page=1, limit=10, search="Pedro")
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_search_no_match(endurance_test_controller, mock_db):
+    """Lista endurance tests con search que no coincide devuelve lista vacía."""
+    from app.schemas.endurance_test_schema import EnduranceTestFilter
+
+    mock_query = MagicMock()
+    mock_join1 = MagicMock()  # Primer join(EnduranceTest)
+    mock_filter1 = MagicMock()
+    mock_join2 = MagicMock()  # Segundo join(Athlete) cuando hay search
+    mock_filter2 = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.join.return_value = mock_join1
+    mock_join1.filter.return_value = mock_filter1
+    mock_filter1.join.return_value = mock_join2
+    mock_join2.filter.return_value = mock_filter2
+    mock_filter2.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter2.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = EnduranceTestFilter(page=1, limit=10, search="NoExiste")
+    items, total = endurance_test_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 0
