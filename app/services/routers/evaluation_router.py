@@ -41,12 +41,7 @@ async def create_evaluation(
     try:
         evaluation = evaluation_controller.create_evaluation(
             db=db,
-            name=payload.name,
-            date=payload.date,
-            time=payload.time,
-            user_id=payload.user_id,
-            location=payload.location,
-            observations=payload.observations,
+            payload=payload,
         )
 
         return ResponseSchema(
@@ -182,11 +177,7 @@ async def update_evaluation(
         evaluation = evaluation_controller.update_evaluation(
             db=db,
             evaluation_id=evaluation_id,
-            name=payload.name,
-            date=payload.date,
-            time=payload.time,
-            location=payload.location,
-            observations=payload.observations,
+            payload=payload,
         )
 
         if not evaluation:

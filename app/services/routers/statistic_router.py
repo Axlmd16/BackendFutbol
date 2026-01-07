@@ -265,7 +265,7 @@ def update_sports_stats(
         data = statistic_controller.update_sports_stats(
             db=db,
             athlete_id=athlete_id,
-            updates=payload.model_dump(exclude_none=True),
+            payload=payload,
         )
 
         if data is None:
