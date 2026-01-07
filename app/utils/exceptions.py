@@ -27,8 +27,12 @@ class AlreadyExistsException(AppException):
 class ValidationException(AppException):
     """Datos inválidos o reglas de negocio incumplidas."""
 
-    def __init__(self, message: str = "Error de validación"):
+    def __init__(self, message: str = "Error de validación", detail: str = None):
         super().__init__(message, status_code=422)
+        self.detail = detail
+
+    def to_dict(self):
+        return {"message": self.message, "detail": self.detail}
 
 
 class UnauthorizedException(AppException):

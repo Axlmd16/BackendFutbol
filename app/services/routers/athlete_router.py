@@ -119,7 +119,7 @@ def get_all_athletes(
     """Obtiene todos los atletas con filtros y paginación."""
     try:
         result = athlete_controller.get_all_athletes(db=db, filters=filters)
-        
+
         # Generar mensaje contextual según filtros aplicados
         message = ""
         if filters.search:
@@ -157,7 +157,7 @@ def get_all_athletes(
                 "Lista de atletas cargada exitosamente. "
                 f"Mostrando {page_size} registros por página."
             )
-        
+
         return ResponseSchema(
             status="success",
             message=message,
@@ -262,6 +262,11 @@ async def update_athlete(
     """Actualiza los datos básicos de un atleta."""
     try:
         update_data = payload.model_dump(exclude_unset=True)
+        if "height" in update_data and update_data["height"] < 0:
+            raise HTTPException(
+                status_code=422,
+                detail="Altura inválida: no puede ser negativa."
+            )
         result = await athlete_controller.update_athlete(
             db=db, athlete_id=athlete_id, update_data=update_data
         )
