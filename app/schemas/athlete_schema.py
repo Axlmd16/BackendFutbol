@@ -6,6 +6,7 @@ import enum
 from datetime import date
 from typing import Any, Optional
 
+from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums.sex import Sex
@@ -33,16 +34,61 @@ class AthleteInscriptionDTO(PersonBase):
     # Datos especÃ­ficos del atleta
     birth_date: Optional[date] = Field(
         default=None,
-        description="Fecha de nacimiento (YYYY-MM-DD)",
+        description="Fecha de nacimiento (YYYY-MM-DD). Debe ser mayor de 16 años.",
         examples=["2000-01-31"],
     )
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
-    weight: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(
+        default=None,
+        description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
+    )
     height: Optional[float] = Field(
         default=None,
-        ge=0,
-        description="Altura en metros (no puede ser negativa)",
+        description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
+
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _validate_weight(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("El peso debe ser un número válido")
+        if val < 18:
+            raise ValueError("El peso debe ser m�nimo 18 kg")
+        if val > 200:
+            raise ValueError("El peso no puede exceder 200 kg")
+        return val
+
+    @field_validator("height", mode="before")
+    @classmethod
+    def _validate_height(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("La altura debe ser un número válido")
+        if val < 1.0:
+            raise ValueError("La altura debe ser m�nimo 1 metro")
+        if val > 2.5:
+            raise ValueError("La altura no puede exceder 2.5 metros")
+        return val
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_age(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        today = date.today()
+        if value >= today:
+            raise ValueError("La fecha de nacimiento no puede ser hoy ni en el futuro")
+        age = relativedelta(today, value).years
+        if age < 16:
+            raise ValueError("El atleta debe tener al menos 16 años de edad")
+        return value
 
     @field_validator("dni", mode="before")
     @classmethod
@@ -82,15 +128,63 @@ class AthleteUpdateRequest(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    birth_date: Optional[date] = Field(default=None, description="YYYY-MM-DD")
+    birth_date: Optional[date] = Field(
+        default=None,
+        description="YYYY-MM-DD. Debe ser mayor de 16 años.",
+    )
     sex: Optional[SexInput] = None
     type_athlete: Optional[TypeStament] = None
-    weight: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(
+        default=None,
+        description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
+    )
     height: Optional[float] = Field(
         default=None,
-        ge=0,
-        description="Altura en metros (no puede ser negativa)",
+        description="Altura en metros (mínimo 1m, máximo 2.5m)",
     )
+
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _validate_weight(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("El peso debe ser un número válido")
+        if val < 18:
+            raise ValueError("El peso debe ser m�nimo 18 kg")
+        if val > 200:
+            raise ValueError("El peso no puede exceder 200 kg")
+        return val
+
+    @field_validator("height", mode="before")
+    @classmethod
+    def _validate_height(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("La altura debe ser un número válido")
+        if val < 1.0:
+            raise ValueError("La altura debe ser m�nimo 1 metro")
+        if val > 2.5:
+            raise ValueError("La altura no puede exceder 2.5 metros")
+        return val
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_age(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        today = date.today()
+        if value >= today:
+            raise ValueError("La fecha de nacimiento no puede ser hoy ni en el futuro")
+        age = relativedelta(today, value).years
+        if age < 16:
+            raise ValueError("El atleta debe tener al menos 16 años de edad")
+        return value
 
 
 class AthleteUpdateDTO(BaseModel):
@@ -112,11 +206,55 @@ class AthleteUpdateDTO(BaseModel):
     # Datos físicos
     height: Optional[float] = Field(
         default=None,
-        ge=0,
-        description="Altura en metros (no puede ser negativa)",
+        description="Altura en metros (mínimo 1m, máximo 2.5m)",
+    )
+    weight: Optional[float] = Field(
+        default=None,
+        description="Peso en kilogramos (mínimo 18kg, máximo 200kg)",
     )
 
-    weight: Optional[float] = Field(default=None, ge=0)
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _validate_weight(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("El peso debe ser un número válido")
+        if val < 18:
+            raise ValueError("El peso debe ser m�nimo 18 kg")
+        if val > 200:
+            raise ValueError("El peso no puede exceder 200 kg")
+        return val
+
+    @field_validator("height", mode="before")
+    @classmethod
+    def _validate_height(cls, value) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("La altura debe ser un número válido")
+        if val < 1.0:
+            raise ValueError("La altura debe ser m�nimo 1 metro")
+        if val > 2.5:
+            raise ValueError("La altura no puede exceder 2.5 metros")
+        return val
+
+    @field_validator("birth_date", mode="after")
+    @classmethod
+    def _validate_age(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        today = date.today()
+        if value >= today:
+            raise ValueError("La fecha de nacimiento no puede ser hoy ni en el futuro")
+        age = relativedelta(today, value).years
+        if age < 16:
+            raise ValueError("El atleta debe tener al menos 16 años de edad")
+        return value
 
 
 class AthleteFilter(BaseModel):
@@ -272,12 +410,9 @@ class MinorAthleteDataDTO(BaseModel):
     birth_date: date = Field(..., description="Fecha de nacimiento (YYYY-MM-DD)")
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
     height: Optional[float] = Field(
-        default=None,
-        description="Altura en metros (mínimo 1.0 m, máximo 1.90 m)",
+        default=None, ge=0, le=1.75, description="Altura en metros (máximo 1.75 m)"
     )
-    weight: Optional[float] = Field(
-        default=None, description="Peso en kg (mínimo 15 kg, máximo 90 kg)"
-    )
+    weight: Optional[float] = Field(default=None, ge=0, description="Peso en kg")
     direction: Optional[str] = Field(default="S/N", description="Dirección")
     phone: Optional[str] = Field(default="S/N", description="Teléfono")
     type_identification: str = Field(default="CEDULA")
@@ -318,7 +453,10 @@ class MinorAthleteDataDTO(BaseModel):
             raise ValueError(
                 f"El deportista debe tener al menos 5 años. Edad calculada: {age} años"
             )
-
+        if value == today:
+            raise ValueError("La fecha de nacimiento no puede ser la fecha actual.")
+        if value > today:
+            raise ValueError("La fecha de nacimiento no puede ser una fecha futura.")
         return value
 
     @field_validator("height")

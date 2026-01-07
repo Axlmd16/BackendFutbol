@@ -41,7 +41,7 @@ def valid_data():
         phone="3424123456",
         birth_date="1998-05-15",
         weight=75.5,
-        height=180.0,
+        height=1.80,
     )
 
 
