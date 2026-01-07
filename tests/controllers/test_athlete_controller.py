@@ -185,9 +185,9 @@ async def test_minor_athlete_invalid_age_4_years():
     assert len(errors) > 0
     error_msg = errors[0]["msg"]
     print(f"\nValidacion correcta: {error_msg}")
-    assert (
-        "debe tener al menos 5 años" in error_msg
-    ), f"Mensaje de error incorrecto: {error_msg}"
+    assert "debe tener al menos 5 años" in error_msg, (
+        f"Mensaje de error incorrecto: {error_msg}"
+    )
 
 
 @pytest.mark.asyncio
@@ -211,9 +211,9 @@ async def test_minor_athlete_invalid_age_18_years():
     assert len(errors) > 0
     error_msg = errors[0]["msg"]
     print(f"\nValidacion correcta: {error_msg}")
-    assert (
-        "debe ser menor de 18 años" in error_msg
-    ), f"Mensaje de error incorrecto: {error_msg}"
+    assert "debe ser menor de 18 años" in error_msg, (
+        f"Mensaje de error incorrecto: {error_msg}"
+    )
 
 
 @pytest.mark.asyncio
@@ -221,9 +221,7 @@ async def test_minor_athlete_boundary_turns_18_tomorrow():
     """Test: Atleta cumple 18 años mañana (aún es válido hoy)."""
     today = date.today()
     tomorrow = today + timedelta(days=1)
-    birth_date = date(
-        year=tomorrow.year - 18, month=tomorrow.month, day=tomorrow.day
-    )
+    birth_date = date(year=tomorrow.year - 18, month=tomorrow.month, day=tomorrow.day)
 
     athlete_data = MinorAthleteDataDTO(
         first_name="Casi",
@@ -259,6 +257,207 @@ async def test_minor_athlete_invalid_future_date():
     assert len(errors) > 0
     error_msg = errors[0]["msg"]
     print(f"\nValidacion correcta: {error_msg}")
-    assert (
-        "no puede ser en el futuro" in error_msg
-    ), f"Mensaje de error incorrecto: {error_msg}"
+    assert "no puede ser en el futuro" in error_msg, (
+        f"Mensaje de error incorrecto: {error_msg}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_height_below_minimum():
+    """Test: Rechazar altura menor a 1.0 metro."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 10)
+
+    with pytest.raises(ValidationError) as exc_info:
+        MinorAthleteDataDTO(
+            first_name="Muy",
+            last_name="Bajo",
+            dni="5555555555",
+            birth_date=birth_date,
+            sex="MALE",
+            height=0.85,
+            weight=30.0,
+        )
+
+    errors = exc_info.value.errors()
+    assert len(errors) > 0
+    error_msg = errors[0]["msg"]
+    print(f"\nValidacion correcta: {error_msg}")
+    assert "altura mínima" in error_msg.lower(), f"Mensaje incorrecto: {error_msg}"
+    assert "1.0 metro" in error_msg, f"Mensaje incorrecto: {error_msg}"
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_height_above_maximum():
+    """Test: Rechazar altura mayor a 1.90 metros."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 15)
+
+    with pytest.raises(ValidationError) as exc_info:
+        MinorAthleteDataDTO(
+            first_name="Muy",
+            last_name="Alto",
+            dni="6666666666",
+            birth_date=birth_date,
+            sex="MALE",
+            height=2.10,
+            weight=70.0,
+        )
+
+    errors = exc_info.value.errors()
+    assert len(errors) > 0
+    error_msg = errors[0]["msg"]
+    print(f"\nValidacion correcta: {error_msg}")
+    assert "altura máxima" in error_msg.lower(), f"Mensaje incorrecto: {error_msg}"
+    assert "1.90 metros" in error_msg, f"Mensaje incorrecto: {error_msg}"
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_valid_height_minimum():
+    """Test: Aceptar altura mínima válida (1.0 metro)."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 8)
+
+    minor = MinorAthleteDataDTO(
+        first_name="Altura",
+        last_name="Minima",
+        dni="7777777777",
+        birth_date=birth_date,
+        sex="MALE",
+        height=1.0,
+        weight=20.0,
+    )
+
+    assert minor.height == 1.0
+    print("\nAltura mínima 1.0m aceptada correctamente")
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_valid_height_maximum():
+    """Test: Aceptar altura máxima válida (1.90 metros)."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 17)
+
+    minor = MinorAthleteDataDTO(
+        first_name="Altura",
+        last_name="Maxima",
+        dni="8888888888",
+        birth_date=birth_date,
+        sex="MALE",
+        height=1.90,
+        weight=80.0,
+    )
+
+    assert minor.height == 1.90
+    print("\nAltura máxima 1.90m aceptada correctamente")
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_weight_below_minimum():
+    """Test: Rechazar peso menor a 15 kg."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 6)
+
+    with pytest.raises(ValidationError) as exc_info:
+        MinorAthleteDataDTO(
+            first_name="Peso",
+            last_name="Bajo",
+            dni="9999999999",
+            birth_date=birth_date,
+            sex="MALE",
+            height=1.20,
+            weight=12.0,
+        )
+
+    errors = exc_info.value.errors()
+    assert len(errors) > 0
+    error_msg = errors[0]["msg"]
+    print(f"\nValidacion correcta: {error_msg}")
+    assert "peso mínimo" in error_msg.lower(), f"Mensaje incorrecto: {error_msg}"
+    assert "15 kg" in error_msg, f"Mensaje incorrecto: {error_msg}"
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_weight_above_maximum():
+    """Test: Rechazar peso mayor a 90 kg."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 16)
+
+    with pytest.raises(ValidationError) as exc_info:
+        MinorAthleteDataDTO(
+            first_name="Peso",
+            last_name="Alto",
+            dni="0000000001",
+            birth_date=birth_date,
+            sex="MALE",
+            height=1.75,
+            weight=95.0,
+        )
+
+    errors = exc_info.value.errors()
+    assert len(errors) > 0
+    error_msg = errors[0]["msg"]
+    print(f"\nValidacion correcta: {error_msg}")
+    assert "peso máximo" in error_msg.lower(), f"Mensaje incorrecto: {error_msg}"
+    assert "90 kg" in error_msg, f"Mensaje incorrecto: {error_msg}"
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_valid_weight_minimum():
+    """Test: Aceptar peso mínimo válido (15 kg)."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 5)
+
+    minor = MinorAthleteDataDTO(
+        first_name="Peso",
+        last_name="Minimo",
+        dni="0000000002",
+        birth_date=birth_date,
+        sex="MALE",
+        height=1.10,
+        weight=15.0,
+    )
+
+    assert minor.weight == 15.0
+    print("\nPeso mínimo 15kg aceptado correctamente")
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_valid_weight_maximum():
+    """Test: Aceptar peso máximo válido (90 kg)."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 17)
+
+    minor = MinorAthleteDataDTO(
+        first_name="Peso",
+        last_name="Maximo",
+        dni="0000000003",
+        birth_date=birth_date,
+        sex="MALE",
+        height=1.85,
+        weight=90.0,
+    )
+
+    assert minor.weight == 90.0
+    print("\nPeso máximo 90kg aceptado correctamente")
+
+
+@pytest.mark.asyncio
+async def test_minor_athlete_height_weight_none_valid():
+    """Test: Aceptar altura y peso opcionales (None)."""
+    today = date.today()
+    birth_date = today.replace(year=today.year - 10)
+
+    minor = MinorAthleteDataDTO(
+        first_name="Sin",
+        last_name="Medidas",
+        dni="0000000004",
+        birth_date=birth_date,
+        sex="MALE",
+        height=None,
+        weight=None,
+    )
+
+    assert minor.height is None
+    assert minor.weight is None
+    print("\nAltura y peso opcionales (None) aceptados correctamente")

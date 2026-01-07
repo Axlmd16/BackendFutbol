@@ -9,8 +9,6 @@ from pydantic import ValidationError
 from app.controllers.yoyo_test_controller import YoyoTestController
 from app.models.evaluation import Evaluation
 from app.models.yoyo_test import YoyoTest
-from app.schemas.yoyo_test_schema import CreateYoyoTestSchema
-from app.utils.exceptions import DatabaseException
 from app.schemas.yoyo_test_schema import CreateYoyoTestSchema, UpdateYoyoTestSchema
 
 # ==============================================
