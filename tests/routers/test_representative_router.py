@@ -49,7 +49,7 @@ async def test_register_minor_athlete_success(client):
             representative_is_new=True,
             athlete_id=5,
             athlete_full_name="Carlos Pérez",
-            athlete_dni="1234567891",
+            athlete_dni="1700000142",
             statistic_id=5,
         )
         mock_controller.register_minor_athlete = AsyncMock(return_value=mock_result)
@@ -68,7 +68,7 @@ async def test_register_minor_athlete_success(client):
                 "athlete": {
                     "first_name": "Carlos",
                     "last_name": "Pérez",
-                    "dni": "1234567891",
+                    "dni": "1700000142",
                     "birth_date": "2012-05-15",
                     "sex": "MALE",
                     "height": 1.45,
@@ -99,7 +99,7 @@ async def test_register_minor_athlete_existing_representative(client):
             representative_is_new=False,  # Ya existía
             athlete_id=6,
             athlete_full_name="María Pérez",
-            athlete_dni="1234567892",
+            athlete_dni="1700000159",
             statistic_id=6,
         )
         mock_controller.register_minor_athlete = AsyncMock(return_value=mock_result)
@@ -116,7 +116,7 @@ async def test_register_minor_athlete_existing_representative(client):
                 "athlete": {
                     "first_name": "María",
                     "last_name": "Pérez",
-                    "dni": "1234567892",
+                    "dni": "1700000159",
                     "birth_date": "2014-03-20",
                     "sex": "FEMALE",
                 },
@@ -152,7 +152,7 @@ async def test_register_minor_athlete_duplicate_athlete_dni(client):
                 "athlete": {
                     "first_name": "Carlos",
                     "last_name": "Pérez",
-                    "dni": "1234567891",
+                    "dni": "1700000142",
                     "birth_date": "2012-05-15",
                     "sex": "MALE",
                 },
