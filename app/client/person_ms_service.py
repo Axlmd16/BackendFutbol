@@ -26,6 +26,8 @@ class PersonMSService:
         """
         person_payload = self._build_person_payload(data)
 
+        # DEBUG: Log del payload enviado al MS
+        logger.info(f"[DEBUG] Sending to MS: {person_payload}")
         try:
             save_resp = await self.person_client.create_person_with_account(
                 person_payload
@@ -126,13 +128,26 @@ class PersonMSService:
 
     def _build_person_payload(self, data: CreatePersonInMSRequest) -> dict:
         """Construye el payload para crear persona en el MS."""
+        # Convertir Enum a string si es necesario
+        type_stament_value = (
+            data.type_stament.value
+            if hasattr(data.type_stament, "value")
+            else str(data.type_stament)
+        )
+        type_identification_value = (
+            data.type_identification.value
+            if hasattr(data.type_identification, "value")
+            else str(data.type_identification)
+        )
+
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
             "identification": data.dni,
-            "type_identification": data.type_identification,
-            "type_stament": data.type_stament,
+            "type_identification": type_identification_value,
+            "type_stament": type_stament_value,
             "direction": data.direction or "S/N",
+            "phono": data.phone or "S/N",  # El MS usa 'phono' no 'phone'
             "email": f"user{secrets.randbelow(89999) + 10000}@example.com",
             "password": f"Pass{secrets.randbelow(89999) + 10000}!",
         }
@@ -143,6 +158,12 @@ class PersonMSService:
         """Procesa la respuesta del MS al crear persona."""
         status = save_resp.get("status")
         raw_message = save_resp.get("message") or save_resp.get("detail") or ""
+
+        # DEBUG: Log para ver qué devuelve el MS
+        logger.info(
+            f"[DEBUG] MS response for DNI {data.dni}: "
+            f"status={status}, message={raw_message}"
+        )
 
         if status == "success":
             external = self._extract_external(save_resp)
@@ -330,6 +351,7 @@ class PersonMSService:
             or ("ya existe una persona" in msg and "identific" in msg)
             or "already exists" in msg
             or "duplicad" in msg
+            # Removed: "error de validacion de datos" - too generic
         )
 
     @staticmethod

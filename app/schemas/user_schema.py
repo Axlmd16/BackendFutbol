@@ -6,9 +6,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.enums.rol import Role
 
-# ==========================================
-# BASES (Reutilizables)
-
 
 class TypeStament(str, enum.Enum):
     """Valores permitidos para type_stament."""
@@ -23,13 +20,37 @@ class TypeStament(str, enum.Enum):
 class PersonBase(BaseModel):
     """Campos comunes de información personal."""
 
-    first_name: str = Field(..., min_length=2, max_length=100)
-    last_name: str = Field(..., min_length=2, max_length=100)
+    first_name: str = Field(...)
+    last_name: str = Field(...)
     direction: Optional[str] = Field(default="S/N")
     phone: Optional[str] = Field(default="S/N")
     type_identification: str = Field(default="CEDULA")
     type_stament: TypeStament = Field(default=TypeStament.EXTERNOS)
     model_config = ConfigDict(validate_assignment=True, from_attributes=True)
+
+    @field_validator("first_name", mode="before")
+    @classmethod
+    def _validate_first_name(cls, value: Any) -> str:
+        if value is None:
+            raise ValueError("El nombre es requerido")
+        v = str(value).strip()
+        if len(v) < 2:
+            raise ValueError("El nombre debe tener al menos 2 caracteres")
+        if len(v) > 100:
+            raise ValueError("El nombre no puede exceder 100 caracteres")
+        return v
+
+    @field_validator("last_name", mode="before")
+    @classmethod
+    def _validate_last_name(cls, value: Any) -> str:
+        if value is None:
+            raise ValueError("El apellido es requerido")
+        v = str(value).strip()
+        if len(v) < 2:
+            raise ValueError("El apellido debe tener al menos 2 caracteres")
+        if len(v) > 100:
+            raise ValueError("El apellido no puede exceder 100 caracteres")
+        return v
 
     @field_validator("type_identification", mode="before")
     @classmethod
@@ -82,8 +103,21 @@ class PersonBase(BaseModel):
 class AccountBase(BaseModel):
     """Campos base de cuenta de usuario."""
 
-    email: EmailStr
+    email: str = Field(...)
     role: Role
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _validate_email(cls, value: Any) -> str:
+        if value is None:
+            raise ValueError("El correo electrónico es requerido")
+        import re
+
+        v = str(value).strip().lower()
+        email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        if not re.match(email_regex, v):
+            raise ValueError("El formato del correo electrónico es inválido")
+        return v
 
 
 class UserFilter(BaseModel):
@@ -105,15 +139,36 @@ class UserFilter(BaseModel):
         return (self.page - 1) * self.limit
 
 
-# ==========================================
 # REQUEST SCHEMAS (Entradas)
 
 
 class AdminCreateUserRequest(PersonBase, AccountBase):
     """Datos para crear un nuevo usuario (Admin/Coach)."""
 
-    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dígitos)")
-    password: str = Field(..., min_length=8, max_length=64)
+    dni: str = Field(...)
+    password: str = Field(...)
+
+    @field_validator("dni", mode="before")
+    @classmethod
+    def _validate_dni(cls, value: Any) -> str:
+        if value is None:
+            raise ValueError("El DNI es requerido")
+        v = str(value).strip()
+        if len(v) != 10:
+            raise ValueError("El DNI debe tener exactamente 10 dígitos")
+        return v
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _validate_password(cls, value: Any) -> str:
+        if value is None:
+            raise ValueError("La contraseña es requerida")
+        v = str(value)
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres")
+        if len(v) > 64:
+            raise ValueError("La contraseña no puede exceder 64 caracteres")
+        return v
 
     @field_validator("role", mode="before")
     @classmethod
