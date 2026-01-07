@@ -75,8 +75,8 @@ class RepresentativeUpdateDTO(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    first_name: Optional[str] = Field(default=None, min_length=2)
-    last_name: Optional[str] = Field(default=None, min_length=2)
+    first_name: Optional[str] = Field(default=None, min_length=3)
+    last_name: Optional[str] = Field(default=None, min_length=3)
     phone: Optional[str] = Field(default=None, description="Teléfono")
     email: Optional[EmailStr] = Field(default=None, description="Email")
     direction: Optional[str] = Field(default=None, description="Dirección")

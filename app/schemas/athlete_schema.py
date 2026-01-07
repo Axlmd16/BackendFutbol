@@ -107,11 +107,11 @@ class AthleteUpdateDTO(BaseModel):
 
 
 class AthleteFilter(BaseModel):
-    """Filtros para bÃºsqueda/paginaciÃ³n de atletas."""
+    """Filtros para busqueda/paginación de atletas."""
 
     page: int = Field(1, ge=1)
     limit: int = Field(10, ge=1, le=100)
-    search: Optional[str] = Field(None, description="BÃºsqueda por nombre o DNI")
+    search: Optional[str] = Field(None, description="Búsqueda por nombre o DNI")
     type_athlete: Optional[TypeStament] = None
     sex: Optional[SexInput] = None
     is_active: Optional[bool] = Field(
@@ -276,24 +276,30 @@ class MinorAthleteDataDTO(BaseModel):
     @field_validator("birth_date", mode="after")
     @classmethod
     def _validate_minor_age(cls, value: date) -> date:
-        """Valida que el atleta sea menor de edad (menos de 18 años)."""
+        """Valida que el atleta sea menor de edad (entre 5 y 17 años)."""
         from datetime import date as date_type
 
         today = date_type.today()
-        # Calcular edad
+
+        if value > today:
+            raise ValueError("La fecha de nacimiento no puede ser en el futuro")
+
         age = (
             today.year
             - value.year
             - ((today.month, today.day) < (value.month, value.day))
         )
+
         if age >= 18:
             raise ValueError(
                 f"El deportista debe ser menor de 18 años. Edad calculada: {age} años"
             )
-        if age < 3:
+
+        if age < 5:
             raise ValueError(
-                f"La fecha de nacimiento no es válida. Edad calculada: {age} años"
+                f"El deportista debe tener al menos 5 años. Edad calculada: {age} años"
             )
+
         return value
 
     @field_validator("sex", mode="before")
