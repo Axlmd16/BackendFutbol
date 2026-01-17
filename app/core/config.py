@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     PERSON_MS_ADMIN_EMAIL: str = "admin@admin.com"
     PERSON_MS_ADMIN_PASSWORD: str = "12345678"
 
+    # ================= DEFAULT ADMIN =================
+    DEFAULT_ADMIN_EMAIL: str = "admin@unl.edu.ec"
+    DEFAULT_ADMIN_PASSWORD: str = "Admin123!"
+    DEFAULT_ADMIN_DNI: str = "0000000000"
+    DEFAULT_ADMIN_NAME: str = "Administrador Sistema"
+
     # ================= PROPERTIES =================
     @property
     def DATABASE_URL(self) -> str:

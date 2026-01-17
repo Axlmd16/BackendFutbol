@@ -52,13 +52,23 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Eventos de ciclo de vida."""
+    from app.core.database import SessionLocal
+    from app.core.seeder import seed_default_admin
 
     logger.info("🚀 Starting application...")
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created")
+
+        # Crear usuario admin por defecto
+        db = SessionLocal()
+        try:
+            seed_default_admin(db)
+        finally:
+            db.close()
+
     except Exception as exc:  # pragma: no cover - se registra el fallo
-        logger.error(f"Error creating tables: {exc}")
+        logger.error(f"Error creating tables or seeding: {exc}")
 
     logger.info(
         f"📊 Scalar Docs: http://{settings.APP_HOST}:{settings.APP_PORT}/scalar"
