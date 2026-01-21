@@ -28,9 +28,7 @@ def mock_person_client():
         yield client_instance
 
 
-# ==============================================
 # TESTS: POST /users/create
-# ==============================================
 
 
 @pytest.mark.asyncio

@@ -88,9 +88,7 @@ def mock_user():
     return user
 
 
-# ------------------------------------------------------------------------------
 #  Crear usuario
-# ------------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -114,7 +112,6 @@ async def test_create_user_admin_success(
         db=mock_db_session, payload=valid_create_payload
     )
 
-    # Mensaje esperado: "Usuario creado correctamente"
     assert result.id == 1
     assert result.account_id == 10
     assert result.full_name == "Juan Pérez"
@@ -141,7 +138,6 @@ async def test_create_user_coach_success(
         db=mock_db_session, payload=valid_create_payload
     )
 
-    # Mensaje esperado: "Usuario creado correctamente"
     assert result.role in ["COACH", "Coach"]
 
 
@@ -433,9 +429,7 @@ async def test_get_user_by_id_person_not_found(
         await user_controller.get_user_by_id(db=mock_db_session, user_id=1)
 
 
-# ------------------------------------------------------------------------------
-# 📌 Desactivar usuario
-# ------------------------------------------------------------------------------
+#  Desactivar usuario
 
 
 def test_deactivate_user_success(user_controller, mock_db_session, mock_user):

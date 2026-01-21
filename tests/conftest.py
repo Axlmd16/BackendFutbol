@@ -22,7 +22,6 @@ def mock_admin_account():
     account.email = "admin@test.com"
     account.role = Role.ADMINISTRATOR
     account.user_id = 1
-    # Mock del usuario asociado (para endpoints que usan current_user.user.dni)
     account.user = MagicMock()
     account.user.dni = "1150696977"
     return account

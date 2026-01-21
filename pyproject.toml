@@ -33,6 +33,10 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated"
 ]
+markers = [
+    "integration: marks tests as integration tests (require SQLite DB)",
+    "interoperability: marks tests as interoperability tests (require mock MS)",
+]
 
 [dependency-groups]
 dev = [
