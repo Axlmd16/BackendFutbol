@@ -7,7 +7,7 @@ from typing import Optional
 
 from app.client.person_client import PersonClient
 from app.schemas.user_schema import CreatePersonInMSRequest
-from app.utils.exceptions import ValidationException
+from app.utils.exceptions import ExternalServiceException, ValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +40,14 @@ class PersonMSService:
                 )
                 return await self._get_and_validate_existing_person(data)
             raise
+        except ExternalServiceException:
+            # Re-lanzar excepciones de servicio externo sin modificar
+            raise
         except Exception as e:
             logger.error(f"Error inesperado al comunicarse con MS de usuarios: {e}")
-            raise ValidationException(
-                "Error de comunicación con el módulo de usuarios"
+            raise ExternalServiceException(
+                "El servicio de usuarios no está disponible. "
+                "Por favor, intente nuevamente más tarde."
             ) from e
 
     async def update_person(
@@ -90,10 +94,13 @@ class PersonMSService:
 
             return await self._get_external_by_dni(dni)
 
+        except ExternalServiceException:
+            raise
         except Exception as e:
             logger.error(f"Error al actualizar persona en MS de usuarios: {e}")
-            raise ValidationException(
-                "Error de comunicación con el módulo de usuarios"
+            raise ExternalServiceException(
+                "El servicio de usuarios no está disponible. "
+                "Por favor, intente nuevamente más tarde."
             ) from e
 
     async def get_all_users(self):
@@ -103,10 +110,13 @@ class PersonMSService:
         try:
             users_resp = await self.person_client.get_all_filter()
             return users_resp.get("data", [])
+        except ExternalServiceException:
+            raise
         except Exception as e:
             logger.error(f"Error al obtener usuarios del MS de usuarios: {e}")
-            raise ValidationException(
-                "Error de comunicación con el módulo de usuarios"
+            raise ExternalServiceException(
+                "El servicio de usuarios no está disponible. "
+                "Por favor, intente nuevamente más tarde."
             ) from e
 
     async def get_user_by_identification(self, identification: str) -> dict:
@@ -116,12 +126,15 @@ class PersonMSService:
         try:
             user_resp = await self.person_client.get_by_identification(identification)
             return user_resp
+        except ExternalServiceException:
+            raise
         except Exception as e:
             logger.error(
                 f"Error al obtener usuario por identificación del MS de usuarios: {e}"
             )
-            raise ValidationException(
-                "Error de comunicación con el módulo de usuarios"
+            raise ExternalServiceException(
+                "El servicio de usuarios no está disponible. "
+                "Por favor, intente nuevamente más tarde."
             ) from e
 
     # Metodos privados

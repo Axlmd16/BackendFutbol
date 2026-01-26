@@ -33,7 +33,12 @@ from app.services.routers import (
     user_router,
     yoyo_test_router,
 )
-from app.utils.exceptions import AppException, DatabaseException, EmailServiceException
+from app.utils.exceptions import (
+    AppException,
+    DatabaseException,
+    EmailServiceException,
+    ExternalServiceException,
+)
 
 # Configuración de logging
 logging.basicConfig(
@@ -251,6 +256,22 @@ def create_application() -> FastAPI:
         request: Request, exc: EmailServiceException
     ):
         logger.error(f"Email service exception: {exc.message}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "error",
+                "message": exc.message,
+                "data": None,
+                "errors": None,
+            },
+        )
+
+    # Manejador para errores de servicios externos (MS de usuarios, etc.)
+    @app.exception_handler(ExternalServiceException)
+    async def external_service_exception_handler(
+        request: Request, exc: ExternalServiceException
+    ):
+        logger.error(f"External service exception: {exc.message}")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
