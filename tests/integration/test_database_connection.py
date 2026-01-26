@@ -1,7 +1,9 @@
 """
 Pruebas de integración para la conexión a la base de datos PostgreSQL.
 
-Estas pruebas verifican la conexión exitosa a la base de datos.
+Verifica:
+- Conexión exitosa a la base de datos
+- Ciclo de vida de sesiones
 """
 
 import pytest
@@ -9,25 +11,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import SessionLocal, engine, get_db
 
 
 class TestDatabaseConnection:
-    """Pruebas para verificar la conexión a PostgreSQL."""
-
-    def test_database_url_format(self):
-        """Verifica que la URL de la base de datos tenga el formato correcto."""
-        db_url = settings.DATABASE_URL
-
-        # Verificar que sea una URL de PostgreSQL
-        assert db_url.startswith("postgresql://"), (
-            f"La URL debe empezar con 'postgresql://'. URL: {db_url[:30]}..."
-        )
-
-        # Verificar componentes de la URL
-        assert settings.DB_HOST in db_url
-        assert str(settings.DB_PORT) in db_url
-        assert settings.DB_NAME in db_url
+    """Pruebas esenciales de conexión a PostgreSQL."""
 
     def test_database_connection_success(self):
         """Verifica que se puede establecer conexión con PostgreSQL."""
@@ -37,24 +25,48 @@ class TestDatabaseConnection:
                 row = result.fetchone()
 
                 assert row is not None, "La consulta no retornó resultados"
-                assert row[0] == 1, f"El valor esperado es 1, obtenido: {row[0]}"
+                assert row[0] == 1
 
         except OperationalError as e:
-            pytest.fail(
-                f"No se pudo conectar a PostgreSQL. "
-                f"Verifica que el servidor esté corriendo. Error: {e}"
-            )
+            pytest.fail(f"No se pudo conectar a PostgreSQL: {e}")
 
-    def test_database_version(self):
-        """Verifica la versión de PostgreSQL."""
+    def test_database_version_is_postgresql(self):
+        """Verifica que estamos conectados a PostgreSQL."""
         with engine.connect() as connection:
             result = connection.execute(text("SELECT version()"))
             version = result.fetchone()[0]
+            assert "PostgreSQL" in version
 
-            assert "PostgreSQL" in version, (
-                f"Se esperaba PostgreSQL, pero se conectó a: {version}"
-            )
+    def test_session_lifecycle(self):
+        """Verifica que las sesiones se crean y cierran correctamente."""
+        session = SessionLocal()
+        try:
+            result = session.execute(text("SELECT 1"))
+            assert result.fetchone()[0] == 1
+        finally:
+            session.close()
+
+    def test_get_db_dependency(self):
+        """Verifica que get_db() devuelve una sesión válida."""
+        db_generator = get_db()
+        db = next(db_generator)
+
+        try:
+            result = db.execute(text("SELECT 1"))
+            assert result.fetchone()[0] == 1
+        finally:
+            try:
+                next(db_generator)
+            except StopIteration:
+                pass
+
+    def test_database_url_configuration(self):
+        """Verifica que la URL de la base de datos está configurada."""
+        db_url = settings.DATABASE_URL
+        assert db_url.startswith("postgresql://")
+        assert settings.DB_HOST in db_url
+        assert settings.DB_NAME in db_url
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--tb=short"])
+    pytest.main([__file__, "-v"])

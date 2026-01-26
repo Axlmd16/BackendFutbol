@@ -9,6 +9,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.exc import DatabaseError, InterfaceError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
@@ -32,7 +33,7 @@ from app.services.routers import (
     user_router,
     yoyo_test_router,
 )
-from app.utils.exceptions import AppException
+from app.utils.exceptions import AppException, DatabaseException, EmailServiceException
 
 # Configuración de logging
 logging.basicConfig(
@@ -175,6 +176,108 @@ def create_application() -> FastAPI:
             },
         )
 
+    # Manejador para errores de base de datos (conexión, timeouts, etc.)
+    @app.exception_handler(OperationalError)
+    async def database_operational_error_handler(
+        request: Request, exc: OperationalError
+    ):
+        logger.error(f"Database operational error: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "error",
+                "message": (
+                    "Estamos teniendo problemas con el servicio. "
+                    "Por favor, intente nuevamente más tarde."
+                ),
+                "data": None,
+                "errors": None,
+            },
+        )
+
+    @app.exception_handler(InterfaceError)
+    async def database_interface_error_handler(request: Request, exc: InterfaceError):
+        logger.error(f"Database interface error: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "error",
+                "message": (
+                    "Estamos teniendo problemas con el servicio. "
+                    "Por favor, intente nuevamente más tarde."
+                ),
+                "data": None,
+                "errors": None,
+            },
+        )
+
+    @app.exception_handler(DatabaseError)
+    async def database_error_handler(request: Request, exc: DatabaseError):
+        logger.error(f"Database error: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "error",
+                "message": (
+                    "Estamos teniendo problemas con el servicio. "
+                    "Por favor, intente nuevamente más tarde."
+                ),
+                "data": None,
+                "errors": None,
+            },
+        )
+
+    @app.exception_handler(DatabaseException)
+    async def custom_database_exception_handler(
+        request: Request, exc: DatabaseException
+    ):
+        logger.error(f"Custom database exception: {exc.message}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "error",
+                "message": (
+                    "Estamos teniendo problemas con el servicio. "
+                    "Por favor, intente nuevamente más tarde."
+                ),
+                "data": None,
+                "errors": None,
+            },
+        )
+
+    # Manejador para errores del servicio de correo (SMTP)
+    @app.exception_handler(EmailServiceException)
+    async def email_service_exception_handler(
+        request: Request, exc: EmailServiceException
+    ):
+        logger.error(f"Email service exception: {exc.message}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "error",
+                "message": exc.message,
+                "data": None,
+                "errors": None,
+            },
+        )
+
+    # Manejador global para excepciones no capturadas (catch-all)
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "message": (
+                    "Ha ocurrido un error inesperado."
+                    "Por favor, intente nuevamente más tarde."
+                ),
+                "data": None,
+                "errors": None,
+            },
+        )
+
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
     app.include_router(user_router, prefix=API_PREFIX)
@@ -196,15 +299,85 @@ def create_application() -> FastAPI:
 
     @app.get("/health", tags=["Health"], response_model=ResponseSchema)
     async def health_check():
+        """
+        Verifica el estado de salud de la API y sus dependencias.
+
+        Realiza verificaciones de:
+        - Conexión a la base de datos
+        - Estado general de la aplicación
+        """
+        from sqlalchemy import text
+
+        from app.core.database import SessionLocal
+
+        health_status = {
+            "app_name": settings.APP_NAME,
+            "version": settings.APP_VERSION,
+            "environment": "development" if settings.DEBUG else "production",
+            "database": "unknown",
+        }
+
+        # Verificar conexión a la base de datos
+        try:
+            db = SessionLocal()
+            try:
+                db.execute(text("SELECT 1"))
+                health_status["database"] = "connected"
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Health check - Database connection failed: {e}")
+            health_status["database"] = "disconnected"
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "status": "error",
+                    "message": (
+                        "Estamos teniendo problemas con el servicio. "
+                        "Por favor, intente nuevamente más tarde."
+                    ),
+                    "data": health_status,
+                    "errors": None,
+                },
+            )
+
         return ResponseSchema(
             status="success",
             message="API funcionando correctamente",
-            data={
-                "app_name": settings.APP_NAME,
-                "version": settings.APP_VERSION,
-                "environment": "development" if settings.DEBUG else "production",
-            },
+            data=health_status,
         )
+
+    @app.get("/health/live", tags=["Health"])
+    async def liveness_check():
+        """
+        Verificación de vida simple (para kubernetes/docker).
+        Solo verifica que la aplicación está corriendo.
+        """
+        return {"status": "alive"}
+
+    @app.get("/health/ready", tags=["Health"])
+    async def readiness_check():
+        """
+        Verificación de preparación (para kubernetes/docker).
+        Verifica que la aplicación está lista para recibir tráfico.
+        """
+        from sqlalchemy import text
+
+        from app.core.database import SessionLocal
+
+        try:
+            db = SessionLocal()
+            try:
+                db.execute(text("SELECT 1"))
+            finally:
+                db.close()
+            return {"status": "ready"}
+        except Exception as e:
+            logger.error(f"Readiness check failed: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"status": "not_ready", "reason": "database_unavailable"},
+            )
 
     @app.get("/info", tags=["Health"], response_model=ResponseSchema)
     async def api_info():
