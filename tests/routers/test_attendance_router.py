@@ -14,7 +14,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_create_bulk_attendance_empty_records(admin_client):
-    """Intentar crear asistencia con lista vacía de registros."""
+    """Intentar crear asistencia con lista vacía de registros debe fallar."""
     response = await admin_client.post(
         "/api/v1/attendances/bulk",
         json={
@@ -24,8 +24,11 @@ async def test_create_bulk_attendance_empty_records(admin_client):
         },
     )
 
-    # Lista vacía ahora es válida (limpia asistencias)
-    assert response.status_code == 201
+    # Lista vacía ahora debe devolver error 422
+    assert response.status_code == 422
+    data = response.json()
+    assert data["status"] == "error"
+    assert "records" in str(data.get("errors", {}))
 
 
 @pytest.mark.asyncio
@@ -56,6 +59,52 @@ async def test_create_bulk_attendance_invalid_date_format(admin_client):
     )
 
     assert response.status_code == 422
+    data = response.json()
+    assert data["status"] == "error"
+    # Verificar que el mensaje de error contiene información del formato esperado
+    error_str = str(data.get("errors", {}))
+    assert "YYYY-MM-DD" in error_str or "date" in error_str
+
+
+@pytest.mark.asyncio
+async def test_create_bulk_attendance_future_date(admin_client):
+    """Intentar crear asistencia con fecha futura debe fallar."""
+    from datetime import date, timedelta
+
+    future_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+    response = await admin_client.post(
+        "/api/v1/attendances/bulk",
+        json={
+            "date": future_date,
+            "time": "10:30",
+            "records": [{"athlete_id": 1, "is_present": True}],
+        },
+    )
+
+    assert response.status_code == 422
+    data = response.json()
+    assert data["status"] == "error"
+    error_str = str(data.get("errors", {}))
+    assert "futuras" in error_str or "date" in error_str
+
+
+@pytest.mark.asyncio
+async def test_create_bulk_attendance_invalid_athlete_id(admin_client):
+    """Intentar crear asistencia con athlete_id inválido (0) debe fallar."""
+    from datetime import date
+
+    response = await admin_client.post(
+        "/api/v1/attendances/bulk",
+        json={
+            "date": date.today().strftime("%Y-%m-%d"),
+            "time": "10:30",
+            "records": [{"athlete_id": 0, "is_present": True}],
+        },
+    )
+
+    assert response.status_code == 422
+    data = response.json()
+    assert data["status"] == "error"
 
 
 @pytest.mark.asyncio
