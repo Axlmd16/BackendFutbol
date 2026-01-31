@@ -41,7 +41,7 @@ class AthleteInscriptionDTO(PersonBase):
     height: Optional[float] = Field(
         default=None,
         ge=0.5,
-        le=2.5, #Máximo 2.50 metros
+        le=2.5,  # Máximo 2.50 metros
         description="Altura en metros (no puede ser negativa)",
     )
 
@@ -133,13 +133,15 @@ class AthleteFilter(BaseModel):
     )
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    
+
     @model_validator(mode="after")
     def _validate_date_range(self) -> "AthleteFilter":
         if self.start_date and self.end_date:
             if self.start_date > self.end_date:
                 # Esto es lo que genera el error 422 para el usuario
-                raise ValueError("Rango de fechas inválido: la fecha de inicio es posterior a la de fin")
+                raise ValueError(
+                    "Rango de fechas inválido: la fecha de inicio es posterior a la de fin"
+                )
         return self
 
     @property
