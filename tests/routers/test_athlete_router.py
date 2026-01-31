@@ -17,7 +17,7 @@ def _mock_athlete(**kwargs):
         is_active=True,
         external_person_id="ext-123",
         date_of_birth=None,
-        height=180.0,
+        height=1.80,
         weight=75.0,
         created_at=SimpleNamespace(isoformat=lambda: "2025-01-01T00:00:00"),
         updated_at=None,
@@ -55,7 +55,7 @@ async def test_register_athlete_unl_success(client):
                 "birth_date": "1998-05-15",
                 "sex": "MALE",
                 "weight": 75.5,
-                "height": 180.0,
+                "height": 1.80,
             },
         )
 
@@ -198,7 +198,7 @@ async def test_register_athlete_unl_dni_duplicado(client):
                 "birth_date": "1998-05-15",
                 "sex": "MALE",
                 "weight": 70.0,
-                "height": 175.0,
+                "height": 1.75,
             },
         )
 
