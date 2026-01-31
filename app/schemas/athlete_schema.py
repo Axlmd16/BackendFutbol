@@ -140,7 +140,8 @@ class AthleteFilter(BaseModel):
             if self.start_date > self.end_date:
                 # Esto es lo que genera el error 422 para el usuario
                 raise ValueError(
-                    "Rango de fechas inválido: la fecha de inicio es posterior a la de fin"
+                    "Rango de fechas inválido: la fecha de inicio es "
+                    "posterior a la de fin"
                 )
         return self
 
