@@ -177,7 +177,7 @@ class RepresentativeController:
             )
             if person_data and person_data.get("data"):
                 ms_data = person_data["data"]
-                first_name = ms_data.get("firts_name")
+                first_name = ms_data.get("first_name")
                 last_name = ms_data.get("last_name")
                 direction = ms_data.get("direction")
                 type_identification = ms_data.get("type_identification")
@@ -233,6 +233,7 @@ class RepresentativeController:
             full_name=representative.full_name,
             dni=representative.dni,
             phone=representative.phone,
+            email=representative.email,
             relationship_type=getattr(
                 representative.relationship_type,
                 "value",
