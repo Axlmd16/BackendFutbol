@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import re
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -75,12 +76,25 @@ class RepresentativeUpdateDTO(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    first_name: Optional[str] = Field(default=None, min_length=3)
-    last_name: Optional[str] = Field(default=None, min_length=3)
+    first_name: Optional[str] = Field(default=None, min_length=2)
+    last_name: Optional[str] = Field(default=None, min_length=2)
     phone: Optional[str] = Field(default=None, description="Teléfono")
     email: Optional[EmailStr] = Field(default=None, description="Email")
-    direction: Optional[str] = Field(default=None, description="Dirección")
+    direction: Optional[str] = Field(
+        default=None, max_length=200, description="Dirección"
+    )
     relationship_type: Optional[RelationshipType] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, value: Any) -> Optional[str]:
+        """Valida formato de teléfono ecuatoriano (10 dígitos)."""
+        if value is None or value == "S/N":
+            return value
+        v = str(value).strip()
+        if v and not re.match(r"^0[0-9]{9}$", v):
+            raise ValueError("El teléfono debe tener 10 dígitos y comenzar con 0")
+        return v
 
 
 class RepresentativeFilter(BaseModel):

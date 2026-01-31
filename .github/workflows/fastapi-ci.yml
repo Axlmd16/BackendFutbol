@@ -8,20 +8,24 @@ jobs:
   test-and-lint:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: ci_user
-          POSTGRES_PASSWORD: ci_password
-          POSTGRES_DB: ci_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ci_user -d ci_db"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        services:
+            postgres:
+                image: postgres:15
+                ports:
+                    - 5432:5432
+                env:
+                    POSTGRES_USER: ci_user
+                    POSTGRES_PASSWORD: ci_password
+                    POSTGRES_DB: ci_db
+                options: >-
+                    --health-cmd "pg_isready -U ci_user"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - name: Obtener código
+              uses: actions/checkout@v4
 
     steps:
       - name: Obtener código
@@ -36,16 +40,28 @@ jobs:
       - name: Instalar dependencias
         run: uv sync --all-extras --dev
 
-      # (Opcional pero recomendado)
-      - name: Esperar PostgreSQL listo
-        run: |
-          echo "Esperando a PostgreSQL..."
-          for i in {1..30}; do
-            nc -z localhost 5432 && echo "PostgreSQL listo!" && exit 0
-            sleep 2
-          done
-          echo "PostgreSQL no respondió a tiempo"
-          exit 1
+            - name: Inicializar Base de Datos
+              env:
+                  DB_HOST: "localhost"
+                  DB_PORT: "5432"
+                  DB_USER: "ci_user"
+                  DB_PASSWORD: "ci_password"
+                  DB_NAME: "ci_db"
+                  JWT_SECRET: "secreto_super_falso_para_testing_en_ci"
+                  JWT_ALGORITHM: "HS256"
+                  PYTHONPATH: .
+              run: |
+                  echo "Creating database tables..."
+                  uv run python scripts/init_test_db.py
+
+            - name: Ejecutar Pytest
+              env:
+                  # Configuración de Base de Datos
+                  DB_HOST: "localhost"
+                  DB_PORT: "5432"
+                  DB_USER: "ci_user"
+                  DB_PASSWORD: "ci_password"
+                  DB_NAME: "ci_db"
 
       - name: Linter y Formato (Ruff)
         run: |

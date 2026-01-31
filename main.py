@@ -130,13 +130,51 @@ def create_application() -> FastAPI:
     # Manejo de validación
     @app.exception_handler(RequestValidationError)
     async def validation_handler(request: Request, exc: RequestValidationError):
+        # Diccionario de traducciones de mensajes comunes de Pydantic
+        translations = {
+            "Field required": "Este campo es obligatorio",
+            "field required": "Este campo es obligatorio",
+            "value is not a valid integer": "El valor debe ser un número entero",
+            "value is not a valid float": "El valor debe ser un número decimal",
+            "value is not a valid email address": "El correo electrónico no es válido",
+            "ensure this value has at least": "Este campo debe tener al menos",
+            "ensure this value has at most": "Este campo debe tener como máximo",
+            "string does not match regex": "El formato no es válido",
+            "value is not a valid list": "El valor debe ser una lista",
+            "value is not a valid dict": "El valor debe ser un objeto",
+            "Input should be a valid integer": "El valor debe ser un número entero",
+            "Input should be a valid string": "El valor debe ser texto",
+            "Input should be a valid boolean": "El valor debe ser verdadero o falso",
+            "Input should be a valid list": "El valor debe ser una lista",
+            "Input should be greater than or equal to 1": (
+                "El valor debe ser mayor o igual a 1"
+            ),
+            "String should have at least": "El texto debe tener al menos",
+            "List should have at least 1 item after validation, not 0": (
+                "La lista de registros no puede estar vacía. "
+                "Debe incluir al menos un registro."
+            ),
+        }
+
+        def translate_message(msg: str) -> str:
+            """Traduce mensajes comunes de Pydantic al español."""
+            # Buscar traducción exacta
+            if msg in translations:
+                return translations[msg]
+            # Buscar traducciones parciales
+            for eng, esp in translations.items():
+                if eng.lower() in msg.lower():
+                    return esp
+            return msg
+
         error_map: dict[str, list[str]] = {}
         for error in exc.errors():
             # loc típico: ('body', 'field') o ('query', 'page')
             loc = error.get("loc") or ()
             field = ".".join(str(x) for x in loc) if loc else "__root__"
             msg = error.get("msg") or "Valor inválido"
-            error_map.setdefault(field, []).append(str(msg))
+            translated_msg = translate_message(str(msg))
+            error_map.setdefault(field, []).append(translated_msg)
 
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

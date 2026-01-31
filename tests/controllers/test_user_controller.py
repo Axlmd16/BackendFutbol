@@ -48,7 +48,7 @@ def valid_create_payload():
         last_name="Pérez",
         email="juan.perez@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         direction="Calle Principal 123",
         phone="0987654321",
@@ -219,7 +219,7 @@ def test_create_user_missing_required_fields():
             # last_name faltante
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
         )
     error_str = str(exc.value).lower()
@@ -234,7 +234,7 @@ def test_create_user_invalid_email_format():
             last_name="User",
             email="invalid-email",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -251,7 +251,7 @@ def test_create_user_invalid_role():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="deportista",  # Rol no válido
             direction="Calle 123",
             phone="0987654321",
@@ -465,7 +465,7 @@ async def test_dni_invalid_check_digit(user_controller, mock_db_session):
         last_name="User",
         email="test@example.com",
         dni="1234567890",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         type_identification="CEDULA",
         type_stament="DOCENTES",
@@ -480,21 +480,18 @@ async def test_dni_invalid_check_digit(user_controller, mock_db_session):
 @pytest.mark.asyncio
 async def test_dni_invalid_province(user_controller, mock_db_session):
     """Debe rechazar DNI con código de provincia inválido (>24 y !=30)."""
-    payload = AdminCreateUserRequest(
-        first_name="Test",
-        last_name="User",
-        email="test@example.com",
-        dni="9912345678",
-        password="SecurePass123",
-        role="administrator",
-        type_identification="CEDULA",
-        type_stament="DOCENTES",
-    )
-    user_controller.user_dao.exists.return_value = False
-    user_controller.account_dao.exists.return_value = False
-
-    with pytest.raises(ValidationException, match="Provincia del DNI invalida"):
-        await user_controller.admin_create_user(db=mock_db_session, payload=payload)
+    # La validación ahora ocurre en el schema Pydantic
+    with pytest.raises(ValidationError, match="código de provincia inválido"):
+        AdminCreateUserRequest(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            dni="9912345678",
+            password="SecurePass123!",
+            role="administrator",
+            type_identification="CEDULA",
+            type_stament="DOCENTES",
+        )
 
 
 @pytest.mark.asyncio
@@ -505,7 +502,7 @@ async def test_dni_invalid_third_digit(user_controller, mock_db_session):
         last_name="User",
         email="test@example.com",
         dni="0196123456",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         type_identification="CEDULA",
         type_stament="DOCENTES",
@@ -520,21 +517,19 @@ async def test_dni_invalid_third_digit(user_controller, mock_db_session):
 @pytest.mark.asyncio
 async def test_dni_with_letters(user_controller, mock_db_session):
     """Debe rechazar DNI con caracteres no numéricos."""
-    payload = AdminCreateUserRequest(
-        first_name="Test",
-        last_name="User",
-        email="test@example.com",
-        dni="092668A856",
-        password="SecurePass123",
-        role="administrator",
-        type_identification="CEDULA",
-        type_stament="DOCENTES",
-    )
-    user_controller.user_dao.exists.return_value = False
-    user_controller.account_dao.exists.return_value = False
-
-    with pytest.raises(ValidationException, match="10 digitos"):
-        await user_controller.admin_create_user(db=mock_db_session, payload=payload)
+    # La validación ahora ocurre en el schema Pydantic
+    # (se limpian caracteres no numéricos)
+    with pytest.raises(ValidationError, match="10 dígitos numéricos"):
+        AdminCreateUserRequest(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            dni="092668A856",
+            password="SecurePass123!",
+            role="administrator",
+            type_identification="CEDULA",
+            type_stament="DOCENTES",
+        )
 
 
 @pytest.mark.asyncio
@@ -545,7 +540,7 @@ async def test_dni_province_30_valid(user_controller, mock_db_session):
         last_name="User",
         email="test@example.com",
         dni="3001234561",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         type_identification="CEDULA",
         type_stament="DOCENTES",
@@ -578,7 +573,7 @@ def test_schema_dni_too_short():
             last_name="User",
             email="test@example.com",
             dni="123456789",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -595,7 +590,7 @@ def test_schema_dni_too_long():
             last_name="User",
             email="test@example.com",
             dni="01234567890",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -646,7 +641,7 @@ def test_schema_first_name_too_short():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -663,7 +658,7 @@ def test_schema_last_name_too_short():
             last_name="U",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -680,7 +675,7 @@ def test_schema_first_name_too_long():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -697,7 +692,7 @@ def test_schema_invalid_type_stament():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="administrator",
             type_identification="CEDULA",
             type_stament="INVALIDO",
@@ -718,7 +713,7 @@ def test_normalize_type_identification_dni_to_cedula():
         last_name="User",
         email="test@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         type_identification="dni",
         type_stament="externos",
@@ -733,7 +728,7 @@ def test_normalize_type_identification_pasaporte_to_passport():
         last_name="User",
         email="test@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         type_identification="pasaporte",
         type_stament="DOCENTES",
@@ -748,7 +743,7 @@ def test_normalize_type_stament_to_uppercase():
         last_name="User",
         email="test@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="coach",
         type_identification="CEDULA",
         type_stament="externos",
@@ -763,7 +758,7 @@ def test_normalize_type_stament_docente_singular():
         last_name="User",
         email="test@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrator",
         type_identification="CEDULA",
         type_stament="docente",
@@ -778,7 +773,7 @@ def test_normalize_role_spanish_administrador():
         last_name="User",
         email="test@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="administrador",
         type_identification="CEDULA",
         type_stament="DOCENTES",
@@ -793,7 +788,7 @@ def test_normalize_role_spanish_entrenador():
         last_name="User",
         email="test@example.com",
         dni="0926687856",
-        password="SecurePass123",
+        password="SecurePass123!",
         role="entrenador",
         type_identification="CEDULA",
         type_stament="DOCENTES",
@@ -809,7 +804,7 @@ def test_normalize_role_variations_admin():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role=role_str,
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -825,7 +820,7 @@ def test_normalize_role_variations_coach():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role=role_str,
             type_identification="CEDULA",
             type_stament="DOCENTES",
@@ -981,7 +976,7 @@ def test_role_intern_rejected():
             last_name="User",
             email="test@example.com",
             dni="0926687856",
-            password="SecurePass123",
+            password="SecurePass123!",
             role="intern",
             type_identification="CEDULA",
             type_stament="DOCENTES",
