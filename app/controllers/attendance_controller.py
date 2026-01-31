@@ -2,13 +2,14 @@
 
 import logging
 from datetime import date, datetime
-from typing import Tuple
+from typing import List, Tuple
 
 from sqlalchemy.orm import Session
 
+from app.dao.athlete_dao import AthleteDAO
 from app.dao.attendance_dao import AttendanceDAO
 from app.schemas.attendance_schema import AttendanceBulkCreate, AttendanceFilter
-from app.utils.exceptions import AppException, ValidationException
+from app.utils.exceptions import AppException, NotFoundException, ValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,30 @@ class AttendanceController:
 
     def __init__(self):
         self.attendance_dao = AttendanceDAO()
+        self.athlete_dao = AthleteDAO()
+
+    def _validate_athletes_exist(
+        self, db: Session, athlete_ids: List[int]
+    ) -> List[int]:
+        """
+        Valida que todos los atletas existan en la base de datos.
+
+        Args:
+            db: Sesión de base de datos
+            athlete_ids: Lista de IDs de atletas a validar
+
+        Returns:
+            Lista de IDs de atletas que no existen
+
+        Raises:
+            NotFoundException: Si algún atleta no existe
+        """
+        missing_ids = []
+        for athlete_id in athlete_ids:
+            athlete = self.athlete_dao.get_by_id(db, athlete_id)
+            if not athlete:
+                missing_ids.append(athlete_id)
+        return missing_ids
 
     def create_bulk_attendance(
         self,
@@ -38,6 +63,7 @@ class AttendanceController:
 
         Raises:
             ValidationException: Si los datos son inválidos
+            NotFoundException: Si algún atleta no existe
         """
         try:
             # Si no se proporciona hora, usar la hora actual
@@ -46,7 +72,17 @@ class AttendanceController:
             else:
                 time_str = datetime.now().strftime("%H:%M")
 
-            # Validar que hay registros
+            # Validar que todos los atletas existen
+            athlete_ids = [record.athlete_id for record in data.records]
+            missing_athletes = self._validate_athletes_exist(db, athlete_ids)
+            if missing_athletes:
+                if len(missing_athletes) == 1:
+                    raise NotFoundException(
+                        f"El atleta con ID {missing_athletes[0]} no existe"
+                    )
+                else:
+                    ids_str = ", ".join(map(str, missing_athletes))
+                    raise NotFoundException(f"Los atletas con IDs {ids_str} no existen")
 
             # Convertir records a lista de diccionarios
             records_data = [

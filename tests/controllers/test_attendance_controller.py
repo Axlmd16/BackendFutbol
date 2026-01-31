@@ -17,9 +17,14 @@ from app.schemas.attendance_schema import AttendanceBulkCreate, AttendanceFilter
 
 @pytest.fixture
 def attendance_controller():
-    """Fixture para AttendanceController con DAO mockeado."""
+    """Fixture para AttendanceController con DAOs mockeados."""
     controller = AttendanceController()
     controller.attendance_dao = MagicMock()
+    controller.athlete_dao = MagicMock()
+    # Por defecto, simular que los atletas existen
+    mock_athlete = MagicMock()
+    mock_athlete.id = 1
+    controller.athlete_dao.get_by_id.return_value = mock_athlete
     return controller
 
 
@@ -148,23 +153,14 @@ def test_create_bulk_attendance_update_existing(attendance_controller, mock_db):
     assert updated == 3
 
 
-def test_create_bulk_attendance_empty_records_success(attendance_controller, mock_db):
-    """Crear asistencias con lista vacía (limpiar día) es válido."""
-    attendance_controller.attendance_dao.create_or_update_bulk.return_value = (0, 0)
-
-    data = AttendanceBulkCreate(
-        date=date(2025, 12, 30),
-        time="10:30",
-        records=[],
-    )
-
-    created, updated = attendance_controller.create_bulk_attendance(
-        db=mock_db, data=data, user_dni="1150696977"
-    )
-
-    assert created == 0
-    assert updated == 0
-    attendance_controller.attendance_dao.create_or_update_bulk.assert_called_once()
+def test_create_bulk_attendance_empty_records_raises_error():
+    """Crear asistencias con lista vacía lanza error de validación."""
+    with pytest.raises(ValueError):
+        AttendanceBulkCreate(
+            date=date(2025, 12, 30),
+            time="10:30",
+            records=[],
+        )
 
 
 def test_create_bulk_attendance_invalid_time_format_raises_error():
@@ -175,6 +171,86 @@ def test_create_bulk_attendance_invalid_time_format_raises_error():
             time="25:00",  # Hora inválida
             records=[{"athlete_id": 1, "is_present": True}],
         )
+
+
+def test_create_bulk_attendance_future_date_raises_error():
+    """Fecha futura lanza error de validación."""
+    from datetime import timedelta
+
+    future_date = date.today() + timedelta(days=1)
+    with pytest.raises(ValueError) as exc_info:
+        AttendanceBulkCreate(
+            date=future_date,
+            time="10:30",
+            records=[{"athlete_id": 1, "is_present": True}],
+        )
+    assert "fechas futuras" in str(exc_info.value)
+
+
+def test_create_bulk_attendance_invalid_date_format_raises_error():
+    """Formato de fecha inválido lanza error de validación."""
+    with pytest.raises(ValueError) as exc_info:
+        AttendanceBulkCreate(
+            date="30-12-2025",  # Formato incorrecto
+            time="10:30",
+            records=[{"athlete_id": 1, "is_present": True}],
+        )
+    assert "YYYY-MM-DD" in str(exc_info.value)
+
+
+def test_create_bulk_attendance_invalid_athlete_id_raises_error():
+    """athlete_id menor a 1 lanza error de validación."""
+    with pytest.raises(ValueError):
+        AttendanceBulkCreate(
+            date=date(2025, 12, 30),
+            time="10:30",
+            records=[{"athlete_id": 0, "is_present": True}],
+        )
+
+
+def test_attendance_item_justification_cleared_when_present():
+    """Justificación se limpia cuando is_present es True."""
+    from app.schemas.attendance_schema import AttendanceItemCreate
+
+    item = AttendanceItemCreate(
+        athlete_id=1,
+        is_present=True,
+        justification="No debería aparecer",
+    )
+    assert item.justification is None
+
+
+def test_attendance_item_justification_kept_when_absent():
+    """Justificación se mantiene cuando is_present es False."""
+    from app.schemas.attendance_schema import AttendanceItemCreate
+
+    item = AttendanceItemCreate(
+        athlete_id=1,
+        is_present=False,
+        justification="Enfermo",
+    )
+    assert item.justification == "Enfermo"
+
+
+def test_create_bulk_attendance_nonexistent_athlete(attendance_controller, mock_db):
+    """Atleta inexistente lanza NotFoundException."""
+    from app.utils.exceptions import NotFoundException
+
+    # Mock para que get_by_id retorne None (atleta no existe)
+    attendance_controller.athlete_dao.get_by_id.return_value = None
+
+    data = AttendanceBulkCreate(
+        date=date(2025, 12, 30),
+        time="10:30",
+        records=[{"athlete_id": 999, "is_present": True}],
+    )
+
+    with pytest.raises(NotFoundException) as exc_info:
+        attendance_controller.create_bulk_attendance(
+            db=mock_db, data=data, user_dni="1150696977"
+        )
+    assert "999" in str(exc_info.value)
+    assert "no existe" in str(exc_info.value)
 
 
 # ==============================================
