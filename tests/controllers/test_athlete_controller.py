@@ -41,7 +41,7 @@ def valid_data():
         phone="0987654321",  # Teléfono ecuatoriano válido
         birth_date="1998-05-15",
         weight=75.5,
-        height=180.0,
+        height=1.80,
     )
 
 
