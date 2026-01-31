@@ -8,6 +8,21 @@ jobs:
     test-and-lint:
         runs-on: ubuntu-latest
 
+        services:
+            postgres:
+                image: postgres:15
+                ports:
+                    - 5432:5432
+                env:
+                    POSTGRES_USER: ci_user
+                    POSTGRES_PASSWORD: ci_password
+                    POSTGRES_DB: ci_db
+                options: >-
+                    --health-cmd "pg_isready -U ci_user"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
         steps:
             - name: Obtener código
               uses: actions/checkout@v4
@@ -27,6 +42,20 @@ jobs:
                   uv run ruff format --check .
                   # Verifica errores lógicos y orden de imports
                   uv run ruff check .
+
+            - name: Inicializar Base de Datos
+              env:
+                  DB_HOST: "localhost"
+                  DB_PORT: "5432"
+                  DB_USER: "ci_user"
+                  DB_PASSWORD: "ci_password"
+                  DB_NAME: "ci_db"
+                  JWT_SECRET: "secreto_super_falso_para_testing_en_ci"
+                  JWT_ALGORITHM: "HS256"
+                  PYTHONPATH: .
+              run: |
+                  echo "Creating database tables..."
+                  uv run python scripts/init_test_db.py
 
             - name: Ejecutar Pytest
               env:
