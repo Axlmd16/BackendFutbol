@@ -37,7 +37,7 @@ def controller():
     c.person_ms_service.get_user_by_identification = AsyncMock(
         return_value={
             "data": {
-                "firts_name": "Juan",
+                "first_name": "Juan",
                 "last_name": "Pérez",
                 "direction": "Av. Principal",
                 "type_identification": "CEDULA",
@@ -115,6 +115,7 @@ def test_get_representative_by_dni_found(controller, mock_db_session):
         full_name="Juan Pérez",
         dni="1710034065",
         phone="0999123456",
+        email="juan@test.com",
         relationship_type=Relationship.FATHER,
         is_active=True,
         created_at=MagicMock(isoformat=lambda: "2025-01-01T00:00:00"),

@@ -2,8 +2,9 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from pydantic import Field
 from sqlalchemy.orm import Session
 
 from app.controllers.representative_controller import RepresentativeController
@@ -98,7 +99,7 @@ async def create_representative(
     payload: RepresentativeInscriptionDTO,
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
-) -> ResponseSchema[RepresentativeInscriptionResponseDTO]:
+):
     """Solo el administrador puede crear representantes directamente."""
     try:
         result = await representative_controller.create_representative(
@@ -110,11 +111,25 @@ async def create_representative(
             data=result.model_dump(),
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(exc)}"
-        ) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.get(
@@ -169,7 +184,7 @@ def get_all_representatives(
     description="Obtiene detalles de un representante incluyendo info del MS.",
 )
 async def get_representative_by_id(
-    representative_id: int,
+    representative_id: Annotated[int, Field(ge=1)],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_account)],
 ):
@@ -213,7 +228,7 @@ async def get_representative_by_id(
     description="Actualiza los datos de un representante. Solo administradores.",
 )
 async def update_representative(
-    representative_id: int,
+    representative_id: Annotated[int, Field(ge=1)],
     payload: RepresentativeUpdateDTO,
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
@@ -258,7 +273,7 @@ async def update_representative(
     description="Desactiva un representante (soft delete). Solo administradores.",
 )
 def deactivate_representative(
-    representative_id: int,
+    representative_id: Annotated[int, Field(ge=1)],
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
 ):
@@ -302,7 +317,7 @@ def deactivate_representative(
     description="Activa un representante. Solo administradores.",
 )
 def activate_representative(
-    representative_id: int,
+    representative_id: Annotated[int, Field(ge=1)],
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
 ):
