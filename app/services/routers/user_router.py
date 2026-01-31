@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -66,11 +66,25 @@ async def admin_create_user(
             data=result.model_dump(),
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as exc:  # pragma: no cover - se devuelve 500 genérico
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(exc)}"
-        ) from exc
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(exc)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.put(
@@ -83,7 +97,7 @@ async def admin_create_user(
 async def admin_update_user(
     payload: AdminUpdateUserRequest,
     db: Annotated[Session, Depends(get_db)],
-    user_id: int,
+    user_id: Annotated[int, Path(gt=0, description="ID del usuario a actualizar")],
     current_admin: Annotated[Account, Depends(get_current_admin)],
 ) -> ResponseSchema:
     """Solo el administrador puede actualizar usuarios administradores o entrenadores"""
@@ -135,8 +149,6 @@ def get_all_users(
     filters: Annotated[UserFilter, Depends()],
     current_user: Annotated[Account, Depends(get_current_account)],
 ):
-    items, total = user_controller.get_all_users(db=db, filters=filters)
-
     try:
         items, total = user_controller.get_all_users(db=db, filters=filters)
 
@@ -253,11 +265,25 @@ def get_all_interns(
             ).model_dump(),
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(e)}"
-        ) from e
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.get(
@@ -268,7 +294,7 @@ def get_all_interns(
     description="Obtiene los detalles de un usuario por su ID. Requiere autenticación.",
 )
 async def get_by_id(
-    user_id: int,
+    user_id: Annotated[int, Path(gt=0, description="ID del usuario")],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_account)],
 ):
@@ -321,7 +347,7 @@ async def get_by_id(
     description="Desactiva un usuario. Solo Administradores.",
 )
 async def desactivate_user(
-    user_id: int,
+    user_id: Annotated[int, Path(gt=0, description="ID del usuario a desactivar")],
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
 ):
@@ -363,7 +389,7 @@ async def desactivate_user(
     description="Activa un usuario. Solo Administradores.",
 )
 async def activate_user(
-    user_id: int,
+    user_id: Annotated[int, Path(gt=0, description="ID del usuario a activar")],
     db: Annotated[Session, Depends(get_db)],
     current_admin: Annotated[Account, Depends(get_current_admin)],
 ):
@@ -410,7 +436,7 @@ async def activate_user(
     description="Crea una cuenta de pasante para un atleta existente.",
 )
 async def promote_athlete_to_intern(
-    athlete_id: int,
+    athlete_id: Annotated[int, Path(gt=0, description="ID del atleta a promover")],
     payload: PromoteAthleteRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_coach_or_admin)],
@@ -428,11 +454,25 @@ async def promote_athlete_to_intern(
             data=result.model_dump(),
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(exc)}"
-        ) from exc
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(exc)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.patch(
@@ -443,7 +483,7 @@ async def promote_athlete_to_intern(
     description="Desactiva un pasante. Solo Coach o Admin.",
 )
 async def deactivate_intern(
-    intern_id: int,
+    intern_id: Annotated[int, Path(gt=0, description="ID del pasante a desactivar")],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_coach_or_admin)],
 ):
@@ -456,11 +496,25 @@ async def deactivate_intern(
             data=None,
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(e)}"
-        ) from e
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
 
 
 @router.patch(
@@ -471,7 +525,7 @@ async def deactivate_intern(
     description="Activa un pasante. Solo Coach o Admin.",
 )
 async def activate_intern(
-    intern_id: int,
+    intern_id: Annotated[int, Path(gt=0, description="ID del pasante a activar")],
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[Account, Depends(get_current_coach_or_admin)],
 ):
@@ -484,8 +538,22 @@ async def activate_intern(
             data=None,
         )
     except AppException as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ResponseSchema(
+                status="error",
+                message=exc.message,
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(e)}"
-        ) from e
+        return JSONResponse(
+            status_code=500,
+            content=ResponseSchema(
+                status="error",
+                message=f"Error inesperado: {str(e)}",
+                data=None,
+                errors=None,
+            ).model_dump(),
+        )
