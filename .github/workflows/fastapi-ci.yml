@@ -43,6 +43,20 @@ jobs:
                   # Verifica errores lógicos y orden de imports
                   uv run ruff check .
 
+            - name: Inicializar Base de Datos
+              env:
+                  DB_HOST: "localhost"
+                  DB_PORT: "5432"
+                  DB_USER: "ci_user"
+                  DB_PASSWORD: "ci_password"
+                  DB_NAME: "ci_db"
+                  JWT_SECRET: "secreto_super_falso_para_testing_en_ci"
+                  JWT_ALGORITHM: "HS256"
+                  PYTHONPATH: .
+              run: |
+                  echo "Creating database tables..."
+                  uv run python scripts/init_test_db.py
+
             - name: Ejecutar Pytest
               env:
                   # Configuración de Base de Datos
