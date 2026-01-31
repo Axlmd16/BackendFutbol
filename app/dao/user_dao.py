@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
-from pytest import Session
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app.dao.base import BaseDAO
 from app.models.enums.rol import Role

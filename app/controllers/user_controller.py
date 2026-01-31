@@ -217,10 +217,12 @@ class UserController:
         if not person_data:
             raise ValidationException("No se encontró la información de la persona")
 
-        print("PERSON DATA:", person_data)
-        nombre = person_data["data"]["firts_name"]
-
-        print(f"nombre: {nombre}")
+        # Manejar posibles typos del MS externo
+        # (firts_name -> first_name, phono -> phone)
+        data = person_data.get("data", {})
+        first_name = data.get("first_name") or data.get("firts_name", "")
+        last_name = data.get("last_name", "")
+        phone = data.get("phone") or data.get("phono", "S/N")
 
         return UserDetailResponse(
             id=user.id,
@@ -230,12 +232,12 @@ class UserController:
             email=user.account.email,
             external=user.external,
             is_active=user.is_active,
-            first_name=person_data["data"]["firts_name"],
-            last_name=person_data["data"]["last_name"],
-            direction=person_data["data"]["direction"],
-            phone=person_data["data"]["phono"],
-            type_identification=person_data["data"]["type_identification"],
-            type_stament=person_data["data"]["type_stament"],
+            first_name=first_name,
+            last_name=last_name,
+            direction=data.get("direction", "S/N"),
+            phone=phone,
+            type_identification=data.get("type_identification", "CEDULA"),
+            type_stament=data.get("type_stament", "EXTERNOS"),
             created_at=user.created_at,
             updated_at=user.updated_at,
         )

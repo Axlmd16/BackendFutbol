@@ -38,7 +38,7 @@ def valid_data():
         first_name="Juan",
         last_name="Pérez",
         dni="1710034065",
-        phone="3424123456",
+        phone="0987654321",  # Teléfono ecuatoriano válido
         birth_date="1998-05-15",
         weight=75.5,
         height=180.0,
