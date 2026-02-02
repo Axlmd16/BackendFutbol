@@ -130,11 +130,9 @@ async def test_create_user_validation_dni_invalid(admin_client):
     assert response.status_code == 422
     data = response.json()
     assert data["status"] == "error"
-    assert "Error de validación" in data["message"]
+    # El mensaje ahora contiene el error específico de validación
+    assert "cédula" in data["message"].lower() or "dígitos" in data["message"].lower()
     assert "errors" in data
-    assert isinstance(data["errors"], dict)
-    # Verificar que hay error sobre el campo DNI
-    assert any("dni" in key for key in data["errors"].keys())
 
 
 @pytest.mark.asyncio

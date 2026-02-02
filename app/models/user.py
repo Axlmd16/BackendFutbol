@@ -11,7 +11,8 @@ class User(BaseModel):
 
     external = Column(String(36), index=True, nullable=False)
     full_name = Column(String(200), nullable=False)
-    dni = Column(String(10), unique=True, index=True, nullable=False)
+    # 20 caracteres para soportar: Cédula (10), RUC (13), Pasaporte (hasta 15)
+    dni = Column(String(20), unique=True, index=True, nullable=False)
 
     # Relaciones
     account = relationship(
