@@ -15,6 +15,7 @@ from app.schemas.account_schema import (
     RefreshTokenRequest,
 )
 from app.schemas.response import ResponseSchema
+from app.services.routers.constants import unexpected_error_message
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -55,7 +56,7 @@ def login(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -96,7 +97,7 @@ def request_password_reset(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -137,7 +138,7 @@ def confirm_password_reset(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -179,7 +180,7 @@ def change_password(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -219,7 +220,7 @@ def refresh_token(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),

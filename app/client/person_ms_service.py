@@ -11,6 +11,12 @@ from app.utils.exceptions import ExternalServiceException, ValidationException
 
 logger = logging.getLogger(__name__)
 
+# Constante para mensaje de servicio no disponible
+SERVICE_UNAVAILABLE_MSG = (
+    "El servicio de usuarios no está disponible. "
+    "Por favor, intente nuevamente más tarde."
+)
+
 
 class PersonMSService:
     """Servicio que encapsula toda la lógica de interacción con el MS de usuarios."""
@@ -45,10 +51,7 @@ class PersonMSService:
             raise
         except Exception as e:
             logger.error(f"Error inesperado al comunicarse con MS de usuarios: {e}")
-            raise ExternalServiceException(
-                "El servicio de usuarios no está disponible. "
-                "Por favor, intente nuevamente más tarde."
-            ) from e
+            raise ExternalServiceException(SERVICE_UNAVAILABLE_MSG) from e
 
     async def update_person(
         self,
@@ -98,10 +101,7 @@ class PersonMSService:
             raise
         except Exception as e:
             logger.error(f"Error al actualizar persona en MS de usuarios: {e}")
-            raise ExternalServiceException(
-                "El servicio de usuarios no está disponible. "
-                "Por favor, intente nuevamente más tarde."
-            ) from e
+            raise ExternalServiceException(SERVICE_UNAVAILABLE_MSG) from e
 
     async def get_all_users(self):
         """
@@ -114,10 +114,7 @@ class PersonMSService:
             raise
         except Exception as e:
             logger.error(f"Error al obtener usuarios del MS de usuarios: {e}")
-            raise ExternalServiceException(
-                "El servicio de usuarios no está disponible. "
-                "Por favor, intente nuevamente más tarde."
-            ) from e
+            raise ExternalServiceException(SERVICE_UNAVAILABLE_MSG) from e
 
     async def get_user_by_identification(self, identification: str) -> dict:
         """
@@ -132,10 +129,7 @@ class PersonMSService:
             logger.error(
                 f"Error al obtener usuario por identificación del MS de usuarios: {e}"
             )
-            raise ExternalServiceException(
-                "El servicio de usuarios no está disponible. "
-                "Por favor, intente nuevamente más tarde."
-            ) from e
+            raise ExternalServiceException(SERVICE_UNAVAILABLE_MSG) from e
 
     # Metodos privados
 

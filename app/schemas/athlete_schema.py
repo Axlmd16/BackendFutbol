@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.models.enums.sex import Sex
 from app.schemas.base_schema import BaseSchema
+from app.schemas.constants import DATE_FORMAT_DESCRIPTION
 from app.schemas.user_schema import PersonBase, TypeStament
 from app.utils.exceptions import ValidationException
 from app.utils.security import validate_ec_dni
@@ -33,7 +34,7 @@ class AthleteInscriptionDTO(PersonBase):
     # Datos especÃ­ficos del atleta
     birth_date: Optional[date] = Field(
         default=None,
-        description="Fecha de nacimiento (YYYY-MM-DD)",
+        description=f"Fecha de nacimiento ({DATE_FORMAT_DESCRIPTION})",
         examples=["2000-01-31"],
     )
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
@@ -83,7 +84,9 @@ class AthleteUpdateRequest(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    birth_date: Optional[date] = Field(default=None, description="YYYY-MM-DD")
+    birth_date: Optional[date] = Field(
+        default=None, description=DATE_FORMAT_DESCRIPTION
+    )
     sex: Optional[SexInput] = None
     type_athlete: Optional[TypeStament] = None
     weight: Optional[float] = Field(default=None, ge=0)
@@ -102,7 +105,9 @@ class AthleteUpdateDTO(BaseModel):
     # Datos personales
     first_name: Optional[str] = Field(default=None, min_length=2)
     last_name: Optional[str] = Field(default=None, min_length=2)
-    birth_date: Optional[date] = Field(default=None, description="YYYY-MM-DD")
+    birth_date: Optional[date] = Field(
+        default=None, description=DATE_FORMAT_DESCRIPTION
+    )
     sex: Optional[SexInput] = None
     type_identification: Optional[str] = None
     dni: Optional[str] = None
@@ -136,13 +141,11 @@ class AthleteFilter(BaseModel):
 
     @model_validator(mode="after")
     def _validate_date_range(self) -> "AthleteFilter":
-        if self.start_date and self.end_date:
-            if self.start_date > self.end_date:
-                # Esto es lo que genera el error 422 para el usuario
-                raise ValueError(
-                    "Rango de fechas inválido: la fecha de inicio es "
-                    "posterior a la de fin"
-                )
+        if self.start_date and self.end_date and self.start_date > self.end_date:
+            # Esto es lo que genera el error 422 para el usuario
+            raise ValueError(
+                "Rango de fechas inválido: la fecha de inicio es posterior a la de fin"
+            )
         return self
 
     @property

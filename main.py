@@ -4,8 +4,7 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
-from fastapi.exception_handlers import http_exception_handler
+from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -17,6 +16,7 @@ from app.core.database import Base, engine
 from app.core.docs import get_openapi_config, get_tags_metadata
 from app.core.scalar_docs import setup_scalar_docs
 from app.models import *  # noqa: F401, F403
+from app.schemas.constants import SERVICE_PROBLEMS_MSG
 from app.schemas.response import ResponseSchema
 from app.services.routers import (
     account_router,
@@ -86,25 +86,8 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Shutting down...")
 
 
-def create_application() -> FastAPI:
-    """Factory para crear la aplicación."""
-
-    openapi_config = get_openapi_config()
-
-    app = FastAPI(
-        title=openapi_config["title"],
-        version=openapi_config["version"],
-        description=openapi_config["description"],
-        contact=openapi_config["contact"],
-        license_info=openapi_config["license_info"],
-        openapi_tags=get_tags_metadata(),
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
-        lifespan=lifespan,
-    )
-
-    # CORS para permitir front-end en dev/prod
+def _configure_middlewares(app: FastAPI) -> None:
+    """Configura los middlewares de la aplicación."""
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.ALLOWED_ORIGINS or ["*"],
@@ -112,255 +95,39 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # app.add_middleware(ErrorHandlerMiddleware)
-    # app.add_middleware(LoggingMiddleware)
 
-    # Scalar docs
-    setup_scalar_docs(app)
 
-    # CORS (necesario para frontend en http://localhost:5173)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+def _register_exception_handlers(app: FastAPI) -> None:
+    """Registra todos los manejadores de excepciones."""
+    from app.core.exception_handlers import (
+        app_exception_handler,
+        custom_database_exception_handler,
+        database_error_handler,
+        database_interface_error_handler,
+        database_operational_error_handler,
+        email_service_exception_handler,
+        external_service_exception_handler,
+        global_exception_handler,
+        http_exception_handler_wrapped,
+        validation_exception_handler,
     )
 
-    # Manejo de validación
-    @app.exception_handler(RequestValidationError)
-    async def validation_handler(request: Request, exc: RequestValidationError):
-        # Diccionario de traducciones de mensajes comunes de Pydantic
-        translations = {
-            "Field required": "Este campo es obligatorio",
-            "field required": "Este campo es obligatorio",
-            "value is not a valid integer": "El valor debe ser un número entero",
-            "value is not a valid float": "El valor debe ser un número decimal",
-            "value is not a valid email address": "El correo electrónico no es válido",
-            "ensure this value has at least": "Este campo debe tener al menos",
-            "ensure this value has at most": "Este campo debe tener como máximo",
-            "string does not match regex": "El formato no es válido",
-            "value is not a valid list": "El valor debe ser una lista",
-            "value is not a valid dict": "El valor debe ser un objeto",
-            "Input should be a valid integer": "El valor debe ser un número entero",
-            "Input should be a valid string": "El valor debe ser texto",
-            "Input should be a valid boolean": "El valor debe ser verdadero o falso",
-            "Input should be a valid list": "El valor debe ser una lista",
-            "Input should be greater than or equal to 1": (
-                "El valor debe ser mayor o igual a 1"
-            ),
-            "String should have at least": "El texto debe tener al menos",
-            "List should have at least 1 item after validation, not 0": (
-                "La lista de registros no puede estar vacía. "
-                "Debe incluir al menos un registro."
-            ),
-        }
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(AppException, app_exception_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler_wrapped)
+    app.add_exception_handler(OperationalError, database_operational_error_handler)
+    app.add_exception_handler(InterfaceError, database_interface_error_handler)
+    app.add_exception_handler(DatabaseError, database_error_handler)
+    app.add_exception_handler(DatabaseException, custom_database_exception_handler)
+    app.add_exception_handler(EmailServiceException, email_service_exception_handler)
+    app.add_exception_handler(
+        ExternalServiceException, external_service_exception_handler
+    )
+    app.add_exception_handler(Exception, global_exception_handler)
 
-        def translate_message(msg: str) -> str:
-            """Traduce mensajes comunes de Pydantic al español."""
-            # Limpiar prefijos técnicos
-            msg = msg.replace("Value error, ", "").replace("value_error, ", "")
-            # Buscar traducción exacta
-            if msg in translations:
-                return translations[msg]
-            # Buscar traducciones parciales
-            for eng, esp in translations.items():
-                if eng.lower() in msg.lower():
-                    return esp
-            return msg
 
-        error_map: dict[str, list[str]] = {}
-        first_user_message = None  # Para guardar el primer mensaje legible
-
-        for error in exc.errors():
-            # loc típico: ('body', 'field') o ('query', 'page')
-            loc = error.get("loc") or ()
-            msg = error.get("msg") or "Valor inválido"
-            translated_msg = translate_message(str(msg))
-
-            # Si loc está vacío (model_validator), usar el mensaje como principal
-            if not loc or (len(loc) == 1 and loc[0] == "body"):
-                if not first_user_message:
-                    first_user_message = translated_msg
-                field = "__root__"
-            else:
-                # Filtrar 'body' del path
-                field_parts = [str(x) for x in loc if x != "body"]
-                field = ".".join(field_parts) if field_parts else "__root__"
-
-            error_map.setdefault(field, []).append(translated_msg)
-
-        # Si hay un mensaje de error a nivel de modelo, usarlo como mensaje principal
-        main_message = (
-            first_user_message or "Error de validación. Revisa los campos enviados."
-        )
-
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "status": "error",
-                "message": main_message,
-                "data": None,
-                "errors": error_map,
-            },
-        )
-
-    # Manejo de excepciones de aplicación (AppException y subclases)
-    @app.exception_handler(AppException)
-    async def app_exception_handler(request: Request, exc: AppException):
-        # Para ValidationException (422), incluir el mensaje en errors para el frontend
-        errors = None
-        if exc.status_code == 422:
-            errors = {"__root__": [exc.message]}
-
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "status": "error",
-                "message": exc.message,
-                "data": None,
-                "errors": errors,
-            },
-        )
-
-    @app.exception_handler(StarletteHTTPException)
-    async def http_exception_handler_wrapped(
-        request: Request, exc: StarletteHTTPException
-    ):
-        # Preserva comportamiento estándar para endpoints que no usan ResponseSchema,
-        # pero envuelve el payload cuando sea posible para que el frontend tenga mssg.
-        if isinstance(exc.detail, (dict, list)):
-            # Si ya es un objeto estructurado, dejamos que FastAPI lo renderice.
-            return await http_exception_handler(request, exc)
-
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "status": "error",
-                "message": str(exc.detail) if exc.detail else "Error",
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    # Manejador para errores de base de datos (conexión, timeouts, etc.)
-    @app.exception_handler(OperationalError)
-    async def database_operational_error_handler(
-        request: Request, exc: OperationalError
-    ):
-        logger.error(f"Database operational error: {exc}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": (
-                    "Estamos teniendo problemas con el servicio. "
-                    "Por favor, intente nuevamente más tarde."
-                ),
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    @app.exception_handler(InterfaceError)
-    async def database_interface_error_handler(request: Request, exc: InterfaceError):
-        logger.error(f"Database interface error: {exc}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": (
-                    "Estamos teniendo problemas con el servicio. "
-                    "Por favor, intente nuevamente más tarde."
-                ),
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    @app.exception_handler(DatabaseError)
-    async def database_error_handler(request: Request, exc: DatabaseError):
-        logger.error(f"Database error: {exc}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": (
-                    "Estamos teniendo problemas con el servicio. "
-                    "Por favor, intente nuevamente más tarde."
-                ),
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    @app.exception_handler(DatabaseException)
-    async def custom_database_exception_handler(
-        request: Request, exc: DatabaseException
-    ):
-        logger.error(f"Custom database exception: {exc.message}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": (
-                    "Estamos teniendo problemas con el servicio. "
-                    "Por favor, intente nuevamente más tarde."
-                ),
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    # Manejador para errores del servicio de correo (SMTP)
-    @app.exception_handler(EmailServiceException)
-    async def email_service_exception_handler(
-        request: Request, exc: EmailServiceException
-    ):
-        logger.error(f"Email service exception: {exc.message}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": exc.message,
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    # Manejador para errores de servicios externos (MS de usuarios, etc.)
-    @app.exception_handler(ExternalServiceException)
-    async def external_service_exception_handler(
-        request: Request, exc: ExternalServiceException
-    ):
-        logger.error(f"External service exception: {exc.message}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": exc.message,
-                "data": None,
-                "errors": None,
-            },
-        )
-
-    # Manejador global para excepciones no capturadas (catch-all)
-    @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception):
-        logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "status": "error",
-                "message": (
-                    "Ha ocurrido un error inesperado."
-                    "Por favor, intente nuevamente más tarde."
-                ),
-                "data": None,
-                "errors": None,
-            },
-        )
-
+def _register_routers(app: FastAPI) -> None:
+    """Registra todos los routers de la API."""
     API_PREFIX = "/api/v1"
     app.include_router(athlete_router, prefix=API_PREFIX)
     app.include_router(user_router, prefix=API_PREFIX)
@@ -376,23 +143,20 @@ def create_application() -> FastAPI:
     app.include_router(representative_router, prefix=API_PREFIX)
     app.include_router(report_router, prefix=API_PREFIX)
 
+
+def _register_health_endpoints(app: FastAPI) -> None:
+    """Registra los endpoints de salud y utilidad."""
+    from sqlalchemy import text
+
+    from app.core.database import SessionLocal
+
     @app.get("/", include_in_schema=False)
     async def root():
         return RedirectResponse(url="/scalar")
 
     @app.get("/health", tags=["Health"], response_model=ResponseSchema)
     async def health_check():
-        """
-        Verifica el estado de salud de la API y sus dependencias.
-
-        Realiza verificaciones de:
-        - Conexión a la base de datos
-        - Estado general de la aplicación
-        """
-        from sqlalchemy import text
-
-        from app.core.database import SessionLocal
-
+        """Verifica el estado de salud de la API y sus dependencias."""
         health_status = {
             "app_name": settings.APP_NAME,
             "version": settings.APP_VERSION,
@@ -400,7 +164,6 @@ def create_application() -> FastAPI:
             "database": "unknown",
         }
 
-        # Verificar conexión a la base de datos
         try:
             db = SessionLocal()
             try:
@@ -415,10 +178,7 @@ def create_application() -> FastAPI:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 content={
                     "status": "error",
-                    "message": (
-                        "Estamos teniendo problemas con el servicio. "
-                        "Por favor, intente nuevamente más tarde."
-                    ),
+                    "message": SERVICE_PROBLEMS_MSG,
                     "data": health_status,
                     "errors": None,
                 },
@@ -432,22 +192,12 @@ def create_application() -> FastAPI:
 
     @app.get("/health/live", tags=["Health"])
     async def liveness_check():
-        """
-        Verificación de vida simple (para kubernetes/docker).
-        Solo verifica que la aplicación está corriendo.
-        """
+        """Verificación de vida simple (para kubernetes/docker)."""
         return {"status": "alive"}
 
     @app.get("/health/ready", tags=["Health"])
     async def readiness_check():
-        """
-        Verificación de preparación (para kubernetes/docker).
-        Verifica que la aplicación está lista para recibir tráfico.
-        """
-        from sqlalchemy import text
-
-        from app.core.database import SessionLocal
-
+        """Verificación de preparación (para kubernetes/docker)."""
         try:
             db = SessionLocal()
             try:
@@ -477,6 +227,30 @@ def create_application() -> FastAPI:
                 },
             },
         )
+
+
+def create_application() -> FastAPI:
+    """Factory para crear la aplicación."""
+    openapi_config = get_openapi_config()
+
+    app = FastAPI(
+        title=openapi_config["title"],
+        version=openapi_config["version"],
+        description=openapi_config["description"],
+        contact=openapi_config["contact"],
+        license_info=openapi_config["license_info"],
+        openapi_tags=get_tags_metadata(),
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        lifespan=lifespan,
+    )
+
+    _configure_middlewares(app)
+    setup_scalar_docs(app)
+    _register_exception_handlers(app)
+    _register_routers(app)
+    _register_health_endpoints(app)
 
     return app
 

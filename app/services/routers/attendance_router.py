@@ -15,6 +15,7 @@ from app.schemas.attendance_schema import (
     AttendanceFilter,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
+from app.services.routers.constants import unexpected_error_message
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -69,7 +70,7 @@ def create_bulk_attendance(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -112,7 +113,7 @@ def get_attendance_dates(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -166,7 +167,7 @@ def get_attendances_by_date(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -212,7 +213,7 @@ def get_attendance_summary(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
