@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.base_schema import BaseResponseSchema
 from app.schemas.test_base_schema import CreateTestBaseSchema
@@ -12,15 +12,29 @@ from app.schemas.test_base_schema import CreateTestBaseSchema
 class CreateSprintTestSchema(CreateTestBaseSchema):
     """Schema para crear un Sprint Test (velocidad)."""
 
-    distance_meters: float = Field(
-        ..., gt=0, le=1000, description="Distancia en metros (máx 1000m)"
-    )
-    time_0_10_s: float = Field(
-        ..., gt=0, le=60, description="Tiempo 0-10 metros (máx 60s)"
-    )
-    time_0_30_s: float = Field(
-        ..., gt=0, le=60, description="Tiempo 0-30 metros (máx 60s)"
-    )
+    distance_meters: float = Field(..., description="Distancia en metros (máx 1000m)")
+    time_0_10_s: float = Field(..., description="Tiempo 0-10 metros (máx 60s)")
+    time_0_30_s: float = Field(..., description="Tiempo 0-30 metros (máx 60s)")
+
+    @field_validator("distance_meters")
+    @classmethod
+    def validate_distance(cls, v: float) -> float:
+        """Validar distancia en rango válido."""
+        if v <= 0:
+            raise ValueError("La distancia debe ser mayor a 0 metros")
+        if v > 1000:
+            raise ValueError("La distancia debe ser menor o igual a 1000 metros")
+        return v
+
+    @field_validator("time_0_10_s", "time_0_30_s")
+    @classmethod
+    def validate_time(cls, v: float) -> float:
+        """Validar tiempo en rango válido."""
+        if v <= 0:
+            raise ValueError("El tiempo debe ser mayor a 0 segundos")
+        if v > 60:
+            raise ValueError("El tiempo debe ser menor o igual a 60 segundos")
+        return v
 
     @model_validator(mode="after")
     def validate_sprint_times(self):
