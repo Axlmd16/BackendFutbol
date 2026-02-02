@@ -61,7 +61,7 @@ class UserController:
         first_name = payload.first_name.strip()
         last_name = payload.last_name.strip()
         email = payload.email.strip().lower()
-        
+
         # Solo validar como cédula ecuatoriana si el tipo es CEDULA
         if payload.type_identification == "CEDULA":
             dni = validate_ec_dni(payload.dni)

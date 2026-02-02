@@ -236,7 +236,7 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
         """Valida el DNI según el tipo de identificación."""
         dni = self.dni
         type_id = getattr(self, "type_identification", "CEDULA")
-        
+
         if type_id == "PASSPORT":
             # Pasaporte: alfanumérico, 6-15 caracteres
             cleaned = re.sub(r"[^A-Za-z0-9]", "", dni)
@@ -264,7 +264,7 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
             if not ((1 <= province <= 24) or province == 30):
                 raise ValueError("La cédula tiene un código de provincia inválido")
             object.__setattr__(self, "dni", digits)
-        
+
         return self
 
     @field_validator("password", mode="before")
