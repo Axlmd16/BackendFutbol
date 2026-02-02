@@ -1,6 +1,6 @@
 """Schema base para todos los tipos de tests."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -20,7 +20,13 @@ class CreateTestBaseSchema(BaseModel):
     @classmethod
     def validate_date_not_future(cls, v: datetime) -> datetime:
         """Validar que la fecha del test no sea futura."""
-        if v > datetime.now():
+        if v.tzinfo is None:
+            now = datetime.now()
+        else:
+            now = datetime.now(timezone.utc)
+            v = v.astimezone(timezone.utc)
+
+        if v > now:
             raise ValueError(
                 "La fecha del test no puede ser futura. "
                 f"Fecha ingresada: {v.strftime('%Y-%m-%d %H:%M')}"
