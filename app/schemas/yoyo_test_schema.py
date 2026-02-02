@@ -13,10 +13,28 @@ class CreateYoyoTestSchema(CreateTestBaseSchema):
     """Schema para crear un Yoyo Test (resistencia aerobia)."""
 
     shuttle_count: int = Field(
-        ..., gt=0, le=1000, description="Número de shuttles completados (máx 1000)"
-    )
+        ..., description="Número de shuttles completados (máx 1000)"
+    )  # noqa: E501
     final_level: str = Field(..., description="Nivel final alcanzado (ej: 16.3, 18.2)")
-    failures: int = Field(..., ge=0, description="Número de fallos")
+    failures: int = Field(..., description="Número de fallos")
+
+    @field_validator("shuttle_count")
+    @classmethod
+    def validate_shuttle_count(cls, v: int) -> int:
+        """Validar número de shuttles en rango válido."""
+        if v <= 0:
+            raise ValueError("El número de shuttles debe ser mayor a 0")
+        if v > 1000:
+            raise ValueError("El número de shuttles debe ser menor o igual a 1000")
+        return v
+
+    @field_validator("failures")
+    @classmethod
+    def validate_failures(cls, v: int) -> int:
+        """Validar número de fallos no negativo."""
+        if v < 0:
+            raise ValueError("El número de fallos no puede ser negativo")
+        return v
 
     @field_validator("final_level")
     @classmethod

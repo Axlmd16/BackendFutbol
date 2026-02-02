@@ -446,7 +446,7 @@ def test_yoyo_test_shuttle_count_limit():
             failures=2,
         )
 
-    assert "less than or equal to 1000" in str(exc_info.value)
+    assert "menor o igual a 1000" in str(exc_info.value)
 
 
 def test_yoyo_test_valid_edge_cases():

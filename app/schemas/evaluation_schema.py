@@ -31,7 +31,7 @@ from app.schemas.yoyo_test_schema import (
 class CreateEvaluationSchema(BaseModel):
     """Schema para crear una nueva evaluación."""
 
-    name: str = Field(..., max_length=30, description="Nombre de la evaluación")
+    name: str = Field(..., description="Nombre de la evaluación")
     date: datetime = Field(..., description="Fecha y hora de la evaluación")
     time: str = Field(..., max_length=10, description="Hora en formato HH:MM")
     location: Optional[str] = Field(
@@ -43,10 +43,14 @@ class CreateEvaluationSchema(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Valida longitud mínima del nombre."""
+        """Valida longitud mínima y máxima del nombre."""
         if not v or len(v.strip()) < 3:
             raise ValueError(
                 "El nombre de la evaluación debe tener al menos 3 caracteres"
+            )
+        if len(v.strip()) > 30:
+            raise ValueError(
+                "El nombre de la evaluación no puede exceder 30 caracteres"
             )
         return v
 
@@ -65,7 +69,7 @@ class CreateEvaluationSchema(BaseModel):
 class UpdateEvaluationSchema(BaseModel):
     """Schema para actualizar una evaluación existente."""
 
-    name: Optional[str] = Field(None, max_length=30)
+    name: Optional[str] = Field(None)
     date: Optional[datetime] = None
     time: Optional[str] = Field(
         None, max_length=10, description="Hora en formato HH:MM"
@@ -76,12 +80,16 @@ class UpdateEvaluationSchema(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: Optional[str]) -> Optional[str]:
-        """Valida longitud mínima del nombre si se proporciona."""
+        """Valida longitud mínima y máxima del nombre si se proporciona."""
         if v is None:
             return v
         if len(v.strip()) < 3:
             raise ValueError(
                 "El nombre de la evaluación debe tener al menos 3 caracteres"
+            )
+        if len(v.strip()) > 30:
+            raise ValueError(
+                "El nombre de la evaluación no puede exceder 30 caracteres"
             )
         return v
 
