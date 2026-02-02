@@ -408,7 +408,7 @@ def test_sprint_test_distance_limit_exceeded():
             time_0_30_s=3.95,
         )
 
-    assert "less than or equal to 1000" in str(exc_info.value)
+    assert "menor o igual a 1000" in str(exc_info.value)
 
 
 def test_sprint_test_time_limit_exceeded():
@@ -423,4 +423,4 @@ def test_sprint_test_time_limit_exceeded():
             time_0_30_s=65.0,
         )
 
-    assert "less than or equal to 60" in str(exc_info.value)
+    assert "menor o igual a 60" in str(exc_info.value)

@@ -12,7 +12,9 @@ from app.schemas.test_base_schema import CreateTestBaseSchema
 class CreateYoyoTestSchema(CreateTestBaseSchema):
     """Schema para crear un Yoyo Test (resistencia aerobia)."""
 
-    shuttle_count: int = Field(..., description="Número de shuttles completados (máx 1000)")
+    shuttle_count: int = Field(
+        ..., description="Número de shuttles completados (máx 1000)"
+    )  # noqa: E501
     final_level: str = Field(..., description="Nivel final alcanzado (ej: 16.3, 18.2)")
     failures: int = Field(..., description="Número de fallos")
 

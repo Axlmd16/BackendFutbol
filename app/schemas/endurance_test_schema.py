@@ -22,7 +22,9 @@ class CreateEnduranceTestSchema(CreateTestBaseSchema):
         if v <= 0:
             raise ValueError("La duración debe ser mayor a 0 minutos")
         if v > 180:
-            raise ValueError("La duración debe ser menor o igual a 180 minutos (3 horas)")
+            raise ValueError(
+                "La duración debe ser menor o igual a 180 minutos (3 horas)"
+            )
         return v
 
     @field_validator("total_distance_m")
@@ -32,22 +34,24 @@ class CreateEnduranceTestSchema(CreateTestBaseSchema):
         if v <= 0:
             raise ValueError("La distancia debe ser mayor a 0 metros")
         if v > 50000:
-            raise ValueError("La distancia debe ser menor o igual a 50000 metros (50 km)")
+            raise ValueError(
+                "La distancia debe ser menor o igual a 50000 metros (50 km)"
+            )
         return v
 
     @model_validator(mode="after")
     def validate_pace_realistic(self):
         """Validar que el ritmo sea físicamente posible (no más de 800m/min)."""
         pace_m_per_min = self.total_distance_m / self.min_duration
-        
-        # Ritmo máximo humano sostenido: ~800 m/min (récord mundial de maratón ~350 m/min)
+
+        # Ritmo máximo humano sostenido: ~800 m/min (récord mundial de maratón ~350 m/min)  # noqa: E501
         if pace_m_per_min > 800:
             raise ValueError(
-                f"El ritmo calculado ({pace_m_per_min:.1f} m/min) es físicamente imposible. "
+                f"El ritmo calculado ({pace_m_per_min:.1f} m/min) es físicamente imposible. "  # noqa: E501
                 f"Verifique que la distancia ({self.total_distance_m:.0f}m) y duración "
                 f"({self.min_duration} min) sean correctas."
             )
-        
+
         # Ritmo mínimo razonable: ~50 m/min (caminata muy lenta)
         if pace_m_per_min < 50:
             raise ValueError(
@@ -55,7 +59,7 @@ class CreateEnduranceTestSchema(CreateTestBaseSchema):
                 f"Verifique que la distancia ({self.total_distance_m:.0f}m) y duración "
                 f"({self.min_duration} min) sean correctas."
             )
-        
+
         return self
 
 
