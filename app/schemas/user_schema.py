@@ -3,7 +3,14 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.models.enums.rol import Role
 
@@ -11,7 +18,7 @@ from app.models.enums.rol import Role
 PHONE_REGEX = re.compile(r"^(\+593|0)?[2-9]\d{7,8}$")
 EMAIL_REGEX = re.compile(
     r"^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,62}[a-zA-Z0-9])?@"
-    r"[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.[a-zA-Z]{2,}$"
+    r"[a-zA-Z0-9]([a-zA-Z0-9.-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$"
 )
 MAX_DIRECTION_LENGTH = 500
 MAX_EMAIL_LENGTH = 254
@@ -218,19 +225,47 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
 
     @field_validator("dni", mode="before")
     @classmethod
-    def _validate_dni(cls, value: Any) -> str:
+    def _clean_dni(cls, value: Any) -> str:
+        """Limpia el DNI, la validación completa se hace en model_validator."""
         if value is None:
-            raise ValueError("El DNI es requerido")
-        v = str(value).strip()
-        # Limpiar caracteres no numéricos
-        digits = re.sub(r"\D", "", v)
-        if len(digits) != 10:
-            raise ValueError("El DNI debe tener exactamente 10 dígitos numéricos")
-        # Validación básica de provincia (la validación completa se hace en security.py)
-        province = int(digits[:2])
-        if not ((1 <= province <= 24) or province == 30):
-            raise ValueError("El DNI tiene un código de provincia inválido")
-        return digits
+            raise ValueError("El número de identificación es requerido")
+        return str(value).strip()
+
+    @model_validator(mode="after")
+    def _validate_dni_by_type(self) -> "AdminCreateUserRequest":
+        """Valida el DNI según el tipo de identificación."""
+        dni = self.dni
+        type_id = getattr(self, "type_identification", "CEDULA")
+        
+        if type_id == "PASSPORT":
+            # Pasaporte: alfanumérico, 6-15 caracteres
+            cleaned = re.sub(r"[^A-Za-z0-9]", "", dni)
+            if len(cleaned) < 6 or len(cleaned) > 15:
+                raise ValueError(
+                    "El pasaporte debe tener entre 6 y 15 caracteres alfanuméricos"
+                )
+            # Usar object.__setattr__ para evitar recursión
+            object.__setattr__(self, "dni", cleaned.upper())
+        elif type_id == "RUC":
+            # RUC: exactamente 13 dígitos numéricos
+            digits = re.sub(r"\D", "", dni)
+            if len(digits) != 13:
+                raise ValueError("El RUC debe tener exactamente 13 dígitos numéricos")
+            object.__setattr__(self, "dni", digits)
+        else:
+            # CEDULA: exactamente 10 dígitos numéricos
+            digits = re.sub(r"\D", "", dni)
+            if len(digits) != 10:
+                raise ValueError(
+                    "La cédula debe tener exactamente 10 dígitos numéricos"
+                )
+            # Validación básica de provincia
+            province = int(digits[:2])
+            if not ((1 <= province <= 24) or province == 30):
+                raise ValueError("La cédula tiene un código de provincia inválido")
+            object.__setattr__(self, "dni", digits)
+        
+        return self
 
     @field_validator("password", mode="before")
     @classmethod
@@ -288,7 +323,7 @@ class AdminUpdateUserRequest(PersonBase):
 class CreatePersonInMSRequest(PersonBase):
     """DTO para microservicio de usuarios."""
 
-    dni: str = Field(..., min_length=10, max_length=10)
+    dni: str = Field(..., min_length=6, max_length=15)
 
 
 class CreateLocalUserAccountRequest(AccountBase):
@@ -296,7 +331,7 @@ class CreateLocalUserAccountRequest(AccountBase):
 
     full_name: str = Field(..., min_length=2, max_length=200)
     external: str = Field(..., min_length=30, max_length=36)  # UUID tiene máx 36 chars
-    dni: str = Field(..., min_length=10, max_length=10)
+    dni: str = Field(..., min_length=6, max_length=15)
     password: str = Field(..., min_length=8, max_length=64)
 
 

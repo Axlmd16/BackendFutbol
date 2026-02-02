@@ -66,13 +66,15 @@ async def admin_create_user(
             data=result.model_dump(),
         )
     except AppException as exc:
+        # Incluir el mensaje de error en errors para que el frontend lo muestre
+        errors = {"__root__": [exc.message]} if exc.status_code == 422 else None
         return JSONResponse(
             status_code=exc.status_code,
             content=ResponseSchema(
                 status="error",
                 message=exc.message,
                 data=None,
-                errors=None,
+                errors=errors,
             ).model_dump(),
         )
     except Exception as exc:  # pragma: no cover - se devuelve 500 genérico

@@ -158,6 +158,8 @@ def create_application() -> FastAPI:
 
         def translate_message(msg: str) -> str:
             """Traduce mensajes comunes de Pydantic al español."""
+            # Limpiar prefijos técnicos
+            msg = msg.replace("Value error, ", "").replace("value_error, ", "")
             # Buscar traducción exacta
             if msg in translations:
                 return translations[msg]
@@ -168,19 +170,36 @@ def create_application() -> FastAPI:
             return msg
 
         error_map: dict[str, list[str]] = {}
+        first_user_message = None  # Para guardar el primer mensaje legible
+
         for error in exc.errors():
             # loc típico: ('body', 'field') o ('query', 'page')
             loc = error.get("loc") or ()
-            field = ".".join(str(x) for x in loc) if loc else "__root__"
             msg = error.get("msg") or "Valor inválido"
             translated_msg = translate_message(str(msg))
+
+            # Si loc está vacío (model_validator), usar el mensaje como principal
+            if not loc or (len(loc) == 1 and loc[0] == "body"):
+                if not first_user_message:
+                    first_user_message = translated_msg
+                field = "__root__"
+            else:
+                # Filtrar 'body' del path
+                field_parts = [str(x) for x in loc if x != "body"]
+                field = ".".join(field_parts) if field_parts else "__root__"
+
             error_map.setdefault(field, []).append(translated_msg)
+
+        # Si hay un mensaje de error a nivel de modelo, usarlo como mensaje principal
+        main_message = (
+            first_user_message or "Error de validación. Revisa los campos enviados."
+        )
 
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "status": "error",
-                "message": "Error de validación. Revisa los campos enviados.",
+                "message": main_message,
                 "data": None,
                 "errors": error_map,
             },
@@ -189,13 +208,18 @@ def create_application() -> FastAPI:
     # Manejo de excepciones de aplicación (AppException y subclases)
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException):
+        # Para ValidationException (422), incluir el mensaje en errors para el frontend
+        errors = None
+        if exc.status_code == 422:
+            errors = {"__root__": [exc.message]}
+
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "status": "error",
                 "message": exc.message,
                 "data": None,
-                "errors": None,
+                "errors": errors,
             },
         )
 

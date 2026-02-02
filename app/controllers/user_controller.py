@@ -61,7 +61,13 @@ class UserController:
         first_name = payload.first_name.strip()
         last_name = payload.last_name.strip()
         email = payload.email.strip().lower()
-        dni = validate_ec_dni(payload.dni)
+        
+        # Solo validar como cédula ecuatoriana si el tipo es CEDULA
+        if payload.type_identification == "CEDULA":
+            dni = validate_ec_dni(payload.dni)
+        else:
+            # Para PASSPORT y RUC, el schema ya validó el formato
+            dni = payload.dni
 
         # Validar unicidad en el club
         self._validate_user_uniqueness(db, dni=dni, email=email)

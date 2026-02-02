@@ -16,7 +16,8 @@ class Athlete(BaseModel):
     external_person_id = Column(String(36), unique=True, index=True, nullable=False)
 
     full_name = Column(String(200), nullable=False)
-    dni = Column(String(10), unique=True, index=True, nullable=False)
+    # 20 caracteres para soportar: Cédula (10), RUC (13), Pasaporte (hasta 15)
+    dni = Column(String(20), unique=True, index=True, nullable=False)
 
     # Datos específicos del atleta
     type_athlete = Column(String(50), nullable=False)
