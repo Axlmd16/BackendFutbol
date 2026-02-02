@@ -6,7 +6,7 @@ import enum
 from datetime import date
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.enums.sex import Sex
 from app.schemas.base_schema import BaseSchema
@@ -28,7 +28,7 @@ class AthleteInscriptionDTO(PersonBase):
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 dÃ­gitos)")
+    dni: str = Field(..., min_length=10, max_length=10, description="DNI (10 di­gitos)")
 
     # Datos especÃ­ficos del atleta
     birth_date: Optional[date] = Field(
@@ -37,10 +37,11 @@ class AthleteInscriptionDTO(PersonBase):
         examples=["2000-01-31"],
     )
     sex: SexInput = Field(default=SexInput.MALE, description="Sexo")
-    weight: Optional[float] = Field(default=None, ge=0)
+    weight: Optional[float] = Field(default=None, ge=0, le=300)
     height: Optional[float] = Field(
         default=None,
-        ge=0,
+        ge=0.5,
+        le=2.5,  # Máximo 2.50 metros
         description="Altura en metros (no puede ser negativa)",
     )
 
@@ -130,6 +131,19 @@ class AthleteFilter(BaseModel):
     is_active: Optional[bool] = Field(
         default=None, description="Filtrar por estado activo (None = todos)"
     )
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+    @model_validator(mode="after")
+    def _validate_date_range(self) -> "AthleteFilter":
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                # Esto es lo que genera el error 422 para el usuario
+                raise ValueError(
+                    "Rango de fechas inválido: la fecha de inicio es "
+                    "posterior a la de fin"
+                )
+        return self
 
     @property
     def skip(self) -> int:
@@ -154,7 +168,7 @@ class AthleteCreateDB(BaseModel):
 class StatisticCreateDB(BaseModel):
     """Schema interno: payload listo para StatisticDAO.create()."""
 
-    athlete_id: int
+    athlete_id: int = Field(..., gt=0, description="ID del atleta (debe ser positivo)")
     matches_played: int = 0
     goals: int = 0
     assists: int = 0
