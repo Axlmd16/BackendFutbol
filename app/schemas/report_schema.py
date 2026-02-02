@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.athlete_schema import SexInput
 from app.schemas.base_schema import BaseSchema
+from app.schemas.constants import DATE_FORMAT_DESCRIPTION
 from app.schemas.user_schema import TypeStament
 
 
@@ -34,8 +35,12 @@ class ReportFilter(BaseModel):
     )
 
     # Filtros temporales
-    start_date: Optional[date] = Field(None, description="Fecha inicio (YYYY-MM-DD)")
-    end_date: Optional[date] = Field(None, description="Fecha fin (YYYY-MM-DD)")
+    start_date: Optional[date] = Field(
+        None, description=f"Fecha inicio ({DATE_FORMAT_DESCRIPTION})"
+    )
+    end_date: Optional[date] = Field(
+        None, description=f"Fecha fin ({DATE_FORMAT_DESCRIPTION})"
+    )
 
     # Filtros de atletas
     athlete_id: Optional[int] = Field(

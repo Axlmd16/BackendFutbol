@@ -1,12 +1,16 @@
 """Esquemas para Evaluations."""
 
-import re
 from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.base_schema import BaseResponseSchema
+from app.schemas.constants import (
+    DATE_FORMAT_DESCRIPTION,
+    TIME_FORMAT_DESCRIPTION,
+    TIME_PATTERN_STRICT,
+)
 from app.schemas.endurance_test_schema import (
     CreateEnduranceTestSchema,
     EnduranceTestResponseSchema,
@@ -58,8 +62,8 @@ class CreateEvaluationSchema(BaseModel):
     @classmethod
     def validate_time(cls, v: str) -> str:
         """Valida formato y rango de hora HH:MM (00-23 / 00-59)."""
-        if not re.match(r"^\d{2}:\d{2}$", v or ""):
-            raise ValueError("La hora debe estar en formato HH:MM")
+        if not TIME_PATTERN_STRICT.match(v or ""):
+            raise ValueError(f"La hora debe estar en formato {TIME_FORMAT_DESCRIPTION}")
         hour, minute = map(int, v.split(":"))
         if hour not in range(24) or minute not in range(60):
             raise ValueError("La hora de evaluación es inválida")
@@ -99,8 +103,8 @@ class UpdateEvaluationSchema(BaseModel):
         """Valida formato y rango de hora HH:MM (00-23 / 00-59) si se proporciona."""
         if v is None:
             return v
-        if not re.match(r"^\d{2}:\d{2}$", v or ""):
-            raise ValueError("La hora debe estar en formato HH:MM")
+        if not TIME_PATTERN_STRICT.match(v or ""):
+            raise ValueError(f"La hora debe estar en formato {TIME_FORMAT_DESCRIPTION}")
         hour, minute = map(int, v.split(":"))
         if hour not in range(24) or minute not in range(60):
             raise ValueError("La hora de evaluación es inválida")
@@ -125,7 +129,9 @@ class EvaluationFilter(BaseModel):
     limit: int = Field(10, ge=1, le=100, description="Registros por página")
     search: Optional[str] = Field(None, description="Buscar por nombre")
     user_id: Optional[int] = Field(None, gt=0, description="Filtrar por usuario")
-    date: Optional[str] = Field(None, description="Filtrar por fecha (YYYY-MM-DD)")
+    date: Optional[str] = Field(
+        None, description=f"Filtrar por fecha ({DATE_FORMAT_DESCRIPTION})"
+    )
     location: Optional[str] = Field(None, description="Filtrar por ubicación")
 
     @property

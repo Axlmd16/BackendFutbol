@@ -19,6 +19,7 @@ from app.schemas.representative_schema import (
     RepresentativeUpdateDTO,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
+from app.services.routers.constants import unexpected_error_message
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account, get_current_admin
 
@@ -77,7 +78,7 @@ def get_representative_by_dni(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -125,7 +126,7 @@ async def create_representative(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -169,7 +170,7 @@ def get_all_representatives(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -213,7 +214,7 @@ async def get_representative_by_id(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -258,7 +259,7 @@ async def update_representative(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -302,7 +303,7 @@ def deactivate_representative(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -346,7 +347,7 @@ def activate_representative(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
