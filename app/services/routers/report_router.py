@@ -16,6 +16,34 @@ from app.utils.security import get_current_account
 router = APIRouter(prefix="/reports", tags=["Reports"])
 report_controller = ReportController()
 
+# Constante para content types
+CONTENT_TYPES = {
+    "pdf": "application/pdf",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "csv": "text/csv",
+}
+
+
+def validate_report_permissions(
+    current_user: Annotated[Account, Depends(get_current_account)],
+) -> Account:
+    """Valida que el usuario tenga permisos para generar reportes.
+
+    Args:
+        current_user: Cuenta del usuario actual
+
+    Returns:
+        Account: La cuenta del usuario si tiene permisos
+
+    Raises:
+        ValidationException: Si el usuario no tiene permisos
+    """
+    user_role = current_user.user.role
+    role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
+    if role_value not in ["Administrator", "Coach"]:
+        raise ValidationException("No tiene permisos para generar reportes")
+    return current_user
+
 
 @router.post(
     "/attendance",
@@ -31,7 +59,7 @@ report_controller = ReportController()
 def generate_attendance_report(
     filters: ReportFilter,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Account, Depends(get_current_account)],
+    current_user: Annotated[Account, Depends(validate_report_permissions)],
 ):
     """
     Genera reporte de asistencia.
@@ -43,12 +71,6 @@ def generate_attendance_report(
     - **sex**: Filtro por sexo
     """
     try:
-        # Validar permisos
-        user_role = current_user.user.role
-        role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
-        if role_value not in ["Administrator", "Coach"]:
-            raise ValidationException("No tiene permisos para generar reportes")
-
         # Forzar tipo de reporte
         filters.report_type = ReportType.ATTENDANCE
 
@@ -60,12 +82,7 @@ def generate_attendance_report(
         )
 
         # Determinar content type
-        content_types = {
-            "pdf": "application/pdf",
-            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "csv": "text/csv",
-        }
-        content_type = content_types.get(filters.format, "application/octet-stream")
+        content_type = CONTENT_TYPES.get(filters.format, "application/octet-stream")
 
         # Nombre del archivo
         file_name = f"reporte_asistencia.{filters.format}"
@@ -97,7 +114,7 @@ def generate_attendance_report(
 def generate_tests_report(
     filters: ReportFilter,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Account, Depends(get_current_account)],
+    current_user: Annotated[Account, Depends(validate_report_permissions)],
 ):
     """
     Genera reporte de evaluaciones y tests.
@@ -108,12 +125,6 @@ def generate_tests_report(
     - **athlete_type**: Filtro por tipo de deportista
     """
     try:
-        # Validar permisos
-        user_role = current_user.user.role
-        role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
-        if role_value not in ["Administrator", "Coach"]:
-            raise ValidationException("No tiene permisos para generar reportes")
-
         # Forzar tipo de reporte
         filters.report_type = ReportType.TESTS
 
@@ -125,12 +136,7 @@ def generate_tests_report(
         )
 
         # Content type
-        content_types = {
-            "pdf": "application/pdf",
-            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "csv": "text/csv",
-        }
-        content_type = content_types.get(filters.format, "application/octet-stream")
+        content_type = CONTENT_TYPES.get(filters.format, "application/octet-stream")
 
         # Nombre del archivo
         file_name = f"reporte_tests.{filters.format}"
@@ -162,7 +168,7 @@ def generate_tests_report(
 def generate_statistics_report(
     filters: ReportFilter,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[Account, Depends(get_current_account)],
+    current_user: Annotated[Account, Depends(validate_report_permissions)],
 ):
     """
     Genera reporte de estadísticas generales.
@@ -172,12 +178,6 @@ def generate_statistics_report(
     - **sex**: Filtro por sexo
     """
     try:
-        # Validar permisos
-        user_role = current_user.user.role
-        role_value = user_role.value if hasattr(user_role, "value") else str(user_role)
-        if role_value not in ["Administrator", "Coach"]:
-            raise ValidationException("No tiene permisos para generar reportes")
-
         # Forzar tipo de reporte
         filters.report_type = ReportType.STATISTICS
 
@@ -189,12 +189,7 @@ def generate_statistics_report(
         )
 
         # Content type
-        content_types = {
-            "pdf": "application/pdf",
-            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "csv": "text/csv",
-        }
-        content_type = content_types.get(filters.format, "application/octet-stream")
+        content_type = CONTENT_TYPES.get(filters.format, "application/octet-stream")
 
         # Nombre del archivo
         file_name = f"reporte_estadisticas.{filters.format}"
