@@ -19,6 +19,7 @@ from app.schemas.athlete_schema import (
     MinorAthleteInscriptionResponseDTO,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
+from app.services.routers.constants import unexpected_error_message
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -63,7 +64,7 @@ async def register_minor_athlete(
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     except Exception as exc:
         raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(exc)}"
+            status_code=500, detail=unexpected_error_message(exc)
         ) from exc
 
 
@@ -93,7 +94,7 @@ async def register_athlete_unl(
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     except Exception as exc:  # pragma: no cover
         raise HTTPException(
-            status_code=500, detail=f"Error inesperado: {str(exc)}"
+            status_code=500, detail=unexpected_error_message(exc)
         ) from exc
 
 
@@ -139,7 +140,7 @@ def get_all_athletes(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -200,7 +201,7 @@ async def get_by_id(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -266,7 +267,7 @@ async def update_athlete(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -311,7 +312,7 @@ def desactivate_athlete(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -357,7 +358,7 @@ def activate_athlete(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),

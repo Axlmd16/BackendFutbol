@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import enum
-import re
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.schemas.base_schema import BaseSchema
+from app.schemas.constants import PHONE_FORMAT_ERROR_EC, PHONE_PATTERN_EC
 from app.schemas.user_schema import PersonBase
 from app.utils.exceptions import ValidationException
 from app.utils.security import validate_ec_dni
@@ -92,8 +92,8 @@ class RepresentativeUpdateDTO(BaseModel):
         if value is None or value == "S/N":
             return value
         v = str(value).strip()
-        if v and not re.match(r"^0[0-9]{9}$", v):
-            raise ValueError("El teléfono debe tener 10 dígitos y comenzar con 0")
+        if v and not PHONE_PATTERN_EC.match(v):
+            raise ValueError(PHONE_FORMAT_ERROR_EC)
         return v
 
 

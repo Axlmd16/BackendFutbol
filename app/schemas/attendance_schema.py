@@ -5,6 +5,14 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.base_schema import BaseSchema
+from app.schemas.constants import (
+    DATE_FORMAT,
+    DATE_FORMAT_DESCRIPTION,
+    DATE_FORMAT_ERROR,
+    TIME_FORMAT_ERROR,
+    TIME_PATTERN,
+    TIME_RANGE_ERROR,
+)
 
 
 class AttendanceItemCreate(BaseModel):
@@ -45,7 +53,7 @@ class AttendanceBulkCreate(BaseModel):
     attendance_date: date = Field(
         ...,
         alias="date",
-        description="Fecha de la asistencia en formato YYYY-MM-DD. "
+        description=f"Fecha de la asistencia en formato {DATE_FORMAT_DESCRIPTION}. "
         "No se permiten fechas futuras.",
     )
     time: str | None = Field(
@@ -78,17 +86,11 @@ class AttendanceBulkCreate(BaseModel):
             parsed_date = value
         elif isinstance(value, str):
             try:
-                parsed_date = datetime.strptime(value, "%Y-%m-%d").date()
+                parsed_date = datetime.strptime(value, DATE_FORMAT).date()
             except ValueError:
-                raise ValueError(
-                    "Formato de fecha inválido. Use el formato YYYY-MM-DD "
-                    "(ejemplo: 2024-01-15)"
-                ) from None
+                raise ValueError(DATE_FORMAT_ERROR) from None
         else:
-            raise ValueError(
-                "Formato de fecha inválido. Use el formato YYYY-MM-DD "
-                "(ejemplo: 2024-01-15)"
-            )
+            raise ValueError(DATE_FORMAT_ERROR)
 
         # Validar que no sea fecha futura
         if parsed_date > date.today():
@@ -106,22 +108,14 @@ class AttendanceBulkCreate(BaseModel):
             return None
 
         if not isinstance(value, str):
-            raise ValueError(
-                "Formato de hora inválido. Use el formato HH:MM (ejemplo: 08:30, 14:00)"
-            )
+            raise ValueError(TIME_FORMAT_ERROR)
 
         value = value.strip()
         if not value:
             return None
 
-        import re
-
-        pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
-        if not re.match(pattern, value):
-            raise ValueError(
-                "Formato de hora inválido. Use el formato HH:MM "
-                "(ejemplo: 08:30, 14:00). La hora debe estar entre 00:00 y 23:59"
-            )
+        if not TIME_PATTERN.match(value):
+            raise ValueError(TIME_RANGE_ERROR)
         return value
 
 
@@ -148,7 +142,7 @@ class AttendanceFilter(BaseModel):
     attendance_date: date = Field(
         ...,
         alias="date",
-        description="Fecha de la asistencia en formato YYYY-MM-DD",
+        description=f"Fecha de la asistencia en formato {DATE_FORMAT_DESCRIPTION}",
     )
     type_athlete: str | None = Field(
         default=None, description="Tipo de atleta para filtrar"
@@ -165,17 +159,11 @@ class AttendanceFilter(BaseModel):
             return value
         elif isinstance(value, str):
             try:
-                return datetime.strptime(value, "%Y-%m-%d").date()
+                return datetime.strptime(value, DATE_FORMAT).date()
             except ValueError:
-                raise ValueError(
-                    "Formato de fecha inválido. Use el formato YYYY-MM-DD "
-                    "(ejemplo: 2024-01-15)"
-                ) from None
+                raise ValueError(DATE_FORMAT_ERROR) from None
         else:
-            raise ValueError(
-                "Formato de fecha inválido. Use el formato YYYY-MM-DD "
-                "(ejemplo: 2024-01-15)"
-            )
+            raise ValueError(DATE_FORMAT_ERROR)
 
     @property
     def skip(self) -> int:

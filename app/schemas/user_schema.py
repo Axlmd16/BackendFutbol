@@ -20,9 +20,81 @@ EMAIL_REGEX = re.compile(
     r"^[a-zA-Z0-9]([a-zA-Z0-9._-]{0,62}[a-zA-Z0-9])?@"
     r"[a-zA-Z0-9]([a-zA-Z0-9.-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$"
 )
+# Patrón para nombres (letras con acentos y espacios)
+NAME_PATTERN = re.compile(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$")
+MAX_NAME_LENGTH = 100
+MIN_NAME_LENGTH = 2
 MAX_DIRECTION_LENGTH = 500
 MAX_EMAIL_LENGTH = 254
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 64
 VALID_TYPE_IDENTIFICATIONS = {"CEDULA", "PASSPORT", "RUC"}
+
+# Patrón para caracteres especiales en contraseñas
+SPECIAL_CHARS_PATTERN = re.compile(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\;'/`~]")
+
+
+def _validate_name_field(value: Any, field_name: str) -> str:
+    """Valida un campo de nombre (first_name o last_name).
+
+    Args:
+        value: Valor a validar.
+        field_name: Nombre del campo para mensajes de error ('nombre' o 'apellido').
+
+    Returns:
+        Valor validado y limpio.
+
+    Raises:
+        ValueError: Si la validación falla.
+    """
+    if value is None:
+        raise ValueError(f"El {field_name} es requerido")
+    v = str(value).strip()
+    if len(v) < MIN_NAME_LENGTH:
+        raise ValueError(
+            f"El {field_name} debe tener al menos {MIN_NAME_LENGTH} caracteres"
+        )
+    if len(v) > MAX_NAME_LENGTH:
+        raise ValueError(
+            f"El {field_name} no puede exceder {MAX_NAME_LENGTH} caracteres"
+        )
+    if not NAME_PATTERN.match(v):
+        raise ValueError(f"El {field_name} solo puede contener letras y espacios")
+    return v
+
+
+def _validate_password_field(value: Any) -> str:
+    """Valida la complejidad de una contraseña.
+
+    Args:
+        value: Valor de la contraseña a validar.
+
+    Returns:
+        Contraseña validada.
+
+    Raises:
+        ValueError: Si la validación falla.
+    """
+    if value is None:
+        raise ValueError("La contraseña es requerida")
+    v = str(value)
+    if len(v) < MIN_PASSWORD_LENGTH:
+        raise ValueError(
+            f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres"
+        )
+    if len(v) > MAX_PASSWORD_LENGTH:
+        raise ValueError(
+            f"La contraseña no puede exceder {MAX_PASSWORD_LENGTH} caracteres"
+        )
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("La contraseña debe contener al menos una mayúscula")
+    if not re.search(r"[a-z]", v):
+        raise ValueError("La contraseña debe contener al menos una minúscula")
+    if not re.search(r"\d", v):
+        raise ValueError("La contraseña debe contener al menos un número")
+    if not SPECIAL_CHARS_PATTERN.search(v):
+        raise ValueError("La contraseña debe contener al menos un carácter especial")
+    return v
 
 
 class TypeStament(str, enum.Enum):
@@ -49,32 +121,12 @@ class PersonBase(BaseModel):
     @field_validator("first_name", mode="before")
     @classmethod
     def _validate_first_name(cls, value: Any) -> str:
-        if value is None:
-            raise ValueError("El nombre es requerido")
-        v = str(value).strip()
-        if len(v) < 2:
-            raise ValueError("El nombre debe tener al menos 2 caracteres")
-        if len(v) > 100:
-            raise ValueError("El nombre no puede exceder 100 caracteres")
-        # Validar que solo contenga letras y espacios
-        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$", v):
-            raise ValueError("El nombre solo puede contener letras y espacios")
-        return v
+        return _validate_name_field(value, "nombre")
 
     @field_validator("last_name", mode="before")
     @classmethod
     def _validate_last_name(cls, value: Any) -> str:
-        if value is None:
-            raise ValueError("El apellido es requerido")
-        v = str(value).strip()
-        if len(v) < 2:
-            raise ValueError("El apellido debe tener al menos 2 caracteres")
-        if len(v) > 100:
-            raise ValueError("El apellido no puede exceder 100 caracteres")
-        # Validar que solo contenga letras y espacios
-        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$", v):
-            raise ValueError("El apellido solo puede contener letras y espacios")
-        return v
+        return _validate_name_field(value, "apellido")
 
     @field_validator("direction", mode="before")
     @classmethod
@@ -270,25 +322,7 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
     @field_validator("password", mode="before")
     @classmethod
     def _validate_password(cls, value: Any) -> str:
-        if value is None:
-            raise ValueError("La contraseña es requerida")
-        v = str(value)
-        if len(v) < 8:
-            raise ValueError("La contraseña debe tener al menos 8 caracteres")
-        if len(v) > 64:
-            raise ValueError("La contraseña no puede exceder 64 caracteres")
-        # Validar complejidad de contraseña
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("La contraseña debe contener al menos una mayúscula")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("La contraseña debe contener al menos una minúscula")
-        if not re.search(r"\d", v):
-            raise ValueError("La contraseña debe contener al menos un número")
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\;'/`~]", v):
-            raise ValueError(
-                "La contraseña debe contener al menos un carácter especial"
-            )
-        return v
+        return _validate_password_field(value)
 
     @field_validator("role", mode="before")
     @classmethod
@@ -400,25 +434,7 @@ class PromoteAthleteRequest(BaseModel):
     @field_validator("password", mode="before")
     @classmethod
     def _validate_password(cls, value: Any) -> str:
-        if value is None:
-            raise ValueError("La contraseña es requerida")
-        v = str(value)
-        if len(v) < 8:
-            raise ValueError("La contraseña debe tener al menos 8 caracteres")
-        if len(v) > 64:
-            raise ValueError("La contraseña no puede exceder 64 caracteres")
-        # Validar complejidad de contraseña
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("La contraseña debe contener al menos una mayúscula")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("La contraseña debe contener al menos una minúscula")
-        if not re.search(r"\d", v):
-            raise ValueError("La contraseña debe contener al menos un número")
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\;'/`~]", v):
-            raise ValueError(
-                "La contraseña debe contener al menos un carácter especial"
-            )
-        return v
+        return _validate_password_field(value)
 
 
 class InternFilter(BaseModel):

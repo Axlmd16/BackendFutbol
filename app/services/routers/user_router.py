@@ -19,6 +19,7 @@ from app.schemas.user_schema import (
     UserFilter,
     UserResponse,
 )
+from app.services.routers.constants import unexpected_error_message
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account, get_current_admin
 
@@ -82,7 +83,7 @@ async def admin_create_user(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(exc)}",
+                message=unexpected_error_message(exc),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -129,7 +130,7 @@ async def admin_update_user(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -179,7 +180,7 @@ def get_all_users(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -233,7 +234,7 @@ async def get_me(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -281,7 +282,7 @@ def get_all_interns(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -334,7 +335,7 @@ async def get_by_id(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -376,7 +377,7 @@ async def desactivate_user(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -418,7 +419,7 @@ async def activate_user(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -470,7 +471,7 @@ async def promote_athlete_to_intern(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(exc)}",
+                message=unexpected_error_message(exc),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -512,7 +513,7 @@ async def deactivate_intern(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),
@@ -554,7 +555,7 @@ async def activate_intern(
             status_code=500,
             content=ResponseSchema(
                 status="error",
-                message=f"Error inesperado: {str(e)}",
+                message=unexpected_error_message(e),
                 data=None,
                 errors=None,
             ).model_dump(),

@@ -4,10 +4,11 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.athlete_schema import SexInput
 from app.schemas.base_schema import BaseSchema
+from app.schemas.constants import DATE_FORMAT_DESCRIPTION
 from app.schemas.user_schema import TypeStament
 
 
@@ -34,13 +35,29 @@ class ReportFilter(BaseModel):
     )
 
     # Filtros temporales
-    start_date: Optional[date] = Field(None, description="Fecha inicio (YYYY-MM-DD)")
-    end_date: Optional[date] = Field(None, description="Fecha fin (YYYY-MM-DD)")
+    start_date: Optional[date] = Field(
+        None, description=f"Fecha inicio ({DATE_FORMAT_DESCRIPTION})"
+    )
+    end_date: Optional[date] = Field(
+        None, description=f"Fecha fin ({DATE_FORMAT_DESCRIPTION})"
+    )
 
     # Filtros de atletas
-    athlete_id: Optional[int] = Field(None, description="ID del deportista específico")
+    athlete_id: Optional[int] = Field(
+        None, gt=0, description="ID del deportista específico"
+    )
     athlete_type: Optional[TypeStament] = Field(None, description="Tipo de deportista")
     sex: Optional[SexInput] = Field(None, description="Sexo")
+
+    @model_validator(mode="after")
+    def validate_date_range(self):
+        """Valida que start_date sea menor o igual a end_date."""
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValueError(
+                    "La fecha de inicio debe ser menor o igual a la fecha de fin"
+                )
+        return self
 
 
 class ReportMetadata(BaseModel):
