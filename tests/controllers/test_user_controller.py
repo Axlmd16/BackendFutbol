@@ -579,7 +579,7 @@ def test_schema_dni_too_short():
             type_stament="DOCENTES",
         )
     error_str = str(exc.value)
-    assert "El DNI debe tener exactamente 10 dígitos" in error_str
+    assert "La cédula debe tener exactamente 10 dígitos" in error_str
 
 
 def test_schema_dni_too_long():
@@ -596,7 +596,7 @@ def test_schema_dni_too_long():
             type_stament="DOCENTES",
         )
     error_str = str(exc.value)
-    assert "El DNI debe tener exactamente 10 dígitos" in error_str
+    assert "La cédula debe tener exactamente 10 dígitos" in error_str
 
 
 def test_schema_password_too_short():

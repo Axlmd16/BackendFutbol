@@ -72,6 +72,19 @@ class PersonClient:
                     except Exception:
                         error_message = resp.text or f"Error {resp.status_code}"
 
+                    # Si el MS devuelve un error genérico, añadir contexto
+                    generic_errors = [
+                        "error de validacion de datos",
+                        "validation error",
+                        "error desconocido",
+                    ]
+                    if error_message.lower().strip(".") in generic_errors:
+                        error_message = (
+                            "El sistema de usuarios institucional rechazó los datos. "
+                            "Esto puede deberse a que el número de identificación "
+                            "no es válido según sus reglas de validación."
+                        )
+
                     raise ValidationException(error_message)
 
                 return resp.json()
