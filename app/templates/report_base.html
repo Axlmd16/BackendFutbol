@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
+    <title>{{ title }} - Sistema Kallpa UNL</title>
     <style>
         @page {
             size: A4;
@@ -181,16 +182,30 @@
     <div style="background-color: #f0fdf4; border-left: 4px solid #4F8E3A; padding: 15px; margin-bottom: 30px; border-radius: 4px;">
         <h3 style="color: #166534; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Información del Deportista</h3>
         <table style="width: 100%; border: none; margin: 0;">
-            <tr style="background-color: transparent;">
-                <td style="border: none; padding: 4px; width: 33%;"><strong>Nombre:</strong> {{ athlete_info.name }}</td>
-                <td style="border: none; padding: 4px; width: 33%;"><strong>DNI:</strong> {{ athlete_info.dni }}</td>
-                <td style="border: none; padding: 4px; width: 33%;"><strong>Categoría:</strong> {{ athlete_info.category }}</td>
-            </tr>
-            <tr style="background-color: transparent;">
-                <td style="border: none; padding: 4px;"><strong>Edad:</strong> {{ athlete_info.age if athlete_info.age else 'N/A' }} años</td>
-                <td style="border: none; padding: 4px;"><strong>Sexo:</strong> {{ athlete_info.sex }}</td>
-                <td style="border: none; padding: 4px;"><strong>Medidas:</strong> {{ athlete_info.height if athlete_info.height else '-' }}cm / {{ athlete_info.weight if athlete_info.weight else '-' }}kg</td>
-            </tr>
+            <thead>
+                <tr style="background-color: transparent;">
+                    <th scope="col" style="border: none; padding: 4px; width: 33%; text-align: left; background: transparent; color: inherit;">Nombre</th>
+                    <th scope="col" style="border: none; padding: 4px; width: 33%; text-align: left; background: transparent; color: inherit;">DNI</th>
+                    <th scope="col" style="border: none; padding: 4px; width: 33%; text-align: left; background: transparent; color: inherit;">Categoría</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background-color: transparent;">
+                    <td style="border: none; padding: 4px; width: 33%;">{{ athlete_info.name }}</td>
+                    <td style="border: none; padding: 4px; width: 33%;">{{ athlete_info.dni }}</td>
+                    <td style="border: none; padding: 4px; width: 33%;">{{ athlete_info.category }}</td>
+                </tr>
+                <tr style="background-color: transparent;">
+                    <th scope="col" style="border: none; padding: 4px; text-align: left; background: transparent; color: inherit;">Edad</th>
+                    <th scope="col" style="border: none; padding: 4px; text-align: left; background: transparent; color: inherit;">Sexo</th>
+                    <th scope="col" style="border: none; padding: 4px; text-align: left; background: transparent; color: inherit;">Medidas</th>
+                </tr>
+                <tr style="background-color: transparent;">
+                    <td style="border: none; padding: 4px;">{{ athlete_info.age if athlete_info.age else 'N/A' }} años</td>
+                    <td style="border: none; padding: 4px;">{{ athlete_info.sex }}</td>
+                    <td style="border: none; padding: 4px;">{{ athlete_info.height if athlete_info.height else '-' }}cm / {{ athlete_info.weight if athlete_info.weight else '-' }}kg</td>
+                </tr>
+            </tbody>
         </table>
     </div>
     {% endif %}
@@ -208,7 +223,7 @@
 
     {% if main_chart %}
     <div class="chart-section">
-        <img src="data:image/png;base64,{{ main_chart }}" class="chart-img"/>
+        <img src="data:image/png;base64,{{ main_chart }}" class="chart-img" alt="Gráfico estadístico del reporte {{ title }}"/>
     </div>
     {% endif %}
 
