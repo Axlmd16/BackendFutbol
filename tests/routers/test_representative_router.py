@@ -11,7 +11,7 @@ from app.schemas.representative_schema import (
     RepresentativeInscriptionResponseDTO,
     RepresentativeResponse,
 )
-from app.utils.exceptions import AlreadyExistsException
+from app.utils.exceptions import AlreadyExistsException, AppException
 
 
 def _mock_representative(**kwargs):
@@ -350,3 +350,217 @@ async def test_activate_representative_success(admin_client):
         assert response.status_code == 200
         body = response.json()
         assert "activado" in body["message"].lower()
+
+
+# ==============================================
+# TESTS ADICIONALES: COBERTURA DE EXCEPCIONES
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_get_representative_by_dni_app_exception(client):
+    """GET /representatives/by-dni/{dni} con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.get_representative_by_dni.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await client.get("/api/v1/representatives/by-dni/1234567890")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_representative_by_dni_unexpected_exception(client):
+    """GET /representatives/by-dni/{dni} con excepción inesperada."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.get_representative_by_dni.side_effect = Exception("Error")
+
+        response = await client.get("/api/v1/representatives/by-dni/1234567890")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_create_representative_app_exception(admin_client):
+    """POST /representatives/create con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.create_representative = AsyncMock(
+            side_effect=AppException(message="Error", status_code=400)
+        )
+
+        response = await admin_client.post(
+            "/api/v1/representatives/create",
+            json={
+                "first_name": "Test",
+                "last_name": "User",
+                "dni": "1104680135",
+                "relationship_type": "FATHER",
+            },
+        )
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_representative_unexpected_exception(admin_client):
+    """POST /representatives/create con excepción inesperada."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.create_representative = AsyncMock(
+            side_effect=Exception("Error")
+        )
+
+        response = await admin_client.post(
+            "/api/v1/representatives/create",
+            json={
+                "first_name": "Test",
+                "last_name": "User",
+                "dni": "1104680135",
+                "relationship_type": "FATHER",
+            },
+        )
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_all_representatives_app_exception(admin_client):
+    """GET /representatives/all con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.get_all_representatives.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get("/api/v1/representatives/all")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_all_representatives_unexpected_exception(admin_client):
+    """GET /representatives/all con excepción inesperada."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.get_all_representatives.side_effect = Exception("Error")
+
+        response = await admin_client.get("/api/v1/representatives/all")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_representative_by_id_app_exception(admin_client):
+    """GET /representatives/{id} con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.get_representative_by_id = AsyncMock(
+            side_effect=AppException(message="Error", status_code=400)
+        )
+
+        response = await admin_client.get("/api/v1/representatives/1")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_update_representative_app_exception(admin_client):
+    """PUT /representatives/update/{id} con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.update_representative = AsyncMock(
+            side_effect=AppException(message="Error", status_code=400)
+        )
+
+        response = await admin_client.put(
+            "/api/v1/representatives/update/1",
+            json={"phone": "0999999999"},
+        )
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_update_representative_unexpected_exception(admin_client):
+    """PUT /representatives/update/{id} con excepción inesperada."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.update_representative = AsyncMock(
+            side_effect=Exception("Error")
+        )
+
+        response = await admin_client.put(
+            "/api/v1/representatives/update/1",
+            json={"phone": "0999999999"},
+        )
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_deactivate_representative_app_exception(admin_client):
+    """PATCH /representatives/deactivate/{id} con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.deactivate_representative.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/representatives/deactivate/999")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_deactivate_representative_unexpected_exception(admin_client):
+    """PATCH /representatives/deactivate/{id} con excepción inesperada."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.deactivate_representative.side_effect = Exception("Error")
+
+        response = await admin_client.patch("/api/v1/representatives/deactivate/1")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_activate_representative_app_exception(admin_client):
+    """PATCH /representatives/activate/{id} con AppException."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.activate_representative.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/representatives/activate/999")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_activate_representative_unexpected_exception(admin_client):
+    """PATCH /representatives/activate/{id} con excepción inesperada."""
+    with patch(
+        "app.services.routers.representative_router.representative_controller"
+    ) as mock_controller:
+        mock_controller.activate_representative.side_effect = Exception("Error")
+
+        response = await admin_client.patch("/api/v1/representatives/activate/1")
+
+        assert response.status_code == 500

@@ -257,7 +257,7 @@ class UserFilter(BaseModel):
             return None
         v = str(value).strip()
         # Prevenir inyección SQL básica y caracteres peligrosos
-        v = re.sub(r"[;'\"\-\-]", "", v)
+        v = re.sub(r"[;'\"\-]", "", v)
         return v if v else None
 
     @property

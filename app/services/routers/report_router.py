@@ -17,6 +17,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 report_controller = ReportController()
 
 # Constante para content types
+DEFAULT_CONTENT_TYPE = "application/octet-stream"
 CONTENT_TYPES = {
     "pdf": "application/pdf",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -82,7 +83,7 @@ def generate_attendance_report(
         )
 
         # Determinar content type
-        content_type = CONTENT_TYPES.get(filters.format, "application/octet-stream")
+        content_type = CONTENT_TYPES.get(filters.format, DEFAULT_CONTENT_TYPE)
 
         # Nombre del archivo
         file_name = f"reporte_asistencia.{filters.format}"
@@ -136,7 +137,7 @@ def generate_tests_report(
         )
 
         # Content type
-        content_type = CONTENT_TYPES.get(filters.format, "application/octet-stream")
+        content_type = CONTENT_TYPES.get(filters.format, DEFAULT_CONTENT_TYPE)
 
         # Nombre del archivo
         file_name = f"reporte_tests.{filters.format}"
@@ -189,7 +190,7 @@ def generate_statistics_report(
         )
 
         # Content type
-        content_type = CONTENT_TYPES.get(filters.format, "application/octet-stream")
+        content_type = CONTENT_TYPES.get(filters.format, DEFAULT_CONTENT_TYPE)
 
         # Nombre del archivo
         file_name = f"reporte_estadisticas.{filters.format}"

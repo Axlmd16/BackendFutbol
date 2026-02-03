@@ -1,0 +1,6 @@
+projectKey=KallpaUNL
+serverUrl=http://localhost:9000
+serverVersion=26.1.0.118079
+dashboardUrl=http://localhost:9000/dashboard?id=KallpaUNL
+ceTaskId=9adcc59c-05a8-4428-ac0c-f4c53a003209
+ceTaskUrl=http://localhost:9000/api/ce/task?id=9adcc59c-05a8-4428-ac0c-f4c53a003209
