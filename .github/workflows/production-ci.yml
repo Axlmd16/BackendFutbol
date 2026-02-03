@@ -42,7 +42,9 @@ jobs:
       - name: Análisis de Vulnerabilidades en Dependencias (Safety)
         run: |
           # Escanea dependencias instaladas en busca de vulnerabilidades conocidas
-          uv run safety check
+          # Usa 'safety scan' (el comando 'check' está deprecado)
+          # Ignora vulnerabilidades de ecdsa que afectan todas las versiones (sin fix disponible)
+          uv run safety scan --output text --ignore 64459 --ignore 64396
 
       - name: Análisis de Seguridad Estático (Bandit)
         run: |
