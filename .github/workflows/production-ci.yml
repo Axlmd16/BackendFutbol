@@ -37,14 +37,13 @@ jobs:
         run: |
           uv sync --all-extras --dev
           # Herramientas adicionales para revisión de producción
-          uv pip install bandit safety pytest-cov
+          uv pip install bandit pip-audit pytest-cov
 
-      - name: Análisis de Vulnerabilidades en Dependencias (Safety)
+      - name: Análisis de Vulnerabilidades en Dependencias (pip-audit)
         run: |
           # Escanea dependencias instaladas en busca de vulnerabilidades conocidas
-          # Usa 'safety scan' (el comando 'check' está deprecado)
-          # Ignora vulnerabilidades de ecdsa que afectan todas las versiones (sin fix disponible)
-          uv run safety scan --output screen --ignore 64459 --ignore 64396
+          # Ignora vulnerabilidades de ecdsa que no tienen fix disponible (PYSEC-2024-4, GHSA-wj6h-64fc-37mp)
+          uv run pip-audit --ignore-vuln PYSEC-2024-4 --ignore-vuln GHSA-wj6h-64fc-37mp
 
       - name: Análisis de Seguridad Estático (Bandit)
         run: |
