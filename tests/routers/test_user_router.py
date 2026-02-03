@@ -669,3 +669,55 @@ async def test_create_user_accepts_spanish_role_names(admin_client, mock_person_
         )
 
         assert response.status_code == 201
+
+
+# TESTS: GET /users/interns
+@pytest.mark.asyncio
+async def test_get_all_interns_without_auth(client):
+    """GET /users/interns debe requerir autenticación."""
+    response = await client.get("/api/v1/users/interns")
+
+    assert response.status_code == 401
+
+
+# TESTS: Función get_current_coach_or_admin
+def test_get_current_coach_or_admin_with_admin():
+    """get_current_coach_or_admin acepta admin."""
+    from app.models.enums.rol import Role
+    from app.services.routers.user_router import get_current_coach_or_admin
+
+    mock_account = MagicMock()
+    mock_account.role = Role.ADMINISTRATOR
+
+    result = get_current_coach_or_admin(mock_account)
+
+    assert result == mock_account
+
+
+def test_get_current_coach_or_admin_with_coach():
+    """get_current_coach_or_admin acepta coach."""
+    from app.models.enums.rol import Role
+    from app.services.routers.user_router import get_current_coach_or_admin
+
+    mock_account = MagicMock()
+    mock_account.role = Role.COACH
+
+    result = get_current_coach_or_admin(mock_account)
+
+    assert result == mock_account
+
+
+def test_get_current_coach_or_admin_rejects_intern():
+    """get_current_coach_or_admin rechaza intern."""
+    from fastapi import HTTPException
+
+    from app.models.enums.rol import Role
+    from app.services.routers.user_router import get_current_coach_or_admin
+
+    mock_account = MagicMock()
+    mock_account.role = Role.INTERN
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_current_coach_or_admin(mock_account)
+
+    assert exc_info.value.status_code == 403

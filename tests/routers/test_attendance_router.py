@@ -214,3 +214,120 @@ async def test_get_summary_without_auth(client):
 
     # Sin autenticación debe fallar
     assert response.status_code == 401
+
+
+# ==============================================
+# TESTS: GET /attendances/dates
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_get_attendance_dates_success(admin_client):
+    """Obtener fechas con registros de asistencia exitosamente."""
+    response = await admin_client.get("/api/v1/attendances/dates")
+
+    # Debe retornar éxito
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "data" in data
+
+
+@pytest.mark.asyncio
+async def test_get_attendance_dates_without_auth(client):
+    """Obtener fechas sin autenticación debe fallar."""
+    response = await client.get("/api/v1/attendances/dates")
+
+    assert response.status_code == 401
+
+
+# ==============================================
+# TESTS: ÉXITO GET /attendances/by-date
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_get_attendances_by_date_success(admin_client):
+    """Obtener asistencias por fecha exitosamente."""
+    from datetime import date
+
+    response = await admin_client.get(
+        "/api/v1/attendances/by-date",
+        params={"date": date.today().strftime("%Y-%m-%d")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "data" in data
+
+
+@pytest.mark.asyncio
+async def test_get_attendances_by_date_with_filters(admin_client):
+    """Obtener asistencias por fecha con filtros."""
+    from datetime import date
+
+    response = await admin_client.get(
+        "/api/v1/attendances/by-date",
+        params={
+            "date": date.today().strftime("%Y-%m-%d"),
+            "type_athlete": "UNL",
+            "search": "Juan",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+
+
+# ==============================================
+# TESTS: ÉXITO GET /attendances/summary
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_get_attendance_summary_success(admin_client):
+    """Obtener resumen de asistencia exitosamente."""
+    from datetime import date
+
+    response = await admin_client.get(
+        "/api/v1/attendances/summary",
+        params={"date": date.today().strftime("%Y-%m-%d")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "data" in data
+
+
+# ==============================================
+# TESTS: ÉXITO POST /attendances/bulk
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_create_bulk_attendance_success(admin_client):
+    """Crear asistencias en lote exitosamente (con mock)."""
+    from datetime import date
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.create_bulk_attendance.return_value = (1, 0)
+
+        response = await admin_client.post(
+            "/api/v1/attendances/bulk",
+            json={
+                "date": date.today().strftime("%Y-%m-%d"),
+                "time": "10:30",
+                "records": [{"athlete_id": 1, "is_present": True}],
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["status"] == "success"
+        assert "data" in data
