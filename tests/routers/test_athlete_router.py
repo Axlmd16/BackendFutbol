@@ -402,3 +402,247 @@ async def test_register_minor_athlete_success(client):
         assert response.status_code == 201
         body = response.json()
         assert body["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_get_all_athletes_success_with_mock(admin_client):
+    """GET /athletes/all exitoso con mock."""
+    from unittest.mock import MagicMock, patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {
+            "items": [],
+            "total": 0,
+            "page": 1,
+            "limit": 10,
+        }
+        mock_controller.get_all_athletes.return_value = mock_result
+
+        response = await admin_client.get("/api/v1/athletes/all")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_get_all_athletes_app_exception(admin_client):
+    """GET /athletes/all con AppException."""
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.get_all_athletes.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get("/api/v1/athletes/all")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_all_athletes_unexpected_exception(admin_client):
+    """GET /athletes/all con excepción inesperada."""
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.get_all_athletes.side_effect = Exception("Error")
+
+        response = await admin_client.get("/api/v1/athletes/all")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_athlete_by_id_success(admin_client):
+    """GET /athletes/{id} exitoso."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {
+            "id": 1,
+            "external_person_id": "ext-123",
+            "full_name": "Test Athlete",
+            "dni": "1104680135",
+            "type_athlete": "UNL",
+            "sex": "M",
+            "is_active": True,
+            "created_at": "2024-01-01T00:00:00",
+        }
+        mock_controller.get_athlete_with_ms_info = AsyncMock(return_value=mock_result)
+
+        response = await admin_client.get("/api/v1/athletes/1")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_get_athlete_by_id_not_found_with_mock(admin_client):
+    """GET /athletes/{id} no encontrado con mock."""
+    from unittest.mock import AsyncMock, patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.get_athlete_with_ms_info = AsyncMock(return_value=None)
+
+        response = await admin_client.get("/api/v1/athletes/999")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_athlete_by_id_app_exception(admin_client):
+    """GET /athletes/{id} con AppException."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.get_athlete_with_ms_info = AsyncMock(
+            side_effect=AppException(message="Error", status_code=400)
+        )
+
+        response = await admin_client.get("/api/v1/athletes/1")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_update_athlete_success(admin_client):
+    """PUT /athletes/update/{id} exitoso."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {
+            "id": 1,
+            "full_name": "Test Athlete",
+            "height": 1.75,
+            "weight": 70.0,
+        }
+        mock_controller.update_athlete = AsyncMock(return_value=mock_result)
+
+        response = await admin_client.put(
+            "/api/v1/athletes/update/1",
+            json={"height": 1.75, "weight": 70.0},
+        )
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_athlete_not_found(admin_client):
+    """PUT /athletes/update/{id} no encontrado."""
+    from unittest.mock import AsyncMock, patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.update_athlete = AsyncMock(return_value=None)
+
+        response = await admin_client.put(
+            "/api/v1/athletes/update/999",
+            json={"height": 1.75},
+        )
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_athlete_invalid_height(admin_client):
+    """PUT /athletes/update/{id} con altura negativa."""
+    response = await admin_client.put(
+        "/api/v1/athletes/update/1",
+        json={"height": -1.0},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_desactivate_athlete_success(admin_client):
+    """PATCH /athletes/desactivate/{id} exitoso."""
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.desactivate_athlete.return_value = None
+
+        response = await admin_client.patch("/api/v1/athletes/desactivate/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_desactivate_athlete_app_exception(admin_client):
+    """PATCH /athletes/desactivate/{id} con AppException."""
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.desactivate_athlete.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/athletes/desactivate/999")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_activate_athlete_success(admin_client):
+    """PATCH /athletes/activate/{id} exitoso."""
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.activate_athlete.return_value = None
+
+        response = await admin_client.patch("/api/v1/athletes/activate/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_activate_athlete_app_exception(admin_client):
+    """PATCH /athletes/activate/{id} con AppException."""
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.athlete_router.athlete_controller"
+    ) as mock_controller:
+        mock_controller.activate_athlete.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/athletes/activate/999")
+
+        assert response.status_code == 404

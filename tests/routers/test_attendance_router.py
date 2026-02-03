@@ -331,3 +331,180 @@ async def test_create_bulk_attendance_success(admin_client):
         data = response.json()
         assert data["status"] == "success"
         assert "data" in data
+
+
+# ==============================================
+# TESTS ADICIONALES: COBERTURA DE EXCEPCIONES
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_create_bulk_attendance_app_exception(admin_client):
+    """POST /attendances/bulk con AppException."""
+    from datetime import date
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.create_bulk_attendance.side_effect = AppException(
+            message="Error de negocio", status_code=400
+        )
+
+        response = await admin_client.post(
+            "/api/v1/attendances/bulk",
+            json={
+                "date": date.today().strftime("%Y-%m-%d"),
+                "time": "10:30",
+                "records": [{"athlete_id": 1, "is_present": True}],
+            },
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_create_bulk_attendance_unexpected_exception(admin_client):
+    """POST /attendances/bulk con excepción inesperada."""
+    from datetime import date
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.create_bulk_attendance.side_effect = Exception(
+            "Error inesperado"
+        )
+
+        response = await admin_client.post(
+            "/api/v1/attendances/bulk",
+            json={
+                "date": date.today().strftime("%Y-%m-%d"),
+                "time": "10:30",
+                "records": [{"athlete_id": 1, "is_present": True}],
+            },
+        )
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_dates_app_exception(admin_client):
+    """GET /attendances/dates con AppException."""
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.get_existing_dates.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get("/api/v1/attendances/dates")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_dates_unexpected_exception(admin_client):
+    """GET /attendances/dates con excepción inesperada."""
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.get_existing_dates.side_effect = Exception("Error")
+
+        response = await admin_client.get("/api/v1/attendances/dates")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_by_date_app_exception(admin_client):
+    """GET /attendances/by-date con AppException."""
+    from datetime import date
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.get_attendances_by_date.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get(
+            "/api/v1/attendances/by-date",
+            params={"date": date.today().strftime("%Y-%m-%d")},
+        )
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_by_date_unexpected_exception(admin_client):
+    """GET /attendances/by-date con excepción inesperada."""
+    from datetime import date
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.get_attendances_by_date.side_effect = Exception("Error")
+
+        response = await admin_client.get(
+            "/api/v1/attendances/by-date",
+            params={"date": date.today().strftime("%Y-%m-%d")},
+        )
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_summary_app_exception(admin_client):
+    """GET /attendances/summary con AppException."""
+    from datetime import date
+    from unittest.mock import patch
+
+    from app.utils.exceptions import AppException
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.get_attendance_summary.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get(
+            "/api/v1/attendances/summary",
+            params={"date": date.today().strftime("%Y-%m-%d")},
+        )
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_summary_unexpected_exception(admin_client):
+    """GET /attendances/summary con excepción inesperada."""
+    from datetime import date
+    from unittest.mock import patch
+
+    with patch(
+        "app.services.routers.attendance_router.attendance_controller"
+    ) as mock_controller:
+        mock_controller.get_attendance_summary.side_effect = Exception("Error")
+
+        response = await admin_client.get(
+            "/api/v1/attendances/summary",
+            params={"date": date.today().strftime("%Y-%m-%d")},
+        )
+
+        assert response.status_code == 500
