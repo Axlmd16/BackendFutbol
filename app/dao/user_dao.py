@@ -45,6 +45,29 @@ class UserDAO(BaseDAO[User]):
         # Intentar por nombre del enum
         return getattr(Role, role_str.upper(), None)
 
+    def _apply_search_filter(self, query, search: str):
+        """Aplica filtro de búsqueda por nombre o DNI."""
+        if search:
+            search_norm = search.strip()
+            query = query.filter(
+                or_(
+                    self.model.full_name.ilike(f"%{search_norm}%"),
+                    self.model.dni.ilike(f"%{search_norm}%"),
+                )
+            )
+        return query
+
+    def _paginate_query(self, query, filters) -> Tuple[List[User], int]:
+        """Aplica paginación y retorna items con total."""
+        total = query.count()
+        items = (
+            query.order_by(self.model.id.desc())
+            .offset(filters.skip)
+            .limit(filters.limit)
+            .all()
+        )
+        return items, total
+
     def get_all_with_filters(
         self, db: Session, filters: UserFilter
     ) -> Tuple[List[User], int]:
@@ -59,26 +82,9 @@ class UserDAO(BaseDAO[User]):
             if role_enum:
                 query = query.filter(self.model.account.has(role=role_enum))
 
-        if filters.search:
-            search_norm = filters.search.strip()
-            query = query.filter(
-                or_(
-                    self.model.full_name.ilike(f"%{search_norm}%"),
-                    self.model.dni.ilike(f"%{search_norm}%"),
-                )
-            )
+        query = self._apply_search_filter(query, filters.search)
 
-        total = query.count()
-
-        # filters.skip es la propiedad calculada automáticamente
-        items = (
-            query.order_by(self.model.id.desc())
-            .offset(filters.skip)
-            .limit(filters.limit)
-            .all()
-        )
-
-        return items, total
+        return self._paginate_query(query, filters)
 
     def get_interns_with_filters(self, db: Session, filters) -> Tuple[List[User], int]:
         """
@@ -86,22 +92,6 @@ class UserDAO(BaseDAO[User]):
         """
         query = db.query(self.model).filter(self.model.account.has(role=Role.INTERN))
 
-        if filters.search:
-            search_norm = filters.search.strip()
-            query = query.filter(
-                or_(
-                    self.model.full_name.ilike(f"%{search_norm}%"),
-                    self.model.dni.ilike(f"%{search_norm}%"),
-                )
-            )
+        query = self._apply_search_filter(query, filters.search)
 
-        total = query.count()
-
-        items = (
-            query.order_by(self.model.id.desc())
-            .offset(filters.skip)
-            .limit(filters.limit)
-            .all()
-        )
-
-        return items, total
+        return self._paginate_query(query, filters)

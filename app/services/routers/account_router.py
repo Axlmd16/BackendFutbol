@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.controllers.account_controller import AccountController
@@ -15,7 +14,10 @@ from app.schemas.account_schema import (
     RefreshTokenRequest,
 )
 from app.schemas.response import ResponseSchema
-from app.services.routers.constants import unexpected_error_message
+from app.services.routers.constants import (
+    handle_app_exception,
+    handle_unexpected_exception,
+)
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -42,25 +44,9 @@ def login(
             data=result.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.post(
@@ -83,25 +69,9 @@ def request_password_reset(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.post(
@@ -124,25 +94,9 @@ def confirm_password_reset(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.post(
@@ -166,25 +120,9 @@ def change_password(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.post(
@@ -206,22 +144,6 @@ def refresh_token(
             data=result.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)

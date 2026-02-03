@@ -12,7 +12,10 @@ from app.core.database import get_db
 from app.models.account import Account
 from app.schemas.response import ResponseSchema
 from app.schemas.statistic_schema import UpdateSportsStatsRequest
-from app.services.routers.constants import unexpected_error_message
+from app.services.routers.constants import (
+    handle_app_exception,
+    handle_unexpected_exception,
+)
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -51,25 +54,9 @@ def get_club_overview(
             data=data,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -108,25 +95,9 @@ def get_attendance_statistics(
             data=data,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -163,25 +134,9 @@ def get_test_performance(
             data=data,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -223,25 +178,9 @@ def get_athlete_individual_stats(
             data=data,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.patch(
@@ -286,22 +225,6 @@ def update_sports_stats(
             data=data,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)

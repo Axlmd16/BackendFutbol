@@ -669,3 +669,334 @@ async def test_create_user_accepts_spanish_role_names(admin_client, mock_person_
         )
 
         assert response.status_code == 201
+
+
+# TESTS: GET /users/interns
+@pytest.mark.asyncio
+async def test_get_all_interns_without_auth(client):
+    """GET /users/interns debe requerir autenticación."""
+    response = await client.get("/api/v1/users/interns")
+
+    assert response.status_code == 401
+
+
+# TESTS: Función get_current_coach_or_admin
+def test_get_current_coach_or_admin_with_admin():
+    """get_current_coach_or_admin acepta admin."""
+    from app.models.enums.rol import Role
+    from app.services.routers.user_router import get_current_coach_or_admin
+
+    mock_account = MagicMock()
+    mock_account.role = Role.ADMINISTRATOR
+
+    result = get_current_coach_or_admin(mock_account)
+
+    assert result == mock_account
+
+
+def test_get_current_coach_or_admin_with_coach():
+    """get_current_coach_or_admin acepta coach."""
+    from app.models.enums.rol import Role
+    from app.services.routers.user_router import get_current_coach_or_admin
+
+    mock_account = MagicMock()
+    mock_account.role = Role.COACH
+
+    result = get_current_coach_or_admin(mock_account)
+
+    assert result == mock_account
+
+
+def test_get_current_coach_or_admin_rejects_intern():
+    """get_current_coach_or_admin rechaza intern."""
+    from fastapi import HTTPException
+
+    from app.models.enums.rol import Role
+    from app.services.routers.user_router import get_current_coach_or_admin
+
+    mock_account = MagicMock()
+    mock_account.role = Role.INTERN
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_current_coach_or_admin(mock_account)
+
+    assert exc_info.value.status_code == 403
+
+
+# ==============================================
+# TESTS ADICIONALES: COBERTURA DE EXCEPCIONES
+# ==============================================
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_app_exception(admin_client):
+    """GET /users/all con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.get_all_users.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get("/api/v1/users/all")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_all_users_unexpected_exception(admin_client):
+    """GET /users/all con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.get_all_users.side_effect = Exception("Error")
+
+        response = await admin_client.get("/api/v1/users/all")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_me_app_exception(admin_client):
+    """GET /users/me con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.get_user_by_id = AsyncMock(
+            side_effect=AppException(message="Error", status_code=400)
+        )
+
+        response = await admin_client.get("/api/v1/users/me")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_me_unexpected_exception(admin_client):
+    """GET /users/me con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.get_user_by_id = AsyncMock(side_effect=Exception("Error"))
+
+        response = await admin_client.get("/api/v1/users/me")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_interns_success(admin_client):
+    """GET /users/interns exitoso."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.get_all_interns.return_value = ([], 0)
+
+        response = await admin_client.get("/api/v1/users/interns")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_get_interns_app_exception(admin_client):
+    """GET /users/interns con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.get_all_interns.side_effect = AppException(
+            message="Error", status_code=400
+        )
+
+        response = await admin_client.get("/api/v1/users/interns")
+
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_interns_unexpected_exception(admin_client):
+    """GET /users/interns con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.get_all_interns.side_effect = Exception("Error")
+
+        response = await admin_client.get("/api/v1/users/interns")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_desactivate_user_app_exception(admin_client):
+    """PATCH /users/desactivate/{id} con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.desactivate_user.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/users/desactivate/999")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_desactivate_user_unexpected_exception(admin_client):
+    """PATCH /users/desactivate/{id} con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.desactivate_user.side_effect = Exception("Error")
+
+        response = await admin_client.patch("/api/v1/users/desactivate/1")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_activate_user_success(admin_client):
+    """PATCH /users/activate/{id} exitoso."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.activate_user.return_value = None
+
+        response = await admin_client.patch("/api/v1/users/activate/1")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_activate_user_app_exception(admin_client):
+    """PATCH /users/activate/{id} con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.activate_user.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/users/activate/999")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_activate_user_unexpected_exception(admin_client):
+    """PATCH /users/activate/{id} con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.activate_user.side_effect = Exception("Error")
+
+        response = await admin_client.patch("/api/v1/users/activate/1")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_promote_athlete_to_intern_success(admin_client):
+    """POST /users/promote-athlete/{id} exitoso."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"id": 1, "role": "INTERN"}
+        mock_controller.promote_athlete_to_intern.return_value = mock_result
+
+        response = await admin_client.post(
+            "/api/v1/users/promote-athlete/1",
+            json={"email": "test@test.com", "password": "Password123!"},
+        )
+
+        assert response.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_promote_athlete_to_intern_app_exception(admin_client):
+    """POST /users/promote-athlete/{id} con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.promote_athlete_to_intern.side_effect = AppException(
+            message="Athlete not found", status_code=404
+        )
+
+        response = await admin_client.post(
+            "/api/v1/users/promote-athlete/999",
+            json={"email": "test@test.com", "password": "Password123!"},
+        )
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_promote_athlete_to_intern_unexpected_exception(admin_client):
+    """POST /users/promote-athlete/{id} con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.promote_athlete_to_intern.side_effect = Exception("Error")
+
+        response = await admin_client.post(
+            "/api/v1/users/promote-athlete/1",
+            json={"email": "test@test.com", "password": "Password123!"},
+        )
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_deactivate_intern_success(admin_client):
+    """PATCH /users/interns/{id}/deactivate exitoso."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.deactivate_intern.return_value = None
+
+        response = await admin_client.patch("/api/v1/users/interns/1/deactivate")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_deactivate_intern_app_exception(admin_client):
+    """PATCH /users/interns/{id}/deactivate con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.deactivate_intern.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/users/interns/999/deactivate")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_deactivate_intern_unexpected_exception(admin_client):
+    """PATCH /users/interns/{id}/deactivate con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.deactivate_intern.side_effect = Exception("Error")
+
+        response = await admin_client.patch("/api/v1/users/interns/1/deactivate")
+
+        assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_activate_intern_success(admin_client):
+    """PATCH /users/interns/{id}/activate exitoso."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.activate_intern.return_value = None
+
+        response = await admin_client.patch("/api/v1/users/interns/1/activate")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_activate_intern_app_exception(admin_client):
+    """PATCH /users/interns/{id}/activate con AppException."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        from app.utils.exceptions import AppException
+
+        mock_controller.activate_intern.side_effect = AppException(
+            message="Not found", status_code=404
+        )
+
+        response = await admin_client.patch("/api/v1/users/interns/999/activate")
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_activate_intern_unexpected_exception(admin_client):
+    """PATCH /users/interns/{id}/activate con excepción inesperada."""
+    with patch("app.services.routers.user_router.user_controller") as mock_controller:
+        mock_controller.activate_intern.side_effect = Exception("Error")
+
+        response = await admin_client.patch("/api/v1/users/interns/1/activate")
+
+        assert response.status_code == 500
