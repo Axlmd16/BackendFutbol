@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -56,16 +56,14 @@ async def test_register_athlete_unl_success(controller, mock_db_session, valid_d
     )
     controller.statistic_dao.create.return_value = MagicMock(id=10)
 
-    result = await controller.register_athlete_unl(mock_db_session, valid_data)
+    with patch("app.controllers.athlete_controller.validate_dni_not_exists_locally"):
+        result = await controller.register_athlete_unl(mock_db_session, valid_data)
 
     assert result.athlete_id == 1
     assert result.statistic_id == 10
     assert result.full_name == "Juan Pérez"
     assert result.dni == "1710034065"
 
-    controller.athlete_dao.exists.assert_called_once_with(
-        mock_db_session, "dni", "1710034065"
-    )
     controller.athlete_dao.create.assert_called_once()
     controller.statistic_dao.create.assert_called_once()
     controller.person_ms_service.create_or_get_person.assert_awaited_once()
@@ -76,10 +74,14 @@ async def test_register_athlete_unl_duplicate_dni(
     controller, mock_db_session, valid_data
 ):
     """Test con DNI duplicado."""
-    controller.athlete_dao.exists.return_value = True
-
-    with pytest.raises(AlreadyExistsException) as exc:
-        await controller.register_athlete_unl(mock_db_session, valid_data)
+    with patch(
+        "app.controllers.athlete_controller.validate_dni_not_exists_locally",
+        side_effect=AlreadyExistsException(
+            "Ya existe un deportista con el DNI 1710034065 en el sistema"
+        ),
+    ):
+        with pytest.raises(AlreadyExistsException) as exc:
+            await controller.register_athlete_unl(mock_db_session, valid_data)
 
     assert "DNI" in str(exc.value)
     controller.athlete_dao.create.assert_not_called()
