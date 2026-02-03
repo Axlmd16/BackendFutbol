@@ -4,6 +4,7 @@ import httpx
 
 from app.client.person_auth import PersonAuthService
 from app.core.config import settings
+from app.utils.exceptions import ExternalServiceException, ValidationException
 
 auth_service = PersonAuthService()
 
@@ -14,25 +15,89 @@ class PersonClient:
         self.timeout = timeout
 
     async def _authorized_request(self, method: str, url: str, **kwargs) -> Any:
-        # 1) Asegurar token
-        token = auth_service.token or await auth_service.login()
+        """
+        Realiza una petición autenticada al MS de usuarios.
+        Maneja errores de conexión y autenticación.
+        """
+        try:
+            token = auth_service.token or await auth_service.login()
+        except (
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.ConnectTimeout,
+        ) as e:
+            raise ExternalServiceException(
+                "El servicio de usuarios no está disponible. "
+                "Por favor, intente nuevamente más tarde."
+            ) from e
 
         headers = kwargs.pop("headers", {})
-        headers["Authorization"] = token  # ya incluye 'Bearer ...'
+        headers["Authorization"] = token
 
-        async with httpx.AsyncClient(
-            base_url=self.base_url, timeout=self.timeout
-        ) as client:
-            resp = await client.request(method, url, headers=headers, **kwargs)
-
-            # Si el token expira y el MS responde 401, reintentar
-            if resp.status_code == 401:
-                token = await auth_service.login()
-                headers["Authorization"] = token
+        try:
+            async with httpx.AsyncClient(
+                base_url=self.base_url, timeout=self.timeout
+            ) as client:
                 resp = await client.request(method, url, headers=headers, **kwargs)
 
-            resp.raise_for_status()
-            return resp.json()
+                if resp.status_code == 401:
+                    token = await auth_service.login()
+                    headers["Authorization"] = token
+                    resp = await client.request(method, url, headers=headers, **kwargs)
+
+                if resp.status_code >= 400:
+                    try:
+                        error_data = resp.json()
+                        if isinstance(error_data, dict):
+                            error_message = (
+                                error_data.get("message")
+                                or error_data.get("detail")
+                                or error_data.get("error")
+                                or "Error desconocido"
+                            )
+                        elif isinstance(error_data, list) and error_data:
+                            # FastAPI/Pydantic suele devolver una lista de errores.
+                            first = error_data[0]
+                            if isinstance(first, dict):
+                                error_message = (
+                                    first.get("message")
+                                    or first.get("detail")
+                                    or first.get("msg")
+                                    or "Error desconocido"
+                                )
+                            else:
+                                error_message = str(first)
+                        else:
+                            error_message = "Error desconocido"
+                    except Exception:
+                        error_message = resp.text or f"Error {resp.status_code}"
+
+                    # Si el MS devuelve un error genérico, añadir contexto
+                    generic_errors = [
+                        "error de validacion de datos",
+                        "validation error",
+                        "error desconocido",
+                    ]
+                    if error_message.lower().strip(".") in generic_errors:
+                        error_message = (
+                            "El sistema de usuarios institucional rechazó los datos. "
+                            "Esto puede deberse a que el número de identificación "
+                            "no es válido según sus reglas de validación."
+                        )
+
+                    raise ValidationException(error_message)
+
+                return resp.json()
+
+        except (
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.ConnectTimeout,
+        ) as e:
+            raise ExternalServiceException(
+                "El servicio de usuarios no está disponible. "
+                "Por favor, intente nuevamente más tarde."
+            ) from e
 
     async def create_person(self, data: Dict[str, Any]) -> Dict[str, Any]:
         return await self._authorized_request("POST", "/api/person/save", json=data)

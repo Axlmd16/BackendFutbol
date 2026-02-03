@@ -1,0 +1,572 @@
+"""Tests unitarios para `TechnicalAssessmentController`."""
+
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock
+
+import pytest
+from pydantic import ValidationError
+
+from app.controllers.technical_assessment_controller import (
+    TechnicalAssessmentController,
+)
+from app.models.enums.scale import Scale
+from app.models.evaluation import Evaluation
+from app.models.technical_assessment import TechnicalAssessment
+from app.schemas.technical_assessment_schema import (
+    CreateTechnicalAssessmentSchema,
+    UpdateTechnicalAssessmentSchema,
+)
+
+# ==============================================
+# FIXTURES
+# ==============================================
+
+
+@pytest.fixture
+def technical_assessment_controller():
+    """Fixture para TechnicalAssessmentController con DAOs mockeados."""
+    controller = TechnicalAssessmentController()
+    controller.technical_assessment_dao = MagicMock()
+    controller.test_dao = MagicMock()
+    controller.evaluation_dao = MagicMock()
+    controller.athlete_dao = MagicMock()
+    return controller
+
+
+@pytest.fixture
+def mock_db():
+    """Mock de sesión de base de datos."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_evaluation():
+    """Fixture de una evaluación mock."""
+    evaluation = Mock(spec=Evaluation)
+    evaluation.id = 1
+    evaluation.name = "Evaluación Física"
+    evaluation.is_active = True
+    return evaluation
+
+
+@pytest.fixture
+def mock_athlete():
+    """Fixture de un atleta mock."""
+    athlete = Mock()
+    athlete.id = 5
+    athlete.name = "Juan Pérez"
+    return athlete
+
+
+@pytest.fixture
+def mock_technical_assessment():
+    """Fixture de un Technical Assessment mock."""
+    test = Mock(spec=TechnicalAssessment)
+    test.id = 4
+    test.type = "technical_assessment"
+    test.date = datetime.now()
+    test.athlete_id = 5
+    test.evaluation_id = 1
+    test.ball_control = 8
+    test.short_pass = 9
+    test.long_pass = 7
+    test.shooting = 8
+    test.dribbling = 9
+    test.observations = "Excellent technical skills"
+    test.is_active = True
+    return test
+
+
+# ==============================================
+# TESTS: ADD TECHNICAL ASSESSMENT
+# ==============================================
+
+
+def test_add_technical_assessment_success(
+    technical_assessment_controller,
+    mock_db,
+    mock_evaluation,
+    mock_athlete,
+    mock_technical_assessment,
+):
+    """Agregar Technical Assessment exitosamente."""
+    technical_assessment_controller.evaluation_dao.get_by_id.return_value = (
+        mock_evaluation
+    )
+    technical_assessment_controller.athlete_dao.get_by_id.return_value = mock_athlete
+    technical_assessment_controller.test_dao.create_technical_assessment.return_value = mock_technical_assessment  # noqa: E501
+
+    payload = CreateTechnicalAssessmentSchema(
+        evaluation_id=1,
+        athlete_id=5,
+        date=mock_technical_assessment.date,
+        ball_control=Scale.EXCELLENT,
+        short_pass=Scale.EXCELLENT,
+        long_pass=Scale.GOOD,
+        shooting=Scale.GOOD,
+        dribbling=Scale.EXCELLENT,
+        observations="Excellent technical skills",
+    )
+
+    result = technical_assessment_controller.add_test(
+        db=mock_db,
+        payload=payload,
+    )
+
+    assert result.id == 4
+    assert result.type == "technical_assessment"
+    assert result.ball_control == 8
+    assert result.short_pass == 9
+    assert result.long_pass == 7
+    assert result.shooting == 8
+    assert result.dribbling == 9
+    technical_assessment_controller.test_dao.create_technical_assessment.assert_called_once()
+
+
+# ==============================================
+# TESTS: UPDATE TECHNICAL ASSESSMENT
+# ==============================================
+
+
+def test_update_technical_assessment_success(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Actualizar campos de un Technical Assessment existente."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        mock_technical_assessment
+    )
+    updated = Mock()
+    updated.id = mock_technical_assessment.id
+    updated.ball_control = "Excellent"
+    technical_assessment_controller.technical_assessment_dao.update.return_value = (
+        updated
+    )
+
+    payload = UpdateTechnicalAssessmentSchema(
+        ball_control=Scale.EXCELLENT,
+        observations="Mejoró",
+    )
+
+    result = technical_assessment_controller.update_test(
+        db=mock_db,
+        test_id=4,
+        payload=payload,
+    )
+
+    assert result.ball_control == "Excellent"
+    technical_assessment_controller.technical_assessment_dao.update.assert_called_once_with(
+        mock_db,
+        4,
+        {"ball_control": Scale.EXCELLENT, "observations": "Mejoró"},
+    )
+
+
+# ==============================================
+# TESTS: DELETE TECHNICAL ASSESSMENT
+# ==============================================
+
+
+def test_delete_technical_assessment_success(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Elimina cuando existe."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        mock_technical_assessment
+    )
+    technical_assessment_controller.technical_assessment_dao.delete.return_value = None
+
+    result = technical_assessment_controller.delete_test(mock_db, test_id=4)
+
+    assert result is True
+    technical_assessment_controller.technical_assessment_dao.delete.assert_called_once_with(
+        mock_db, 4
+    )
+
+
+def test_update_technical_assessment_no_fields_returns_existing(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Sin campos a actualizar devuelve la entidad actual."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        mock_technical_assessment
+    )
+
+    payload = UpdateTechnicalAssessmentSchema()
+
+    result = technical_assessment_controller.update_test(
+        db=mock_db,
+        test_id=4,
+        payload=payload,
+    )
+
+    assert result is mock_technical_assessment
+    technical_assessment_controller.technical_assessment_dao.update.assert_not_called()
+
+
+# ==============================================
+# TESTS: ADD TECHNICAL ASSESSMENT - CASOS DE ERROR
+# ==============================================
+
+
+def test_add_technical_assessment_evaluation_not_found(
+    technical_assessment_controller,
+    mock_db,
+):
+    """Error al agregar Technical Assessment cuando la evaluación no existe."""
+    from app.utils.exceptions import DatabaseException
+
+    technical_assessment_controller.evaluation_dao.get_by_id.return_value = None
+
+    payload = CreateTechnicalAssessmentSchema(
+        evaluation_id=999,
+        athlete_id=5,
+        date=datetime.now(),
+        ball_control=Scale.EXCELLENT,
+    )
+
+    with pytest.raises(DatabaseException) as exc_info:
+        technical_assessment_controller.add_test(db=mock_db, payload=payload)
+
+    assert "Evaluación 999 no existe" in str(exc_info.value.message)
+
+
+def test_add_technical_assessment_athlete_not_found(
+    technical_assessment_controller,
+    mock_db,
+    mock_evaluation,
+):
+    """Error al agregar Technical Assessment cuando el atleta no existe."""
+    from app.utils.exceptions import DatabaseException
+
+    technical_assessment_controller.evaluation_dao.get_by_id.return_value = (
+        mock_evaluation
+    )
+    technical_assessment_controller.athlete_dao.get_by_id.return_value = None
+
+    payload = CreateTechnicalAssessmentSchema(
+        evaluation_id=1,
+        athlete_id=999,
+        date=datetime.now(),
+        ball_control=Scale.EXCELLENT,
+    )
+
+    with pytest.raises(DatabaseException) as exc_info:
+        technical_assessment_controller.add_test(db=mock_db, payload=payload)
+
+    assert "Atleta 999 no existe" in str(exc_info.value.message)
+
+
+# ==============================================
+# TESTS: UPDATE TECHNICAL ASSESSMENT - CASOS DE ERROR
+# ==============================================
+
+
+def test_update_technical_assessment_not_found(
+    technical_assessment_controller, mock_db
+):
+    """Retorna None si el test no existe."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        None
+    )
+
+    payload = UpdateTechnicalAssessmentSchema(ball_control=Scale.EXCELLENT)
+
+    result = technical_assessment_controller.update_test(
+        db=mock_db, test_id=999, payload=payload
+    )
+
+    assert result is None
+
+
+def test_update_technical_assessment_invalid_evaluation(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Error cuando el evaluation_id no existe."""
+    from app.utils.exceptions import DatabaseException
+
+    technical_assessment_controller.evaluation_dao.get_by_id.return_value = None
+
+    payload = UpdateTechnicalAssessmentSchema(evaluation_id=999)
+
+    with pytest.raises(DatabaseException) as exc_info:
+        technical_assessment_controller.update_test(
+            db=mock_db, test_id=4, payload=payload
+        )
+
+    assert "Evaluación 999 no existe" in str(exc_info.value.message)
+
+
+def test_update_technical_assessment_invalid_athlete(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Error cuando el athlete_id no existe."""
+    from app.utils.exceptions import DatabaseException
+
+    technical_assessment_controller.athlete_dao.get_by_id.return_value = None
+
+    payload = UpdateTechnicalAssessmentSchema(athlete_id=999)
+
+    with pytest.raises(DatabaseException) as exc_info:
+        technical_assessment_controller.update_test(
+            db=mock_db, test_id=4, payload=payload
+        )
+
+    assert "Atleta 999 no existe" in str(exc_info.value.message)
+
+
+# ==============================================
+# TESTS: DELETE TECHNICAL ASSESSMENT - CASOS DE ERROR
+# ==============================================
+
+
+def test_delete_technical_assessment_not_found(
+    technical_assessment_controller, mock_db
+):
+    """Retorna False si el test no existe."""
+    technical_assessment_controller.technical_assessment_dao.get_by_id.return_value = (
+        None
+    )
+
+    result = technical_assessment_controller.delete_test(mock_db, test_id=999)
+
+    assert result is False
+
+
+# ==============================================
+# TESTS: LIST TECHNICAL ASSESSMENTS
+# ==============================================
+
+
+def test_list_tests_success(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Lista technical assessments con paginación y filtros."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 4
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_technical_assessment]
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10)
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 4
+    assert items[0] is mock_technical_assessment
+
+
+def test_list_tests_with_evaluation_filter(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Lista technical assessments filtrando por evaluation_id."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 2
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_technical_assessment]
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10, evaluation_id=1)
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 2
+
+
+def test_list_tests_with_athlete_filter(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Lista technical assessments filtrando por athlete_id."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_technical_assessment]
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10, athlete_id=5)
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_with_search(
+    technical_assessment_controller, mock_db, mock_technical_assessment
+):
+    """Lista technical assessments filtrando por nombre de atleta (search)."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_join = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.join.return_value = mock_join
+    mock_join.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 1
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = [mock_technical_assessment]
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10, search="Juan")
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert len(items) == 1
+    assert total == 1
+
+
+def test_list_tests_empty_result(technical_assessment_controller, mock_db):
+    """Lista technical assessments devuelve lista vacía cuando no hay resultados."""
+    from app.schemas.technical_assessment_schema import TechnicalAssessmentFilter
+
+    mock_query = MagicMock()
+    mock_filter = MagicMock()
+    mock_with_entities = MagicMock()
+    mock_order = MagicMock()
+    mock_offset = MagicMock()
+    mock_limit = MagicMock()
+
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_filter
+    mock_filter.with_entities.return_value = mock_with_entities
+    mock_with_entities.scalar.return_value = 0
+    mock_filter.order_by.return_value = mock_order
+    mock_order.offset.return_value = mock_offset
+    mock_offset.limit.return_value = mock_limit
+    mock_limit.all.return_value = []
+
+    filters = TechnicalAssessmentFilter(page=1, limit=10)
+    items, total = technical_assessment_controller.list_tests(mock_db, filters)
+
+    assert items == []
+    assert total == 0
+
+
+# ==============================================
+# TESTS: VALIDACIONES
+# ==============================================
+
+
+def test_technical_assessment_future_date_rejected():
+    """Validación: La fecha del test no puede ser futura."""
+    future_date = datetime.now() + timedelta(days=1)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CreateTechnicalAssessmentSchema(
+            date=future_date,
+            athlete_id=1,
+            evaluation_id=1,
+            ball_control=Scale.GOOD,
+        )
+
+    assert "La fecha del test no puede ser futura" in str(exc_info.value)
+
+
+def test_technical_assessment_all_skills_none_rejected():
+    """Validación: Rechaza evaluación sin ninguna habilidad."""
+    with pytest.raises(ValidationError) as exc_info:
+        CreateTechnicalAssessmentSchema(
+            date=datetime.now(),
+            athlete_id=1,
+            evaluation_id=1,
+            ball_control=None,
+            short_pass=None,
+            long_pass=None,
+            shooting=None,
+            dribbling=None,
+        )
+
+    assert "Debe evaluar al menos una habilidad técnica" in str(exc_info.value)
+
+
+def test_technical_assessment_one_skill_valid():
+    """Validación: Válido con solo una habilidad."""
+    schema = CreateTechnicalAssessmentSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        ball_control=Scale.GOOD,
+    )
+
+    assert schema.ball_control == Scale.GOOD
+    assert schema.short_pass is None
+
+
+def test_technical_assessment_multiple_skills_valid():
+    """Validación: Válido con múltiples habilidades."""
+    schema = CreateTechnicalAssessmentSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        ball_control=Scale.GOOD,
+        short_pass=Scale.EXCELLENT,
+        shooting=Scale.AVERAGE,
+    )
+
+    assert schema.ball_control == Scale.GOOD
+    assert schema.short_pass == Scale.EXCELLENT
+    assert schema.shooting == Scale.AVERAGE
+
+
+def test_technical_assessment_all_skills_valid():
+    """Validación: Válido con todas las habilidades evaluadas."""
+    schema = CreateTechnicalAssessmentSchema(
+        date=datetime.now(),
+        athlete_id=1,
+        evaluation_id=1,
+        ball_control=Scale.GOOD,
+        short_pass=Scale.EXCELLENT,
+        long_pass=Scale.AVERAGE,
+        shooting=Scale.GOOD,
+        dribbling=Scale.EXCELLENT,
+    )
+
+    assert schema.ball_control == Scale.GOOD
+    assert schema.short_pass == Scale.EXCELLENT
+    assert schema.long_pass == Scale.AVERAGE
+    assert schema.shooting == Scale.GOOD
+    assert schema.dribbling == Scale.EXCELLENT

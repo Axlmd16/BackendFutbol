@@ -27,8 +27,12 @@ class AlreadyExistsException(AppException):
 class ValidationException(AppException):
     """Datos inválidos o reglas de negocio incumplidas."""
 
-    def __init__(self, message: str = "Error de validación"):
+    def __init__(self, message: str = "Error de validación", detail: str = None):
         super().__init__(message, status_code=422)
+        self.detail = detail
+
+    def to_dict(self):
+        return {"message": self.message, "detail": self.detail}
 
 
 class UnauthorizedException(AppException):
@@ -43,3 +47,29 @@ class DatabaseException(AppException):
 
     def __init__(self, message: str = "Error de base de datos"):
         super().__init__(message, status_code=500)
+
+
+class EmailServiceException(AppException):
+    """Errores del servicio de correo electrónico (SMTP)."""
+
+    def __init__(
+        self,
+        message: str = (
+            "No se pudo enviar el correo electrónico. "
+            "Por favor, intente nuevamente más tarde."
+        ),
+    ):
+        super().__init__(message, status_code=503)
+
+
+class ExternalServiceException(AppException):
+    """Errores de servicios externos (APIs, microservicios, etc.)."""
+
+    def __init__(
+        self,
+        message: str = (
+            "El servicio externo no está disponible. "
+            "Por favor, intente nuevamente más tarde."
+        ),
+    ):
+        super().__init__(message, status_code=503)

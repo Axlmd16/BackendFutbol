@@ -1,0 +1,86 @@
+name: Production Branch CI
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  production-readiness:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: ci_db
+        options: >-
+          --health-cmd "pg_isready -U ci_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: |
+          uv sync --all-extras --dev
+          # Herramientas adicionales para revisión de producción
+          uv pip install bandit pip-audit pytest-cov
+
+      - name: Análisis de Vulnerabilidades en Dependencias (pip-audit)
+        run: |
+          # Escanea dependencias instaladas en busca de vulnerabilidades conocidas
+          # Ignora vulnerabilidades de ecdsa que no tienen fix disponible (PYSEC-2024-4, GHSA-wj6h-64fc-37mp)
+          uv run pip-audit --ignore-vuln PYSEC-2024-4 --ignore-vuln GHSA-wj6h-64fc-37mp
+
+      - name: Análisis de Seguridad Estático (Bandit)
+        run: |
+          # Escaneo riguroso
+          # Escaneo riguroso usando configuración
+          uv run bandit -c pyproject.toml -r .
+
+      - name: Verificar Formato y Linter (Ruff)
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+
+      - name: Inicializar Base de Datos
+        env:
+          DB_HOST: "localhost"
+          DB_PORT: "5432"
+          DB_USER: "ci_user"
+          DB_PASSWORD: "ci_password"
+          DB_NAME: "ci_db"
+          JWT_SECRET: "secreto_prod_ci"
+          JWT_ALGORITHM: "HS256"
+          PYTHONPATH: .
+        run: |
+          echo "Creating database tables..."
+          uv run python scripts/init_test_db.py
+
+      - name: Ejecutar Tests con Coverage Estricto
+        env:
+          DB_HOST: "localhost"
+          DB_PORT: "5432"
+          DB_USER: "ci_user"
+          DB_PASSWORD: "ci_password"
+          DB_NAME: "ci_db"
+          JWT_SECRET: "secreto_prod_ci"
+          JWT_ALGORITHM: "HS256"
+          PYTHONPATH: .
+
+        run: |
+          # Mismo umbral (60%) pero en Prod es crítico que pase
+          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=60

@@ -1,226 +1,500 @@
-# Backend Fútbol API ⚽
+# Kallpa UNL - Backend API ⚽
 
-API REST desarrollada con FastAPI para la gestión de datos de fútbol, incluyendo usuarios, atletas, evaluaciones físicas y estadísticas.
+Sistema de gestión deportiva desarrollado con FastAPI para la Universidad Nacional de Loja. Permite administrar usuarios, atletas, evaluaciones físicas, asistencia y estadísticas del Club de Fútbol Kallpa UNL.
 
 ## 📋 Stack Tecnológico
 
--   **Python 3.13+** con FastAPI
--   **SQLAlchemy** + PostgreSQL
--   **Pydantic Settings** para gestión de configuración (.env)
--   **uv** para gestión de dependencias y entorno aislado
+| Componente                 | Tecnología              |
+| -------------------------- | ----------------------- |
+| **Backend**                | Python 3.11+ / FastAPI  |
+| **Base de Datos**          | PostgreSQL              |
+| **ORM**                    | SQLAlchemy 2.0          |
+| **Validación**             | Pydantic v2             |
+| **Autenticación**          | JWT (python-jose)       |
+| **Gestor de dependencias** | uv                      |
+| **Linter/Formatter**       | Ruff                    |
+| **Tests**                  | pytest + pytest-asyncio |
+| **CI/CD**                  | GitHub Actions          |
 
-## 🚀 Configuración Rápida
+---
+
+## 🏗️ Arquitectura del Proyecto
+
+```
+BackendFutbol/
+├── .github/workflows/        # Pipelines CI/CD
+│   ├── fastapi-ci.yml        # CI para PRs a development
+│   ├── staging-ci.yml        # CI para PRs a staging
+│   └── production-ci.yml     # CI para PRs a main (producción)
+│
+├── app/
+│   ├── client/               # Clientes HTTP para microservicios externos
+│   ├── controllers/          # Lógica de negocio
+│   ├── core/                 # Configuración, database, seguridad
+│   │   ├── config.py         # Variables de entorno (Pydantic Settings)
+│   │   └── database.py       # Engine SQLAlchemy y sesiones
+│   ├── dao/                  # Data Access Objects (CRUD)
+│   ├── models/               # Modelos SQLAlchemy (tablas)
+│   ├── schemas/              # Schemas Pydantic (validación)
+│   ├── services/             # Routers FastAPI
+│   ├── templates/            # Templates HTML (reportes)
+│   └── utils/                # Utilidades y excepciones
+│
+├── scripts/                  # Scripts de utilidad
+├── tests/                    # Tests unitarios y de integración
+│   ├── controllers/          # Tests de controladores
+│   ├── routers/              # Tests de endpoints
+│   └── conftest.py           # Fixtures compartidas
+│
+├── main.py                   # Punto de entrada de la aplicación
+├── pyproject.toml            # Configuración del proyecto y dependencias
+├── docker-compose.yml        # Microservicio externo de usuarios
+└── .env                      # Variables de entorno (NO versionado)
+```
+
+---
+
+## 🚀 Instalación y Configuración
+
+### Prerrequisitos
+
+- **Python 3.11+** instalado
+- **PostgreSQL** instalado y funcionando
+- **uv** (gestor de paquetes recomendado)
+- **Docker** (opcional, para microservicio externo)
 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd backendfutbol
+git clone https://github.com/tu-usuario/BackendFutbol.git
+cd BackendFutbol
 ```
 
-### 2. Crear y activar entorno virtual
-
-**En Windows:**
+### 2. Instalar uv (si no lo tienes)
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
+# Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
 
-**En macOS/Linux:**
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 ### 3. Instalar dependencias
 
-El proyecto utiliza `pyproject.toml` para manejar las dependencias.
-
 ```bash
-# Opción estándar con pip
-pip install -e .
-
-# Opción con uv (recomendado, más rápido)
+# Instala todas las dependencias del proyecto
 uv sync
+
+# Para desarrollo (incluye Ruff)
+uv sync --all-extras --dev
 ```
 
 ### 4. Configurar variables de entorno
 
-Crea un archivo `.env` en la raíz del proyecto con la siguiente configuración:
+Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
-# Configuración de Base de Datos
+# ================= BASE DE DATOS =================
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=tu_password
-DB_NAME=backendfutbol_db
+DB_PASSWORD=tu_password_seguro
+DB_NAME=kallpa_unl_db
 
-# Configuración de la App
+# ================= APLICACIÓN =================
+APP_NAME=Kallpa UNL API
+APP_VERSION=1.0.0
 APP_PORT=8000
 APP_HOST=0.0.0.0
-DEBUG=true
+DEBUG=True
 
-# Seguridad
-JWT_SECRET=secreto_super_seguro_para_desarrollo_123
+# ================= SEGURIDAD (JWT) =================
+JWT_SECRET=tu_secreto_super_seguro_aqui_minimo_32_caracteres
+JWT_ALGORITHM=HS256
 TOKEN_EXPIRES=3600
+REFRESH_TOKEN_EXPIRES=604800
+
+# ================= CORS =================
+ALLOWED_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
+
+# ================= MICROSERVICIO EXTERNO =================
+PERSON_MS_BASE_URL=http://localhost:8096
+PERSON_MS_ADMIN_EMAIL=admin@admin.com
+PERSON_MS_ADMIN_PASSWORD=12345678
+
+# ================= EMAIL (SMTP) =================
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASSWORD=tu_app_password
+SMTP_FROM=tu_correo@gmail.com
+SMTP_SSL=True
+FRONTEND_URL=http://localhost:5173
 ```
 
-> **Nota:** La base de datos debe estar creada previamente en PostgreSQL. Las tablas se crearán automáticamente al iniciar la aplicación.
+### 5. Configurar PostgreSQL
 
-## ▶️ Ejecutar la aplicación
+#### Instalar PostgreSQL
 
-Para iniciar el servidor de desarrollo con recarga automática:
+**Windows:**
+
+1. Descargar desde [postgresql.org/download/windows](https://www.postgresql.org/download/windows/)
+2. Ejecutar el instalador y seguir los pasos
+3. Recordar la contraseña del usuario `postgres` que configures
+
+**macOS:**
 
 ```bash
-# Opción 1: Usando el punto de entrada principal
-python main.py
+brew install postgresql@15
+brew services start postgresql@15
+```
 
-# Opción 2: Usando uvicorn directamente
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+**Ubuntu/Debian:**
 
-# Opción 3: Usando uv (recomendado)
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+#### Crear usuario y base de datos
+
+Conectarse a PostgreSQL como superusuario:
+
+```bash
+# Windows (desde cmd o PowerShell)
+psql -U postgres
+
+# macOS/Linux
+sudo -u postgres psql
+```
+
+Ejecutar los siguientes comandos SQL:
+
+```sql
+-- 1. Crear usuario para la aplicación
+CREATE USER dev_user WITH PASSWORD 'dev_password';
+
+-- 2. Crear la base de datos
+CREATE DATABASE futbol_db OWNER dev_user;
+
+-- 3. Otorgar todos los privilegios
+GRANT ALL PRIVILEGES ON DATABASE futbol_db TO dev_user;
+
+-- 4. Conectarse a la base de datos y otorgar permisos en el schema
+\c futbol_db
+GRANT ALL ON SCHEMA public TO dev_user;
+
+-- 5. Salir
+\q
+```
+
+#### Verificar conexión
+
+```bash
+# Probar conexión con el nuevo usuario
+psql -U dev_user -d futbol_db -h localhost
+```
+
+#### Configurar .env
+
+Asegúrate de que tu archivo `.env` coincida con los datos creados:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=dev_user
+DB_PASSWORD=dev_password
+DB_NAME=futbol_db
+```
+
+> **Nota**: Las tablas se crean automáticamente al iniciar la aplicación gracias a `Base.metadata.create_all()` en `main.py`.
+
+### 7. Usuario Administrador por Defecto
+
+Al iniciar la aplicación por primera vez, se crea automáticamente un usuario administrador si no existe:
+
+| Campo        | Valor por defecto       |
+| ------------ | ----------------------- |
+| **Email**    | `admin@unl.edu.ec`      |
+| **Password** | `Admin123!`             |
+| **DNI**      | `0000000000`            |
+| **Nombre**   | `Administrador Sistema` |
+
+Para personalizar estas credenciales, agrega las siguientes variables a tu `.env`:
+
+```env
+# ================= ADMIN POR DEFECTO =================
+DEFAULT_ADMIN_EMAIL=tu_email_admin@unl.edu.ec
+DEFAULT_ADMIN_PASSWORD=TuPasswordSeguro123!
+DEFAULT_ADMIN_DNI=1234567890
+DEFAULT_ADMIN_NAME=Tu Nombre Admin
+```
+
+> **Importante**: Si el admin ya existe, no se sobrescribirá. Para cambiar las credenciales de un admin existente, hazlo directamente en la base de datos o a través de la API.
+
+### 6. Iniciar el microservicio externo (opcional)
+
+Levantar el microservicio de usuarios externo:
+
+```bash
+docker-compose up -d
+```
+
+Esto levanta:
+
+- MariaDB en puerto `3306`
+- Microservicio Spring Boot en puerto `8096`
+
+---
+
+## ▶️ Ejecutar la Aplicación
+
+### Desarrollo (con recarga automática)
+
+```bash
+# Opción recomendada
+uv run python main.py
+
+# Alternativa con uvicorn
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 📚 Documentación Interactiva
+### Producción
 
-Una vez iniciado el servidor, accede a la documentación en:
-
--   **Scalar Docs** (Recomendado): http://localhost:8000/scalar
--   **Swagger UI**: http://localhost:8000/docs
--   **ReDoc**: http://localhost:8000/redoc
-
-Las tres rutas exponen el mismo esquema OpenAPI; usa Scalar para una experiencia moderna y rápida, o Swagger para probar endpoints interactivamente.
-
-## 📂 Estructura del Proyecto
-
-```
-backendfutbol/
-├── .github/            # Workflows de GitHub Actions
-├── app/
-│   ├── core/           # Configuración, DB, Seguridad
-│   │   ├── config.py   # Variables de entorno via Pydantic Settings
-│   │   └── database.py # Engine, SessionLocal y helper get_db
-│   ├── dao/            # Data Access Objects (CRUD Genérico)
-│   │   └── base.py     # BaseDAO con operaciones CRUD, soft delete y filtros
-│   ├── models/         # Modelos SQLAlchemy (Tablas)
-│   ├── schemas/        # Schemas Pydantic (Validación)
-│   ├── services/       # Lógica de negocio y Routers
-│   └── utils/          # Excepciones y utilidades
-├── main.py             # Punto de entrada (registra routers, crea tablas)
-├── pyproject.toml      # Definición de dependencias
-└── uv.lock             # Bloqueo de versiones
+```bash
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-## 🔧 Arquitectura y Componentes
+---
 
-### Puntos de Entrada Principales
+## 📚 Documentación API
 
--   **`main.py`**: Crea la aplicación FastAPI, registra routers y ejecuta `Base.metadata.create_all()` para crear las tablas.
--   **`app/core/database.py`**: Configura el engine SQLAlchemy y proporciona `SessionLocal` con el helper `get_db` como dependencia para FastAPI.
--   **`app/core/config.py`**: Maneja las variables de entorno usando Pydantic Settings, cargando la configuración desde el archivo `.env`.
--   **`app/models`**: Contiene los modelos SQLAlchemy documentados en español que representan las tablas de la base de datos.
+Una vez iniciado el servidor:
 
-### BaseDAO - CRUD Genérico
+| Documentación                 | URL                                |
+| ----------------------------- | ---------------------------------- |
+| **Scalar Docs** (Recomendado) | http://localhost:8000/scalar       |
+| **Swagger UI**                | http://localhost:8000/docs         |
+| **ReDoc**                     | http://localhost:8000/redoc        |
+| **OpenAPI JSON**              | http://localhost:8000/openapi.json |
 
-El `BaseDAO` (`app/dao/base.py`) proporciona operaciones CRUD completas, soft delete, búsqueda paginada y filtros dinámicos. Se instancia con el modelo SQLAlchemy que necesitas manejar.
+---
 
-**Ejemplo de uso en un servicio/endpoint:**
+## 🧪 Ejecutar Tests
 
-```python
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.dao.base import BaseDAO
-from app.models.user import User
+```bash
+# Ejecutar todos los tests
+uv run pytest
 
-router = APIRouter()
-user_dao = BaseDAO(User)
+# Con cobertura
+uv run pytest --cov=app --cov-report=term-missing
 
-@router.get("/users")
-def list_users(db: Session = Depends(get_db)):
-    return user_dao.get_all(db)
+# Tests específicos
+uv run pytest tests/controllers/test_user_controller.py -v
 
-@router.post("/users")
-def create_user(payload: dict, db: Session = Depends(get_db)):
-    return user_dao.create(db, payload)
-
-@router.get("/users/{user_id}")
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    return user_dao.get_by_id(db, user_id)
-
-@router.put("/users/{user_id}")
-def update_user(user_id: int, payload: dict, db: Session = Depends(get_db)):
-    return user_dao.update(db, user_id, payload)
-
-@router.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    return user_dao.delete(db, user_id)  # Soft delete
+# Solo tests que coincidan con un patrón
+uv run pytest -k "create_user"
 ```
 
-## 🌳 Flujo de Trabajo Git (Gitflow Personalizado)
+---
 
-Este proyecto sigue una arquitectura de ramas estricta para mantener la calidad del código y facilitar el trabajo en equipo.
+## 🔍 Linting y Formato
+
+```bash
+# Verificar formato
+uv run ruff format --check .
+
+# Aplicar formato
+uv run ruff format .
+
+# Verificar errores de código
+uv run ruff check .
+
+# Corregir errores automáticamente
+uv run ruff check --fix .
+```
+
+---
+
+## 🔄 Pipelines CI/CD
+
+El proyecto tiene 3 pipelines de GitHub Actions:
+
+### 1. `fastapi-ci.yml` (PRs a `development`)
+
+- ✅ Verifica formato (Ruff)
+- ✅ Ejecuta linter (Ruff)
+- ✅ Ejecuta tests (pytest)
+
+### 2. `staging-ci.yml` (PRs a `staging`)
+
+- ✅ Todo lo anterior
+- ✅ Cobertura mínima requerida
+
+### 3. `production-ci.yml` (PRs a `main`)
+
+- ✅ Todo lo anterior
+- ✅ Análisis de seguridad (Bandit)
+- ✅ Análisis de vulnerabilidades (Safety)
+- ✅ Cobertura mínima: 60%
+
+---
+
+## 🌳 Flujo de Trabajo Git
 
 ### Estructura de Ramas
 
-| Rama          | Entorno      | Descripción                                                        |
-| ------------- | ------------ | ------------------------------------------------------------------ |
-| `main`        | Producción   | Código estable y desplegable. **No hacer commits directos.**       |
-| `staging`     | QA / Pruebas | Entorno para testing antes de salir a producción.                  |
-| `development` | Desarrollo   | Rama principal de integración. Todo el trabajo nace y vuelve aquí. |
+| Rama          | Entorno    | Descripción                              |
+| ------------- | ---------- | ---------------------------------------- |
+| `main`        | Producción | Código estable. **No commits directos.** |
+| `staging`     | QA/Pruebas | Entorno de testing pre-producción        |
+| `development` | Desarrollo | Rama de integración principal            |
 
-### Flujo de Trabajo (Paso a Paso)
+### Crear una nueva feature
 
-1. **Sincronízate**: Asegúrate de estar en `development` y tener los últimos cambios:
+```bash
+# 1. Actualizar development
+git checkout development
+git pull origin development
 
-    ```bash
-    git checkout development
-    git pull origin development
-    ```
+# 2. Crear rama feature
+git checkout -b feature/HS-XXX-descripcion
 
-2. **Crea tu Feature**: Crea una rama para tu tarea desde `development`:
+# 3. Desarrollar y hacer commits
+git add .
+git commit -m "feat: descripción del cambio"
 
-    ```bash
-    git checkout -b feature/nombre-descriptivo
-    ```
+# 4. Push y crear PR
+git push origin feature/HS-XXX-descripcion
+```
 
-    - **Nomenclatura**: `feature/nombre-tarea` (ej. `feature/login-auth`)
-    - Si usas GitKraken: Usa el botón "Start Feature"
+### Convención de commits
 
-3. **Desarrolla**: Haz tus commits en tu rama `feature/...` con mensajes descriptivos.
-
-4. **Finaliza**:
-    - Haz push de tu rama:
-        ```bash
-        git push origin feature/nombre-descriptivo
-        ```
-    - Abre un **Pull Request** hacia `development`
-    - Una vez aprobado y fusionado, elimina tu rama local
-
-### ⚠️ Reglas de Oro
-
--   ❌ **Nunca hagas commit directo a `main`**
--   ✅ Siempre trabaja desde ramas `feature/`
--   ✅ Todos los cambios deben pasar por Pull Request
--   ✅ Si arreglas un bug en `release` o `staging`, asegúrate de hacer **Merge Down** hacia `development` para no perder el arreglo
-
-## 🤝 Contribución
-
-1. Asegúrate de seguir el flujo de trabajo Git descrito arriba
-2. Escribe código limpio y bien documentado
-3. Usa los schemas de Pydantic para validación de datos
-4. Aprovecha el `BaseDAO` para operaciones CRUD estándar
-5. Añade tests para nuevas funcionalidades
-
-## 📝 Notas Adicionales
-
--   Los modelos SQLAlchemy están documentados en español para facilitar la comprensión
--   El `BaseDAO` soporta soft delete por defecto
--   La aplicación usa Pydantic Settings para una gestión robusta de configuración
--   Las tablas se crean automáticamente al iniciar la aplicación (no requiere migraciones manuales en desarrollo)
+```
+feat: nueva funcionalidad
+fix: corrección de bug
+docs: documentación
+test: tests
+refactor: refactorización
+style: formato/estilo
+```
 
 ---
+
+## 📦 Despliegue en Producción
+
+### Opción 1: Servidor tradicional (VPS/EC2)
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/tu-usuario/BackendFutbol.git
+cd BackendFutbol
+
+# 2. Instalar uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 3. Instalar dependencias
+uv sync
+
+# 4. Configurar .env con valores de producción
+cp .env.example .env
+nano .env  # Editar con valores reales
+
+# 5. Ejecutar con Gunicorn (recomendado para producción)
+uv pip install gunicorn
+uv run gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+```
+
+### Opción 2: Docker
+
+```dockerfile
+# Dockerfile (crear en raíz del proyecto)
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . .
+
+RUN pip install uv && uv sync
+
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+```bash
+docker build -t kallpa-backend .
+docker run -d -p 8000:8000 --env-file .env kallpa-backend
+```
+
+### Variables de entorno críticas para producción
+
+```env
+DEBUG=False
+JWT_SECRET=<secreto_muy_largo_y_seguro>
+DB_PASSWORD=<password_seguro>
+ALLOWED_ORIGINS=["https://tu-dominio.com"]
+```
+
+---
+
+## 🔐 Seguridad
+
+- **Autenticación**: JWT con tokens de acceso y refresh
+- **Contraseñas**: Hasheadas con bcrypt
+- **CORS**: Configurado para dominios específicos
+- **Validación**: Pydantic valida todas las entradas
+- **DNI**: Validación completa de cédula ecuatoriana
+
+---
+
+## 📊 Módulos Principales
+
+| Módulo           | Descripción                               |
+| ---------------- | ----------------------------------------- |
+| **Usuarios**     | Gestión de administradores y entrenadores |
+| **Atletas**      | Registro y seguimiento de deportistas     |
+| **Evaluaciones** | Tests físicos y mediciones                |
+| **Asistencia**   | Control de asistencia a entrenamientos    |
+| **Estadísticas** | Métricas y reportes de rendimiento        |
+| **Reportes**     | Generación de PDF/Excel                   |
+
+---
+
+## 🐛 Solución de Problemas
+
+### Error de conexión a PostgreSQL
+
+```bash
+# Verificar que PostgreSQL esté corriendo
+sudo systemctl status postgresql
+
+# Verificar credenciales en .env
+```
+
+### Error de microservicio externo
+
+```bash
+# Verificar que docker-compose esté corriendo
+docker-compose ps
+
+# Reiniciar servicios
+docker-compose down && docker-compose up -d
+```
+
+### Tests fallan por configuración
+
+```bash
+# Verificar que las variables de entorno estén configuradas
+cat .env
+```
+
+---
+
+## 📄 Licencia
+
+Este proyecto es parte de la Universidad Nacional de Loja.
+
+---
+
+**Desarrollado con ❤️ para la gestión deportiva universitaria**

@@ -8,26 +8,26 @@ def get_openapi_config() -> Dict[str, Any]:
         "version": "1.0.0",
         "description": """
         ## 🚀 API REST para gestión de fútbol
-        
+
         Esta API proporciona endpoints para gestionar:
         - Usuarios y autenticación
         - Equipos y jugadores
         - Estadísticas y resultados
-        
+
         ### Arquitectura
         - **Framework**: FastAPI
         - **Base de datos**: PostgreSQL
         - **ORM**: SQLAlchemy
         - **Patrón**: MVC con DAOs genéricos
-        
+
         ### Autenticación
         Algunos endpoints requieren autenticación mediante JWT token.
-        
+
         **Header requerido:**
 ```
         Authorization: Bearer <token>
 ```
-        
+
         ### Respuestas
         Todas las respuestas siguen el formato:
 ```json

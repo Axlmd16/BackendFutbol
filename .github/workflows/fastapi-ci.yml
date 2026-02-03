@@ -1,0 +1,87 @@
+name: CI - FastAPI (uv)
+
+on:
+  pull_request:
+    branches: ["development"]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: ci_db
+        options: >-
+          --health-cmd "pg_isready -U ci_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: uv sync --all-extras --dev
+
+      - name: Linter y Formato (Ruff)
+        run: |
+          # Verifica formato (si el código está feo, falla)
+          uv run ruff format --check .
+          # Verifica errores lógicos y orden de imports
+          uv run ruff check .
+
+      - name: Inicializar Base de Datos
+        env:
+          DB_HOST: "localhost"
+          DB_PORT: "5432"
+          DB_USER: "ci_user"
+          DB_PASSWORD: "ci_password"
+          DB_NAME: "ci_db"
+          JWT_SECRET: "secreto_super_falso_para_testing_en_ci"
+          JWT_ALGORITHM: "HS256"
+          PYTHONPATH: .
+        run: |
+          echo "Creating database tables..."
+          uv run python scripts/init_test_db.py
+
+      - name: Ejecutar Pytest
+        env:
+          # Configuración de Base de Datos
+          DB_HOST: "localhost"
+          DB_PORT: "5432"
+          DB_USER: "ci_user"
+          DB_PASSWORD: "ci_password"
+          DB_NAME: "ci_db"
+
+          # Configuración de App
+          APP_NAME: "Backend Futbol API CI"
+          APP_VERSION: "1.0.0"
+          DEBUG: "True"
+
+          JWT_SECRET: "secreto_super_falso_para_testing_en_ci"
+          JWT_ALGORITHM: "HS256"
+          TOKEN_EXPIRES: "3600"
+
+          # Otros
+          ALLOWED_ORIGINS: '["*"]'
+          PERSON_MS_ADMIN_EMAIL: "admin@test.com"
+          PERSON_MS_ADMIN_PASSWORD: "test"
+          PERSON_MS_BASE_URL: "http://localhost:8096"
+
+          # Importante para que encuentre tus módulos
+          PYTHONPATH: .
+
+        run: uv run pytest

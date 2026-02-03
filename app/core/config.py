@@ -16,24 +16,27 @@ class Settings(BaseSettings):
     APP_NAME: str = "Backend Futbol API"
     APP_VERSION: str = "1.0.0"
     APP_PORT: int = 8000
-    APP_HOST: str = "0.0.0.0"
+    APP_HOST: str = "0.0.0.0"  # nosec
     DEBUG: bool = False
 
     # ================= SECURITY =================
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    TOKEN_EXPIRES: int = 3600
+    TOKEN_EXPIRES: int = 3600  # Access token: 1 hora
+    REFRESH_TOKEN_EXPIRES: int = 604800  # Refresh token: 7 días
 
     # ================= CORS =================
     ALLOWED_ORIGINS: List[str] = ["*"]
 
     # ================= EMAIL =================
-    SMTP_HOST: Optional[str] = None
-    SMTP_PORT: int = 587
-    SMTP_USER: Optional[str] = None
-    SMTP_PASSWORD: Optional[str] = None
-    SMTP_FROM: Optional[str] = None
-    SMTP_TLS: bool = True
+    SMTP_HOST: Optional[str] = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USER: Optional[str] = "darwin.granda@unl.edu.ec"
+    SMTP_PASSWORD: Optional[str] = "nzvl bfwk ebqp rian"
+    SMTP_FROM: Optional[str] = "darwin.granda@unl.edu.ec"
+    SMTP_SSL: bool = True
+    # URL del frontend para construir enlaces en correos
+    FRONTEND_URL: Optional[str] = "http://localhost:5173"
 
     # Restricciones de correo institucional
     INSTITUTIONAL_EMAIL_DOMAINS: List[str] = ["@unl.edu.ec"]
@@ -42,6 +45,12 @@ class Settings(BaseSettings):
     PERSON_MS_BASE_URL: str = "http://localhost:8096"
     PERSON_MS_ADMIN_EMAIL: str = "admin@admin.com"
     PERSON_MS_ADMIN_PASSWORD: str = "12345678"
+
+    # ================= DEFAULT ADMIN =================
+    DEFAULT_ADMIN_EMAIL: str = "admin@unl.edu.ec"
+    DEFAULT_ADMIN_PASSWORD: str = "Admin123!"
+    DEFAULT_ADMIN_DNI: str = "0000000000"
+    DEFAULT_ADMIN_NAME: str = "Administrador Sistema"
 
     # ================= PROPERTIES =================
     @property
