@@ -19,7 +19,10 @@ from app.schemas.user_schema import (
     UserFilter,
     UserResponse,
 )
-from app.services.routers.constants import unexpected_error_message
+from app.services.routers.constants import (
+    handle_app_exception,
+    handle_unexpected_exception,
+)
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account, get_current_admin
 
@@ -79,15 +82,7 @@ async def admin_create_user(
             ).model_dump(),
         )
     except Exception as exc:  # pragma: no cover - se devuelve 500 genérico
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(exc),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(exc)
 
 
 @router.put(
@@ -116,25 +111,9 @@ async def admin_update_user(
             data=result.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:  # pragma: no cover - se devuelve 500 genérico
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -166,25 +145,9 @@ def get_all_users(
             ).model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -220,25 +183,9 @@ async def get_me(
             data=user.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -268,25 +215,9 @@ def get_all_interns(
             ).model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -321,25 +252,9 @@ async def get_by_id(
             data=user.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.patch(
@@ -363,25 +278,9 @@ async def desactivate_user(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.patch(
@@ -405,25 +304,9 @@ async def activate_user(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 # ==========================================
@@ -457,25 +340,9 @@ async def promote_athlete_to_intern(
             data=result.model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as exc:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(exc),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(exc)
 
 
 @router.patch(
@@ -499,25 +366,9 @@ async def deactivate_intern(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.patch(
@@ -541,22 +392,6 @@ async def activate_intern(
             data=None,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)

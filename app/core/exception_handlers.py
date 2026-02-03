@@ -42,6 +42,11 @@ PYDANTIC_TRANSLATIONS = {
     ),
 }
 
+# Mensaje de error inesperado
+UNEXPECTED_ERROR_MSG = (
+    "Ha ocurrido un error inesperado. Por favor, intente nuevamente más tarde."
+)
+
 
 def _translate_message(msg: str) -> str:
     """Traduce mensajes comunes de Pydantic al español."""
@@ -90,8 +95,8 @@ def _service_error_response(message: str = SERVICE_PROBLEMS_MSG) -> JSONResponse
     )
 
 
-async def validation_exception_handler(
-    request: Request, exc: RequestValidationError
+def validation_exception_handler(
+    _request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     """Manejador para errores de validación de Pydantic."""
     error_map, first_user_message = _build_error_map(exc)
@@ -110,7 +115,7 @@ async def validation_exception_handler(
     )
 
 
-async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+def app_exception_handler(_request: Request, exc: AppException) -> JSONResponse:
     """Manejador para excepciones de aplicación (AppException y subclases)."""
     errors = {"__root__": [exc.message]} if exc.status_code == 422 else None
 
@@ -143,41 +148,41 @@ async def http_exception_handler_wrapped(
     )
 
 
-async def database_operational_error_handler(
-    request: Request, exc: OperationalError
+def database_operational_error_handler(
+    _request: Request, exc: OperationalError
 ) -> JSONResponse:
     """Manejador para errores operacionales de base de datos."""
-    logger.error(f"Database operational error: {exc}")
+    logger.error("Database operational error: %s", exc)
     return _service_error_response()
 
 
-async def database_interface_error_handler(
-    request: Request, exc: InterfaceError
+def database_interface_error_handler(
+    _request: Request, exc: InterfaceError
 ) -> JSONResponse:
     """Manejador para errores de interfaz de base de datos."""
-    logger.error(f"Database interface error: {exc}")
+    logger.error("Database interface error: %s", exc)
     return _service_error_response()
 
 
-async def database_error_handler(request: Request, exc: DatabaseError) -> JSONResponse:
+def database_error_handler(_request: Request, exc: DatabaseError) -> JSONResponse:
     """Manejador para errores generales de base de datos."""
-    logger.error(f"Database error: {exc}")
+    logger.error("Database error: %s", exc)
     return _service_error_response()
 
 
-async def custom_database_exception_handler(
-    request: Request, exc: DatabaseException
+def custom_database_exception_handler(
+    _request: Request, exc: DatabaseException
 ) -> JSONResponse:
     """Manejador para excepciones de base de datos personalizadas."""
-    logger.error(f"Custom database exception: {exc.message}")
+    logger.error("Custom database exception: %s", exc.message)
     return _service_error_response()
 
 
-async def email_service_exception_handler(
-    request: Request, exc: EmailServiceException
+def email_service_exception_handler(
+    _request: Request, exc: EmailServiceException
 ) -> JSONResponse:
     """Manejador para errores del servicio de correo."""
-    logger.error(f"Email service exception: {exc.message}")
+    logger.error("Email service exception: %s", exc.message)
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={
@@ -189,11 +194,11 @@ async def email_service_exception_handler(
     )
 
 
-async def external_service_exception_handler(
-    request: Request, exc: ExternalServiceException
+def external_service_exception_handler(
+    _request: Request, exc: ExternalServiceException
 ) -> JSONResponse:
     """Manejador para errores de servicios externos."""
-    logger.error(f"External service exception: {exc.message}")
+    logger.error("External service exception: %s", exc.message)
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={
@@ -205,17 +210,14 @@ async def external_service_exception_handler(
     )
 
 
-async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+def global_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
     """Manejador global para excepciones no capturadas."""
-    logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
+    logger.error("Unhandled exception: %s: %s", type(exc).__name__, exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "status": "error",
-            "message": (
-                "Ha ocurrido un error inesperado. "
-                "Por favor, intente nuevamente más tarde."
-            ),
+            "message": UNEXPECTED_ERROR_MSG,
             "data": None,
             "errors": None,
         },

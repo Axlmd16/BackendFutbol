@@ -3,7 +3,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.controllers.attendance_controller import AttendanceController
@@ -15,7 +14,10 @@ from app.schemas.attendance_schema import (
     AttendanceFilter,
 )
 from app.schemas.response import PaginatedResponse, ResponseSchema
-from app.services.routers.constants import unexpected_error_message
+from app.services.routers.constants import (
+    handle_app_exception,
+    handle_unexpected_exception,
+)
 from app.utils.exceptions import AppException
 from app.utils.security import get_current_account
 
@@ -56,25 +58,9 @@ def create_bulk_attendance(
             ).model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -99,25 +85,9 @@ def get_attendance_dates(
             data=dates,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -153,25 +123,9 @@ def get_attendances_by_date(
             ).model_dump(),
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
 
 
 @router.get(
@@ -199,22 +153,6 @@ def get_attendance_summary(
             data=summary,
         )
     except AppException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=ResponseSchema(
-                status="error",
-                message=exc.message,
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_app_exception(exc)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content=ResponseSchema(
-                status="error",
-                message=unexpected_error_message(e),
-                data=None,
-                errors=None,
-            ).model_dump(),
-        )
+        return handle_unexpected_exception(e)
