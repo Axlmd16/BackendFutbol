@@ -44,7 +44,7 @@ jobs:
           # Escanea dependencias instaladas en busca de vulnerabilidades conocidas
           # Usa 'safety scan' (el comando 'check' está deprecado)
           # Ignora vulnerabilidades de ecdsa que afectan todas las versiones (sin fix disponible)
-          uv run safety scan --output text --ignore 64459 --ignore 64396
+          uv run safety scan --output screen --ignore 64459 --ignore 64396
 
       - name: Análisis de Seguridad Estático (Bandit)
         run: |
