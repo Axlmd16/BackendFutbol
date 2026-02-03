@@ -52,11 +52,10 @@ class ReportFilter(BaseModel):
     @model_validator(mode="after")
     def validate_date_range(self):
         """Valida que start_date sea menor o igual a end_date."""
-        if self.start_date and self.end_date:
-            if self.start_date > self.end_date:
-                raise ValueError(
-                    "La fecha de inicio debe ser menor o igual a la fecha de fin"
-                )
+        if self.start_date and self.end_date and self.start_date > self.end_date:
+            raise ValueError(
+                "La fecha de inicio debe ser menor o igual a la fecha de fin"
+            )
         return self
 
 
