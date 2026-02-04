@@ -26,6 +26,9 @@ PYDANTIC_TRANSLATIONS = {
     "value is not a valid integer": "El valor debe ser un número entero",
     "value is not a valid float": "El valor debe ser un número decimal",
     "value is not a valid email address": "El correo electrónico no es válido",
+    "Input should be a valid datetime or date, invalid date separator, expected `-`": (
+        "La fecha debe estar en formato YYYY-MM-DD (use guiones)"
+    ),
     "ensure this value has at least": "Este campo debe tener al menos",
     "ensure this value has at most": "Este campo debe tener como máximo",
     "string does not match regex": "El formato no es válido",
