@@ -127,6 +127,12 @@ class AthleteController:
         rep_data = data.representative
         athlete_data = data.athlete
 
+        # Evitar que representante y deportista compartan la misma cédula
+        if rep_data.dni == athlete_data.dni:
+            raise ValidationException(
+                "La cédula del representante y del deportista debe ser diferente."
+            )
+
         # Validar que el DNI del atleta no exista en ninguna entidad
         validate_dni_not_exists_locally(db, athlete_data.dni)
 
@@ -156,8 +162,9 @@ class AthleteController:
                 db,
                 rep_data.dni,
                 check_users=True,
-                check_athletes=True,
+                check_athletes=False,  # Permitir que un representante sea deportista
                 check_representatives=False,  # Ya sabemos que no existe
+                entity_label="representante",
             )
 
             # Crear persona del representante en MS de usuarios
