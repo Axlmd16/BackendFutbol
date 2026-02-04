@@ -147,3 +147,24 @@ class UpdateSportsStatsRequest(BaseModel):
     assists: Optional[int] = Field(None, ge=0, description="Asistencias")
     yellow_cards: Optional[int] = Field(None, ge=0, description="Tarjetas amarillas")
     red_cards: Optional[int] = Field(None, ge=0, description="Tarjetas rojas")
+
+
+class TestHistoryEntry(BaseModel):
+    """Un registro individual del historial de tests."""
+
+    id: int
+    test_type: str
+    date: str
+    raw_value: Optional[float] = None
+    raw_unit: Optional[str] = None
+    score: float  # Score normalizado 0-100
+
+
+class AthleteTestsHistoryResponse(BaseModel):
+    """Historial completo de tests de un atleta para gráficos de progreso."""
+
+    athlete_id: int
+    athlete_name: str
+    tests_history: List[TestHistoryEntry] = []
+    # Estadísticas agregadas por tipo para resumen
+    summary_by_type: dict = {}

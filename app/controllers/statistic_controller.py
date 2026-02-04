@@ -283,6 +283,31 @@ class StatisticController:
                 f"Error al actualizar estadísticas deportivas: {str(e)}"
             ) from e
 
+    def get_athlete_tests_history(self, db: Session, athlete_id: int) -> dict | None:
+        """
+        Obtener historial completo de tests de un atleta para gráficos de progreso.
+
+        Args:
+            db: Sesión de base de datos
+            athlete_id: ID del atleta
+
+        Returns:
+            Dict con historial de tests o None si el atleta no existe
+        """
+        try:
+            result = self.statistic_dao.get_athlete_tests_history(
+                db=db,
+                athlete_id=athlete_id,
+            )
+            if result is None:
+                return None
+            return result
+        except Exception as e:
+            logger.error(f"Error getting athlete tests history: {str(e)}")
+            raise AppException(
+                f"Error al obtener historial de tests del atleta: {str(e)}"
+            ) from e
+
 
 # Singleton para uso en otros controladores
 statistic_controller = StatisticController()
