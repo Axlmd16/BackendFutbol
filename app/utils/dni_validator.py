@@ -12,6 +12,7 @@ def validate_dni_not_exists_locally(
     check_users: bool = True,
     check_athletes: bool = True,
     check_representatives: bool = True,
+    entity_label: str | None = None,
 ) -> None:
     """
     Valida que un DNI no exista ya en las entidades locales del sistema.
@@ -37,16 +38,18 @@ def validate_dni_not_exists_locally(
     if check_users:
         user_dao = UserDAO()
         if user_dao.get_by_field(db, "dni", dni, only_active=False):
+            label = entity_label or "usuario"
             raise AlreadyExistsException(
-                f"Ya existe un usuario con el DNI {dni} en el sistema"
+                f"Ya existe un {label} con el DNI {dni} en el sistema"
             )
 
     # Verificar en atletas
     if check_athletes:
         athlete_dao = AthleteDAO()
         if athlete_dao.get_by_field(db, "dni", dni, only_active=False):
+            label = entity_label or "deportista"
             raise AlreadyExistsException(
-                f"Ya existe un deportista con el DNI {dni} en el sistema"
+                f"Ya existe un {label} con el DNI {dni} en el sistema"
             )
 
     # Verificar en representantes

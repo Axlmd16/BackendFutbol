@@ -148,6 +148,9 @@ class RepresentativeResponse(BaseSchema):
     phone: Optional[str] = None
     email: Optional[str] = None
     relationship_type: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    direction: Optional[str] = None
     is_active: bool
     athletes_count: int = 0
     athletes: list[AthleteBasicInfo] = []
