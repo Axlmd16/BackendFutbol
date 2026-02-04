@@ -363,8 +363,18 @@ class AthleteController:
         direction = update_data.pop("direction", None)
         phone = update_data.pop("phone", None)
         _type_identification = update_data.pop("type_identification", None)
-        _type_stament = update_data.pop("type_stament", None)
+        type_stament = update_data.pop("type_stament", None)
         _dni = update_data.pop("dni", None)  # No permitimos cambiar DNI
+
+        # Actualizar type_athlete si se envió type_stament
+        if type_stament:
+            # Puede venir como string o como enum
+            type_stament_value = (
+                type_stament.upper()
+                if isinstance(type_stament, str)
+                else getattr(type_stament, "value", str(type_stament)).upper()
+            )
+            update_data["type_athlete"] = type_stament_value
 
         # Extraer nombres
         first_name = update_data.pop("first_name", None)

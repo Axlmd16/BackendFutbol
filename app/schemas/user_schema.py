@@ -328,8 +328,6 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
     @classmethod
     def _parse_role(cls, value: Any) -> Role:
         if isinstance(value, Role):
-            if value == Role.INTERN:
-                raise ValueError("Rol inválido. Use Administrator o Coach")
             return value
 
         if value is None:
@@ -342,10 +340,12 @@ class AdminCreateUserRequest(PersonBase, AccountBase):
             "admin": Role.ADMINISTRATOR,
             "entrenador": Role.COACH,
             "coach": Role.COACH,
+            "pasante": Role.INTERN,
+            "intern": Role.INTERN,
         }
 
         if raw not in mapping:
-            raise ValueError("Rol inválido. Use Administrator o Coach")
+            raise ValueError("Rol inválido. Use Administrator, Coach o Intern")
 
         return mapping[raw]
 

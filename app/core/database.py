@@ -1,31 +1,45 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from app.core.config import settings
 
 # ================= DATABASE ENGINE =================
+# Configuración optimizada para ALTA CONCURRENCIA
 engine = create_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_size=10,
-    max_overflow=20,
+    poolclass=QueuePool,
+    pool_size=50,
+    max_overflow=100,
     pool_pre_ping=True,
-    pool_recycle=3600,
-    connect_args={"client_encoding": "utf8"},
+    pool_recycle=1800,
+    pool_timeout=60,
+    connect_args={
+        "client_encoding": "utf8",
+        "connect_timeout": 10,
+    },
 )
 
-# ================= SESSION =================
+
+# Optimización: configurar conexiones al crearlas
+@event.listens_for(engine, "connect")
+def set_connection_params(dbapi_conn, connection_record):
+    """Configurar parámetros de conexión para mejor rendimiento."""
+    cursor = dbapi_conn.cursor()
+    cursor.execute("SET statement_timeout = '30s'")
+    cursor.close()
+
+
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
     autocommit=False,
 )
 
-# ================= BASE =================
 Base = declarative_base()
 
 
-# ================= DEPENDENCY =================
 def get_db():
     db = SessionLocal()
     try:

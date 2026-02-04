@@ -974,18 +974,18 @@ async def test_ms_connection_error(
             )
 
 
-def test_role_intern_rejected():
-    """Debe rechazar rol INTERN en creación de usuario admin/coach."""
-    with pytest.raises(ValidationError) as exc:
-        AdminCreateUserRequest(
-            first_name="Test",
-            last_name="User",
-            email="test@example.com",
-            dni="0926687856",
-            password="SecurePass123!",
-            role="intern",
-            type_identification="CEDULA",
-            type_stament="DOCENTES",
-        )
-    error_str = str(exc.value).lower()
-    assert "inválido" in error_str or "invalid" in error_str or "role" in error_str
+def test_role_intern_accepted():
+    """Debe aceptar rol INTERN en creación de usuario."""
+    request = AdminCreateUserRequest(
+        first_name="Test",
+        last_name="User",
+        email="test@example.com",
+        dni="0926687856",
+        password="SecurePass123!",
+        role="intern",
+        type_identification="CEDULA",
+        type_stament="DOCENTES",
+    )
+    assert request.role == Role.INTERN
+    assert request.first_name == "Test"
+    assert request.last_name == "User"
