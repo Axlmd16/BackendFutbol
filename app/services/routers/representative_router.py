@@ -42,13 +42,15 @@ representative_controller = RepresentativeController()
     description="Busca un representante por su DNI. Endpoint público para verificar "
     "si el representante ya existe antes de inscribir un menor.",
 )
-def get_representative_by_dni(
+async def get_representative_by_dni(
     dni: str,
     db: Annotated[Session, Depends(get_db)],
 ):
     """Busca un representante por DNI. Útil para el frontend."""
     try:
-        result = representative_controller.get_representative_by_dni(db=db, dni=dni)
+        result = await representative_controller.get_representative_by_dni(
+            db=db, dni=dni
+        )
 
         if result is None:
             return JSONResponse(

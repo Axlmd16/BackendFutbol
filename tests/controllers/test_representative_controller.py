@@ -112,7 +112,8 @@ async def test_create_representative_duplicate_dni(
     controller.representative_dao.create.assert_not_called()
 
 
-def test_get_representative_by_dni_found(controller, mock_db_session):
+@pytest.mark.asyncio
+async def test_get_representative_by_dni_found(controller, mock_db_session):
     """Test de búsqueda por DNI encontrado."""
     mock_rep = MagicMock(
         id=1,
@@ -126,7 +127,9 @@ def test_get_representative_by_dni_found(controller, mock_db_session):
     )
     controller.representative_dao.get_by_field.return_value = mock_rep
 
-    result = controller.get_representative_by_dni(mock_db_session, "1710034065")
+    result = await controller.get_representative_by_dni(
+        mock_db_session, "1710034065"
+    )
 
     assert result is not None
     assert result.id == 1
@@ -134,11 +137,14 @@ def test_get_representative_by_dni_found(controller, mock_db_session):
     assert result.dni == "1710034065"
 
 
-def test_get_representative_by_dni_not_found(controller, mock_db_session):
+@pytest.mark.asyncio
+async def test_get_representative_by_dni_not_found(controller, mock_db_session):
     """Test de búsqueda por DNI no encontrado."""
     controller.representative_dao.get_by_field.return_value = None
 
-    result = controller.get_representative_by_dni(mock_db_session, "9999999999")
+    result = await controller.get_representative_by_dni(
+        mock_db_session, "9999999999"
+    )
 
     assert result is None
 
