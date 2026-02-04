@@ -1,6 +1,6 @@
 """Tests para RepresentativeController."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -76,18 +76,18 @@ async def test_create_representative_success(
         relationship_type=Relationship.FATHER,
     )
 
-    result = await controller.create_representative(
-        mock_db_session, valid_representative_data
-    )
+    with patch(
+        "app.controllers.representative_controller.validate_dni_not_exists_locally"
+    ):
+        result = await controller.create_representative(
+            mock_db_session, valid_representative_data
+        )
 
     assert result.representative_id == 1
     assert result.full_name == "Juan Pérez"
     assert result.dni == "1710034065"
     assert result.relationship_type == "Father"
 
-    controller.representative_dao.exists.assert_called_once_with(
-        mock_db_session, "dni", "1710034065"
-    )
     controller.representative_dao.create.assert_called_once()
     controller.person_ms_service.create_or_get_person.assert_awaited_once()
 
@@ -97,12 +97,16 @@ async def test_create_representative_duplicate_dni(
     controller, mock_db_session, valid_representative_data
 ):
     """Test con DNI duplicado."""
-    controller.representative_dao.exists.return_value = True
-
-    with pytest.raises(AlreadyExistsException) as exc:
-        await controller.create_representative(
-            mock_db_session, valid_representative_data
-        )
+    with patch(
+        "app.controllers.representative_controller.validate_dni_not_exists_locally",
+        side_effect=AlreadyExistsException(
+            "Ya existe un representante con el DNI 1710034065 en el sistema"
+        ),
+    ):
+        with pytest.raises(AlreadyExistsException) as exc:
+            await controller.create_representative(
+                mock_db_session, valid_representative_data
+            )
 
     assert "representante" in str(exc.value).lower() or "dni" in str(exc.value).lower()
     controller.representative_dao.create.assert_not_called()

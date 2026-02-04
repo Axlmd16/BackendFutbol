@@ -25,7 +25,8 @@ from app.schemas.athlete_schema import (
 from app.schemas.representative_schema import RepresentativeCreateDB
 from app.schemas.response import PaginatedResponse
 from app.schemas.user_schema import CreatePersonInMSRequest, TypeStament
-from app.utils.exceptions import AlreadyExistsException, ValidationException
+from app.utils.dni_validator import validate_dni_not_exists_locally
+from app.utils.exceptions import ValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +58,8 @@ class AthleteController:
         last_name = data.last_name.strip()
         dni = data.dni
 
-        # Validar unicidad en el club
-        if self.athlete_dao.exists(db, "dni", dni):
-            raise AlreadyExistsException("El DNI ya existe en el club.")
+        # Validar unicidad en todas las entidades locales ANTES del MS externo
+        validate_dni_not_exists_locally(db, dni)
 
         # Crear o recuperar persona en MS de usuarios
         external_person_id = await self.person_ms_service.create_or_get_person(
@@ -127,11 +127,14 @@ class AthleteController:
         rep_data = data.representative
         athlete_data = data.athlete
 
-        # Validar que el DNI del atleta no exista
-        if self.athlete_dao.exists(db, "dni", athlete_data.dni):
-            raise AlreadyExistsException(
-                "Ya existe un deportista con ese DNI en el club."
+        # Evitar que representante y deportista compartan la misma cédula
+        if rep_data.dni == athlete_data.dni:
+            raise ValidationException(
+                "La cédula del representante y del deportista debe ser diferente."
             )
+
+        # Validar que el DNI del atleta no exista en ninguna entidad
+        validate_dni_not_exists_locally(db, athlete_data.dni)
 
         # 1. Buscar representante existente por DNI
         existing_rep = self.representative_dao.get_by_field(
@@ -153,6 +156,16 @@ class AthleteController:
         else:
             # 2. Crear representante nuevo
             representative_is_new = True
+
+            # Validar que el DNI del representante no exista como usuario o atleta
+            validate_dni_not_exists_locally(
+                db,
+                rep_data.dni,
+                check_users=True,
+                check_athletes=False,  # Permitir que un representante sea deportista
+                check_representatives=False,  # Ya sabemos que no existe
+                entity_label="representante",
+            )
 
             # Crear persona del representante en MS de usuarios
             try:

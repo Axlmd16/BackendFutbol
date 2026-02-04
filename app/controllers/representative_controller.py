@@ -21,7 +21,8 @@ from app.schemas.representative_schema import (
 )
 from app.schemas.response import PaginatedResponse
 from app.schemas.user_schema import CreatePersonInMSRequest
-from app.utils.exceptions import AlreadyExistsException, ValidationException
+from app.utils.dni_validator import validate_dni_not_exists_locally
+from app.utils.exceptions import ValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +49,8 @@ class RepresentativeController:
         last_name = data.last_name.strip()
         dni = data.dni
 
-        # Validar unicidad en representantes
-        if self.representative_dao.exists(db, "dni", dni):
-            raise AlreadyExistsException(
-                "Ya existe un representante con ese DNI en el club."
-            )
+        # Validar unicidad en todas las entidades locales ANTES del MS externo
+        validate_dni_not_exists_locally(db, dni)
 
         # Crear o recuperar persona en MS de usuarios
         external_person_id = await self.person_ms_service.create_or_get_person(

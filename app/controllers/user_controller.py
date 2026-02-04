@@ -22,6 +22,7 @@ from app.schemas.user_schema import (
     UserDetailResponse,
     UserFilter,
 )
+from app.utils.dni_validator import validate_dni_not_exists_locally
 from app.utils.exceptions import (
     AlreadyExistsException,
     NotFoundException,
@@ -159,13 +160,15 @@ class UserController:
     def _validate_user_uniqueness(self, db: Session, dni: str, email: str) -> None:
         """
         Valida que DNI y email no existan en el club.
+        Verifica en usuarios, atletas y representantes.
         """
-        if self.user_dao.exists(db, "dni", dni):
-            raise AlreadyExistsException("Ya existe un usuario con ese DNI en el club")
+        # Validar DNI en todas las entidades locales ANTES de ir al MS externo
+        validate_dni_not_exists_locally(db, dni)
 
+        # Validar email único en cuentas
         if self.account_dao.exists(db, "email", email):
             raise AlreadyExistsException(
-                "Ya existe una cuenta con ese email en el club"
+                "Ya existe una cuenta con ese email en el sistema"
             )
 
     def _create_local_user_and_account(
