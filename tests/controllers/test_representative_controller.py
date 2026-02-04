@@ -127,9 +127,7 @@ async def test_get_representative_by_dni_found(controller, mock_db_session):
     )
     controller.representative_dao.get_by_field.return_value = mock_rep
 
-    result = await controller.get_representative_by_dni(
-        mock_db_session, "1710034065"
-    )
+    result = await controller.get_representative_by_dni(mock_db_session, "1710034065")
 
     assert result is not None
     assert result.id == 1
@@ -142,9 +140,7 @@ async def test_get_representative_by_dni_not_found(controller, mock_db_session):
     """Test de búsqueda por DNI no encontrado."""
     controller.representative_dao.get_by_field.return_value = None
 
-    result = await controller.get_representative_by_dni(
-        mock_db_session, "9999999999"
-    )
+    result = await controller.get_representative_by_dni(mock_db_session, "9999999999")
 
     assert result is None
 
