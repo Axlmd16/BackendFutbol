@@ -259,12 +259,22 @@ app = create_application()
 
 
 if __name__ == "__main__":
+    import os
+
     import uvicorn
+
+    # Fórmula (2 * CPU cores) + 1
+    workers = 1 if settings.DEBUG else int(os.getenv("UVICORN_WORKERS", 4))
 
     uvicorn.run(
         "main:app",
         host=settings.APP_HOST,
         port=settings.APP_PORT,
         reload=settings.DEBUG,
+        workers=workers if not settings.DEBUG else 1,  # reload no soporta workers
         log_level="debug" if settings.DEBUG else "info",
+        limit_concurrency=200,  # Aumentado para soportar más carga
+        limit_max_requests=50000,  # Más requests antes de reiniciar
+        timeout_keep_alive=60,  # Mayor tiempo de keep-alive
+        backlog=2048,  # Cola de conexiones pendientes
     )

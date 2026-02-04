@@ -17,7 +17,11 @@ from app.models.account import Account
 from app.models.enums.rol import Role
 from app.utils.exceptions import UnauthorizedException, ValidationException
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=10,
+)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/accounts/login")
 
 _DB_DEP = Depends(get_db)
