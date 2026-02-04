@@ -11,6 +11,7 @@ from app.dao.base import BaseDAO
 from app.models.athlete import Athlete
 from app.models.attendance import Attendance
 from app.models.endurance_test import EnduranceTest
+from app.models.enums.scale import Scale
 from app.models.evaluation import Evaluation
 from app.models.sprint_test import SprintTest
 from app.models.statistic import Statistic
@@ -20,6 +21,41 @@ from app.models.yoyo_test import YoyoTest
 from app.utils.exceptions import DatabaseException
 
 logger = logging.getLogger(__name__)
+
+# Mapeo de escala a valores numéricos para estadísticas
+SCALE_VALUES = {
+    Scale.POOR: 25,
+    Scale.AVERAGE: 50,
+    Scale.GOOD: 75,
+    Scale.EXCELLENT: 100,
+}
+
+
+def _sprint_time_to_score(time_seconds: float) -> float:
+    """Convierte tiempo de sprint (segundos) a puntaje 0-100.
+    Formula: 4s = 100, 8s = 0
+    """
+    if not time_seconds or time_seconds <= 0:
+        return 0
+    return max(0, min(100, 100 - ((time_seconds - 4) * 25)))
+
+
+def _yoyo_shuttles_to_score(shuttle_count: float) -> float:
+    """Convierte shuttles de YoYo a puntaje 0-100.
+    Formula: 20 shuttles = 30 pts, escala proporcional
+    """
+    if not shuttle_count or shuttle_count <= 0:
+        return 0
+    return min(100, max(0, 30 + (shuttle_count - 20) * 1.17))
+
+
+def _endurance_distance_to_score(distance_m: float) -> float:
+    """Convierte distancia de resistencia (metros) a puntaje 0-100.
+    Formula: 1000m = 30 pts, escala proporcional
+    """
+    if not distance_m or distance_m <= 0:
+        return 0
+    return min(100, max(0, 30 + (distance_m - 1000) * 0.035))
 
 
 class StatisticDAO(BaseDAO[Statistic]):
@@ -267,23 +303,27 @@ class StatisticDAO(BaseDAO[Statistic]):
 
             sprint_stats = sprint_query.first()
             if sprint_stats and sprint_stats[0] > 0:
-                # Formula: 4s = 100, 8s = 0
                 avg_time = float(sprint_stats[1]) if sprint_stats[1] else 0
-                score = (
-                    max(0, min(100, 100 - ((avg_time - 4) * 25))) if avg_time > 0 else 0
-                )
+                min_time = float(sprint_stats[2]) if sprint_stats[2] else None
+                max_time = float(sprint_stats[3]) if sprint_stats[3] else None
+
+                # Convertir a puntajes (menor tiempo = mejor puntaje)
+                avg_score = _sprint_time_to_score(avg_time)
+                # Para sprint: min_time es el mejor resultado = max_score
+                min_score = _sprint_time_to_score(max_time) if max_time else None
+                max_score = _sprint_time_to_score(min_time) if min_time else None
 
                 tests_by_type.append(
                     {
                         "test_type": "Sprint Test",
                         "total_tests": sprint_stats[0],
-                        "avg_score": round(score, 1),
-                        "min_score": float(sprint_stats[2])
-                        if sprint_stats[2]
-                        else None,  # Raw time
-                        "max_score": float(sprint_stats[3])
-                        if sprint_stats[3]
-                        else None,  # Raw time
+                        "avg_score": round(avg_score, 1),
+                        "min_score": round(min_score, 1)
+                        if min_score is not None
+                        else None,
+                        "max_score": round(max_score, 1)
+                        if max_score is not None
+                        else None,
                     }
                 )
 
@@ -298,17 +338,30 @@ class StatisticDAO(BaseDAO[Statistic]):
                 yoyo_query = yoyo_query.filter(YoyoTest.athlete_id == athlete_id)
             yoyo_stats = yoyo_query.first()
             if yoyo_stats and yoyo_stats[0] > 0:
-                # Formula: 20 shuttles = 30 pts
                 avg_shuttles = float(yoyo_stats[1]) if yoyo_stats[1] else 0
-                score = min(100, max(0, 30 + (avg_shuttles - 20) * 1.17))
+                min_shuttles = float(yoyo_stats[2]) if yoyo_stats[2] else None
+                max_shuttles = float(yoyo_stats[3]) if yoyo_stats[3] else None
+
+                # Convertir a puntajes (más shuttles = mejor puntaje)
+                avg_score = _yoyo_shuttles_to_score(avg_shuttles)
+                min_score = (
+                    _yoyo_shuttles_to_score(min_shuttles) if min_shuttles else None
+                )
+                max_score = (
+                    _yoyo_shuttles_to_score(max_shuttles) if max_shuttles else None
+                )
 
                 tests_by_type.append(
                     {
                         "test_type": "YoYo Test",
                         "total_tests": yoyo_stats[0],
-                        "avg_score": round(score, 1),
-                        "min_score": float(yoyo_stats[2]) if yoyo_stats[2] else None,
-                        "max_score": float(yoyo_stats[3]) if yoyo_stats[3] else None,
+                        "avg_score": round(avg_score, 1),
+                        "min_score": round(min_score, 1)
+                        if min_score is not None
+                        else None,
+                        "max_score": round(max_score, 1)
+                        if max_score is not None
+                        else None,
                     }
                 )
 
@@ -325,37 +378,74 @@ class StatisticDAO(BaseDAO[Statistic]):
                 )
             end_stats = endurance_query.first()
             if end_stats and end_stats[0] > 0:
-                # Formula: 1000m = 30 pts
                 avg_dist = float(end_stats[1]) if end_stats[1] else 0
-                score = min(100, max(0, 30 + (avg_dist - 1000) * 0.035))
+                min_dist = float(end_stats[2]) if end_stats[2] else None
+                max_dist = float(end_stats[3]) if end_stats[3] else None
+
+                # Convertir a puntajes (más distancia = mejor puntaje)
+                avg_score = _endurance_distance_to_score(avg_dist)
+                min_score = _endurance_distance_to_score(min_dist) if min_dist else None
+                max_score = _endurance_distance_to_score(max_dist) if max_dist else None
 
                 tests_by_type.append(
                     {
                         "test_type": "Endurance Test",
                         "total_tests": end_stats[0],
-                        "avg_score": round(score, 1),
-                        "min_score": float(end_stats[2]) if end_stats[2] else None,
-                        "max_score": float(end_stats[3]) if end_stats[3] else None,
+                        "avg_score": round(avg_score, 1),
+                        "min_score": round(min_score, 1)
+                        if min_score is not None
+                        else None,
+                        "max_score": round(max_score, 1)
+                        if max_score is not None
+                        else None,
                     }
                 )
 
-            # Technical assessments
-            tech_query = db.query(func.count(TechnicalAssessment.id))
+            # Technical assessments - calcular promedio basado en las escalas
+            tech_query = db.query(TechnicalAssessment)
             if athlete_id:
                 tech_query = tech_query.filter(
                     TechnicalAssessment.athlete_id == athlete_id
                 )
-            tech_count = tech_query.scalar() or 0
+            tech_assessments = tech_query.all()
+            tech_count = len(tech_assessments)
+
             if tech_count > 0:
-                # Formula: 10 pts per test
-                score = min(100, tech_count * 10)
+                # Calcular el score promedio de cada evaluación técnica
+                all_scores = []
+                for ta in tech_assessments:
+                    # Obtener los valores de cada habilidad
+                    skills = [
+                        ta.ball_control,
+                        ta.short_pass,
+                        ta.long_pass,
+                        ta.shooting,
+                        ta.dribbling,
+                    ]
+                    # Filtrar solo las habilidades que tienen valor
+                    valid_skills = [s for s in skills if s is not None]
+                    if valid_skills:
+                        # Calcular promedio de la evaluación
+                        skill_scores = [SCALE_VALUES.get(s, 50) for s in valid_skills]
+                        avg_assessment = sum(skill_scores) / len(skill_scores)
+                        all_scores.append(avg_assessment)
+
+                if all_scores:
+                    avg_score = round(sum(all_scores) / len(all_scores), 1)
+                    min_score = round(min(all_scores), 1)
+                    max_score = round(max(all_scores), 1)
+                else:
+                    avg_score = 0
+                    min_score = None
+                    max_score = None
+
                 tests_by_type.append(
                     {
                         "test_type": "Technical Assessment",
                         "total_tests": tech_count,
-                        "avg_score": score,
-                        "min_score": None,
-                        "max_score": None,
+                        "avg_score": avg_score,
+                        "min_score": min_score,
+                        "max_score": max_score,
                     }
                 )
 
@@ -655,3 +745,189 @@ class StatisticDAO(BaseDAO[Statistic]):
             logger.error(f"Error updating statistic: {e}")
             db.rollback()
             raise DatabaseException("Error al actualizar estadísticas") from e
+
+    def get_athlete_tests_history(self, db: Session, athlete_id: int) -> dict | None:
+        """
+        Obtener historial completo de tests de un atleta con fechas y scores.
+
+        Retorna datos ordenados cronológicamente para gráficos de progreso.
+
+        Returns:
+            Dict con historial de tests o None si atleta no existe
+        """
+        try:
+            # Verificar que el atleta existe
+            athlete = db.query(Athlete).filter(Athlete.id == athlete_id).first()
+            if not athlete:
+                return None
+
+            tests_history = []
+            summary_by_type = {}
+
+            # Sprint Tests
+            sprint_tests = (
+                db.query(SprintTest)
+                .filter(SprintTest.athlete_id == athlete_id)
+                .filter(SprintTest.is_active.is_(True))
+                .order_by(SprintTest.date.asc())
+                .all()
+            )
+            if sprint_tests:
+                scores = []
+                for test in sprint_tests:
+                    score = _sprint_time_to_score(test.time_0_30_s)
+                    scores.append(score)
+                    tests_history.append(
+                        {
+                            "id": test.id,
+                            "test_type": "Sprint Test",
+                            "date": test.date.isoformat() if test.date else None,
+                            "raw_value": test.time_0_30_s,
+                            "raw_unit": "segundos",
+                            "score": round(score, 1),
+                        }
+                    )
+                summary_by_type["Sprint Test"] = {
+                    "count": len(scores),
+                    "avg_score": round(sum(scores) / len(scores), 1),
+                    "best_score": round(max(scores), 1),
+                    "last_score": round(scores[-1], 1),
+                    "trend": self._calculate_trend(scores),
+                }
+
+            # YoYo Tests
+            yoyo_tests = (
+                db.query(YoyoTest)
+                .filter(YoyoTest.athlete_id == athlete_id)
+                .filter(YoyoTest.is_active.is_(True))
+                .order_by(YoyoTest.date.asc())
+                .all()
+            )
+            if yoyo_tests:
+                scores = []
+                for test in yoyo_tests:
+                    score = _yoyo_shuttles_to_score(test.shuttle_count or 0)
+                    scores.append(score)
+                    tests_history.append(
+                        {
+                            "id": test.id,
+                            "test_type": "YoYo Test",
+                            "date": test.date.isoformat() if test.date else None,
+                            "raw_value": test.shuttle_count,
+                            "raw_unit": "shuttles",
+                            "score": round(score, 1),
+                        }
+                    )
+                summary_by_type["YoYo Test"] = {
+                    "count": len(scores),
+                    "avg_score": round(sum(scores) / len(scores), 1),
+                    "best_score": round(max(scores), 1),
+                    "last_score": round(scores[-1], 1),
+                    "trend": self._calculate_trend(scores),
+                }
+
+            # Endurance Tests
+            endurance_tests = (
+                db.query(EnduranceTest)
+                .filter(EnduranceTest.athlete_id == athlete_id)
+                .filter(EnduranceTest.is_active.is_(True))
+                .order_by(EnduranceTest.date.asc())
+                .all()
+            )
+            if endurance_tests:
+                scores = []
+                for test in endurance_tests:
+                    score = _endurance_distance_to_score(test.total_distance_m or 0)
+                    scores.append(score)
+                    tests_history.append(
+                        {
+                            "id": test.id,
+                            "test_type": "Endurance Test",
+                            "date": test.date.isoformat() if test.date else None,
+                            "raw_value": test.total_distance_m,
+                            "raw_unit": "metros",
+                            "score": round(score, 1),
+                        }
+                    )
+                summary_by_type["Endurance Test"] = {
+                    "count": len(scores),
+                    "avg_score": round(sum(scores) / len(scores), 1),
+                    "best_score": round(max(scores), 1),
+                    "last_score": round(scores[-1], 1),
+                    "trend": self._calculate_trend(scores),
+                }
+
+            # Technical Assessments
+            tech_tests = (
+                db.query(TechnicalAssessment)
+                .filter(TechnicalAssessment.athlete_id == athlete_id)
+                .filter(TechnicalAssessment.is_active.is_(True))
+                .order_by(TechnicalAssessment.date.asc())
+                .all()
+            )
+            if tech_tests:
+                scores = []
+                for test in tech_tests:
+                    # Promediar todos los campos de escala disponibles
+                    scale_values = []
+                    for field in [
+                        test.ball_control,
+                        test.short_pass,
+                        test.long_pass,
+                        test.shooting,
+                        test.dribbling,
+                    ]:
+                        if field and field in SCALE_VALUES:
+                            scale_values.append(SCALE_VALUES[field])
+                    score = sum(scale_values) / len(scale_values) if scale_values else 0
+                    scores.append(score)
+                    tests_history.append(
+                        {
+                            "id": test.id,
+                            "test_type": "Technical Assessment",
+                            "date": test.date.isoformat() if test.date else None,
+                            "raw_value": score,
+                            "raw_unit": "puntos",
+                            "score": round(score, 1),
+                        }
+                    )
+                if scores:
+                    summary_by_type["Technical Assessment"] = {
+                        "count": len(scores),
+                        "avg_score": round(sum(scores) / len(scores), 1),
+                        "best_score": round(max(scores), 1),
+                        "last_score": round(scores[-1], 1),
+                        "trend": self._calculate_trend(scores),
+                    }
+
+            # Ordenar todo el historial por fecha
+            tests_history.sort(key=lambda x: x["date"] or "")
+
+            return {
+                "athlete_id": athlete.id,
+                "athlete_name": athlete.full_name,
+                "tests_history": tests_history,
+                "summary_by_type": summary_by_type,
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting athlete tests history: {str(e)}")
+            raise DatabaseException(
+                "Error al obtener historial de tests del atleta"
+            ) from e
+
+    def _calculate_trend(self, scores: list) -> str:
+        """Calcula la tendencia de una serie de scores."""
+        if len(scores) < 2:
+            return "stable"
+        # Comparar promedio de últimos 2 vs primeros 2
+        recent = scores[-2:] if len(scores) >= 2 else scores
+        early = scores[:2] if len(scores) >= 2 else scores
+        avg_recent = sum(recent) / len(recent)
+        avg_early = sum(early) / len(early)
+        diff = avg_recent - avg_early
+        if diff > 5:
+            return "improving"
+        elif diff < -5:
+            return "declining"
+        return "stable"

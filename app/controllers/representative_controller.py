@@ -21,7 +21,8 @@ from app.schemas.representative_schema import (
 )
 from app.schemas.response import PaginatedResponse
 from app.schemas.user_schema import CreatePersonInMSRequest
-from app.utils.exceptions import AlreadyExistsException, ValidationException
+from app.utils.dni_validator import validate_dni_not_exists_locally
+from app.utils.exceptions import ValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +49,8 @@ class RepresentativeController:
         last_name = data.last_name.strip()
         dni = data.dni
 
-        # Validar unicidad en representantes
-        if self.representative_dao.exists(db, "dni", dni):
-            raise AlreadyExistsException(
-                "Ya existe un representante con ese DNI en el club."
-            )
+        # Validar unicidad en todas las entidades locales ANTES del MS externo
+        validate_dni_not_exists_locally(db, dni)
 
         # Crear o recuperar persona en MS de usuarios
         external_person_id = await self.person_ms_service.create_or_get_person(
@@ -215,18 +213,40 @@ class RepresentativeController:
             type_stament=type_stament,
         )
 
-    def get_representative_by_dni(
+    async def get_representative_by_dni(
         self, db: Session, dni: str
     ) -> Optional[RepresentativeResponse]:
         """
         Busca un representante por DNI.
         Retorna None si no existe (útil para verificar existencia desde frontend).
+        Incluye datos adicionales (nombres, dirección) obtenidos del MS de personas.
         """
         representative = self.representative_dao.get_by_field(
             db, "dni", dni, only_active=True
         )
         if not representative:
             return None
+
+        first_name: Optional[str] = None
+        last_name: Optional[str] = None
+        direction: Optional[str] = None
+
+        # Intentar obtener información del MS (async)
+        try:
+            person_data = await self.person_ms_service.get_user_by_identification(
+                representative.dni
+            )
+            if person_data and person_data.get("data"):
+                ms_data = person_data["data"]
+                first_name = ms_data.get("first_name")
+                last_name = ms_data.get("last_name")
+                direction = ms_data.get("direction")
+        except Exception as ms_error:
+            logger.warning(
+                "No se pudo obtener datos del MS para representante %s: %s",
+                representative.id,
+                ms_error,
+            )
 
         return RepresentativeResponse(
             id=representative.id,
@@ -239,6 +259,9 @@ class RepresentativeController:
                 "value",
                 str(representative.relationship_type),
             ),
+            first_name=first_name,
+            last_name=last_name,
+            direction=direction,
             is_active=representative.is_active,
             created_at=(
                 representative.created_at.isoformat()

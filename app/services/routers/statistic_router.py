@@ -228,3 +228,47 @@ def update_sports_stats(
         return handle_app_exception(exc)
     except Exception as e:
         return handle_unexpected_exception(e)
+
+
+@router.get(
+    "/athlete/{athlete_id}/tests-history",
+    response_model=ResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Obtener historial de tests de un atleta",
+    description=(
+        "Obtiene el historial completo de tests de un atleta con fechas y scores "
+        "normalizados para gráficos de progreso temporal."
+    ),
+)
+def get_athlete_tests_history(
+    athlete_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[Account, Depends(get_current_account)],
+):
+    """Obtiene historial de tests de un atleta para gráficos de progreso."""
+    try:
+        data = statistic_controller.get_athlete_tests_history(
+            db=db,
+            athlete_id=athlete_id,
+        )
+
+        if data is None:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content=ResponseSchema(
+                    status="error",
+                    message="Atleta no encontrado",
+                    data=None,
+                    errors=None,
+                ).model_dump(),
+            )
+
+        return ResponseSchema(
+            status="success",
+            message="Historial de tests obtenido correctamente",
+            data=data,
+        )
+    except AppException as exc:
+        return handle_app_exception(exc)
+    except Exception as e:
+        return handle_unexpected_exception(e)

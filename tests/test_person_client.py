@@ -16,7 +16,7 @@ class TestPersonClientInit:
         """Verifica la inicialización con valores por defecto."""
         client = PersonClient()
         assert client.base_url is not None
-        assert client.timeout == 10.0
+        assert client.timeout == 15.0  # Timeout aumentado para mejor rendimiento
 
     def test_init_with_custom_values(self):
         """Verifica la inicialización con valores personalizados."""

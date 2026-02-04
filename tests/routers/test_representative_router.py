@@ -235,7 +235,7 @@ async def test_get_representative_by_dni_found(client):
             is_active=True,
             created_at="2025-01-01T00:00:00",
         )
-        mock_controller.get_representative_by_dni = MagicMock(return_value=mock_result)
+        mock_controller.get_representative_by_dni = AsyncMock(return_value=mock_result)
 
         response = await client.get("/api/v1/representatives/by-dni/1710034065")
 
@@ -252,7 +252,7 @@ async def test_get_representative_by_dni_not_found(client):
     with patch(
         "app.services.routers.representative_router.representative_controller"
     ) as mock_controller:
-        mock_controller.get_representative_by_dni = MagicMock(return_value=None)
+        mock_controller.get_representative_by_dni = AsyncMock(return_value=None)
 
         response = await client.get("/api/v1/representatives/by-dni/9999999999")
 
@@ -363,8 +363,8 @@ async def test_get_representative_by_dni_app_exception(client):
     with patch(
         "app.services.routers.representative_router.representative_controller"
     ) as mock_controller:
-        mock_controller.get_representative_by_dni.side_effect = AppException(
-            message="Error", status_code=400
+        mock_controller.get_representative_by_dni = AsyncMock(
+            side_effect=AppException(message="Error", status_code=400)
         )
 
         response = await client.get("/api/v1/representatives/by-dni/1234567890")
@@ -378,7 +378,9 @@ async def test_get_representative_by_dni_unexpected_exception(client):
     with patch(
         "app.services.routers.representative_router.representative_controller"
     ) as mock_controller:
-        mock_controller.get_representative_by_dni.side_effect = Exception("Error")
+        mock_controller.get_representative_by_dni = AsyncMock(
+            side_effect=Exception("Error")
+        )
 
         response = await client.get("/api/v1/representatives/by-dni/1234567890")
 

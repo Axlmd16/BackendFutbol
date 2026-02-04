@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional
+import asyncio
+from typing import Any, ClassVar, Dict, List, Optional
 
 import httpx
 
@@ -8,36 +9,71 @@ from app.utils.exceptions import ExternalServiceException, ValidationException
 
 auth_service = PersonAuthService()
 
+# Límites de conexión para el pool HTTP
+HTTP_LIMITS = httpx.Limits(
+    max_keepalive_connections=20,  # Conexiones persistentes
+    max_connections=50,  # Máximo total de conexiones
+    keepalive_expiry=30,  # Segundos antes de cerrar conexión idle
+)
+
+# Semáforo global para limitar concurrencia al microservicio
+_ms_semaphore: Optional[asyncio.Semaphore] = None
+
+
+def get_ms_semaphore(max_concurrent: int = 20) -> asyncio.Semaphore:
+    """Obtiene o crea el semáforo para limitar concurrencia."""
+    global _ms_semaphore
+    if _ms_semaphore is None:
+        _ms_semaphore = asyncio.Semaphore(max_concurrent)
+    return _ms_semaphore
+
 
 class PersonClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 10.0):
+    # Cliente HTTP compartido (singleton por clase)
+    _shared_client: ClassVar[Optional[httpx.AsyncClient]] = None
+
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 15.0):
         self.base_url = base_url or settings.PERSON_MS_BASE_URL
         self.timeout = timeout
+
+    @classmethod
+    def get_shared_client(cls, base_url: str, timeout: float) -> httpx.AsyncClient:
+        """Obtiene o crea un cliente HTTP compartido para reutilizar conexiones."""
+        if cls._shared_client is None or cls._shared_client.is_closed:
+            cls._shared_client = httpx.AsyncClient(
+                base_url=base_url,
+                timeout=timeout,
+                limits=HTTP_LIMITS,
+            )
+        return cls._shared_client
 
     async def _authorized_request(self, method: str, url: str, **kwargs) -> Any:
         """
         Realiza una petición autenticada al MS de usuarios.
         Maneja errores de conexión y autenticación.
+        Usa un semáforo para limitar concurrencia y un cliente HTTP compartido.
         """
-        try:
-            token = auth_service.token or await auth_service.login()
-        except (
-            httpx.ConnectError,
-            httpx.TimeoutException,
-            httpx.ConnectTimeout,
-        ) as e:
-            raise ExternalServiceException(
-                "El servicio de usuarios no está disponible. "
-                "Por favor, intente nuevamente más tarde."
-            ) from e
+        semaphore = get_ms_semaphore()
 
-        headers = kwargs.pop("headers", {})
-        headers["Authorization"] = token
+        async with semaphore:  # Limitar concurrencia
+            try:
+                token = auth_service.token or await auth_service.login()
+            except (
+                httpx.ConnectError,
+                httpx.TimeoutException,
+                httpx.ConnectTimeout,
+            ) as e:
+                raise ExternalServiceException(
+                    "El servicio de usuarios no está disponible. "
+                    "Por favor, intente nuevamente más tarde."
+                ) from e
 
-        try:
-            async with httpx.AsyncClient(
-                base_url=self.base_url, timeout=self.timeout
-            ) as client:
+            headers = kwargs.pop("headers", {})
+            headers["Authorization"] = token
+
+            try:
+                # Usar cliente compartido para reutilizar conexiones
+                client = self.get_shared_client(self.base_url, self.timeout)
                 resp = await client.request(method, url, headers=headers, **kwargs)
 
                 if resp.status_code == 401:
@@ -89,15 +125,15 @@ class PersonClient:
 
                 return resp.json()
 
-        except (
-            httpx.ConnectError,
-            httpx.TimeoutException,
-            httpx.ConnectTimeout,
-        ) as e:
-            raise ExternalServiceException(
-                "El servicio de usuarios no está disponible. "
-                "Por favor, intente nuevamente más tarde."
-            ) from e
+            except (
+                httpx.ConnectError,
+                httpx.TimeoutException,
+                httpx.ConnectTimeout,
+            ) as e:
+                raise ExternalServiceException(
+                    "El servicio de usuarios no está disponible. "
+                    "Por favor, intente nuevamente más tarde."
+                ) from e
 
     async def create_person(self, data: Dict[str, Any]) -> Dict[str, Any]:
         return await self._authorized_request("POST", "/api/person/save", json=data)
