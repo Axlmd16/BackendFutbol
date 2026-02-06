@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  # 1. Microservicio principal (Backend de Fútbol)
+  backend-futbol:
+    image: axlmd/backend-futbol:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: "postgres-db"
+      DB_PORT: "5432"
+      DB_USER: "ci_user"
+      DB_PASSWORD: "ci_password"
+      DB_NAME: "futbol_prod_db"
+      JWT_SECRET: "super-secret-key-for-production-change-me"
+      PERSON_MS_BASE_URL: "http://app:8096"
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
+      FRONTEND_URL: "http://localhost:5173"
+    depends_on:
+      - postgres-db
+      - app
+
+  # 2. Base de datos (Postgres)
+  postgres-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ci_user
+      POSTGRES_PASSWORD: ci_password
+      POSTGRES_DB: futbol_prod_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 3. Microservicio externo (Usuarios)
+  app:
+    image: joseguaman1/users-docker:v1
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/sportDB
+      SPRING_DATASOURCE_USERNAME: desarrollo
+      SPRING_DATASOURCE_PASSWORD: desarrollo
+      SERVER_PORT: 8096
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # 4. Base de datos externa (MariaDB)
+  mariadb:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: sportDB
+      MARIADB_USER: desarrollo
+      MARIADB_PASSWORD: desarrollo
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  mariadb_data:
