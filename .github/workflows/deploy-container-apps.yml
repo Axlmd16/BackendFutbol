@@ -6,9 +6,9 @@ on:
   workflow_dispatch: # Permite ejecutar manualmente
 
 env:
-  AZURE_CONTAINER_ENVIRONMENT: "kallpa-futbol-env"   # Tu Container Apps Environment
-  RESOURCE_GROUP: "kallpa-futbol-rg"                 # Tu Resource Group
-  LOCATION: "westus3"                                 # West US 3
+  AZURE_CONTAINER_ENVIRONMENT: "kallpa-futbol-env" # Tu Container Apps Environment
+  RESOURCE_GROUP: "kallpa-futbol-rg" # Tu Resource Group
+  LOCATION: "westus3" # West US 3
 
 jobs:
   build-and-push:
@@ -51,10 +51,10 @@ jobs:
           ingress: internal
           imageToDeploy: mariadb:11
           environmentVariables: |
-            MARIADB_ROOT_PASSWORD=secretref:mariadb-root-password
+            MARIADB_ROOT_PASSWORD=${{ secrets.MARIADB_ROOT_PASSWORD }}
             MARIADB_DATABASE=sportDB
             MARIADB_USER=desarrollo
-            MARIADB_PASSWORD=secretref:mariadb-password
+            MARIADB_PASSWORD=${{ secrets.MARIADB_PASSWORD }}
 
       # 2. Crear/Actualizar PostgreSQL Container App
       - name: Deploy PostgreSQL
@@ -68,7 +68,7 @@ jobs:
           imageToDeploy: postgres:15
           environmentVariables: |
             POSTGRES_USER=ci_user
-            POSTGRES_PASSWORD=secretref:postgres-password
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             POSTGRES_DB=futbol_prod_db
 
       # 3. Crear/Actualizar Users Microservice
@@ -84,7 +84,7 @@ jobs:
           environmentVariables: |
             SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/sportDB
             SPRING_DATASOURCE_USERNAME=desarrollo
-            SPRING_DATASOURCE_PASSWORD=secretref:mariadb-password
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.MARIADB_PASSWORD }}
             SERVER_PORT=8096
 
       # 4. Crear/Actualizar Backend Principal
@@ -101,9 +101,9 @@ jobs:
             DB_HOST=postgres-db
             DB_PORT=5432
             DB_USER=ci_user
-            DB_PASSWORD=secretref:postgres-password
+            DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             DB_NAME=futbol_prod_db
-            JWT_SECRET=secretref:jwt-secret
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
             PERSON_MS_BASE_URL=http://users-ms:8096
             ALLOWED_ORIGINS=["http://localhost:3000","http://localhost:5173"]
             FRONTEND_URL=http://localhost:5173
