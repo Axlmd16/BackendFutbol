@@ -1,9 +1,10 @@
-name: Deploy to Azure Container Apps
+name: Deploy to Azure Container Apps (DISABLED)
+
+# ⚠️ DISABLED - Using deploy-aci.yml instead
+# Container Apps doesn't work well with databases (TCP)
 
 on:
-  push:
-    branches: ["main"]
-  workflow_dispatch: # Permite ejecutar manualmente
+  workflow_dispatch: # Solo manual, deshabilitado el push automático
 
 env:
   AZURE_CONTAINER_ENVIRONMENT: "kallpa-futbol-env" # Tu Container Apps Environment
@@ -49,12 +50,14 @@ jobs:
           containerAppEnvironment: ${{ env.AZURE_CONTAINER_ENVIRONMENT }}
           targetPort: 3306
           ingress: internal
+          disableIngress: false
           imageToDeploy: mariadb:11
           environmentVariables: |
             MARIADB_ROOT_PASSWORD=${{ secrets.MARIADB_ROOT_PASSWORD }}
             MARIADB_DATABASE=sportDB
             MARIADB_USER=desarrollo
             MARIADB_PASSWORD=${{ secrets.MARIADB_PASSWORD }}
+            MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=no
 
       # 2. Crear/Actualizar PostgreSQL Container App
       - name: Deploy PostgreSQL
@@ -65,11 +68,16 @@ jobs:
           containerAppEnvironment: ${{ env.AZURE_CONTAINER_ENVIRONMENT }}
           targetPort: 5432
           ingress: internal
+          disableIngress: false
           imageToDeploy: postgres:15
           environmentVariables: |
             POSTGRES_USER=ci_user
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             POSTGRES_DB=futbol_prod_db
+
+      # Esperar a que las bases de datos estén listas
+      - name: Wait for databases to be ready
+        run: sleep 60
 
       # 3. Crear/Actualizar Users Microservice
       - name: Deploy Users MS
@@ -82,7 +90,7 @@ jobs:
           ingress: internal
           imageToDeploy: joseguaman1/users-docker:v1
           environmentVariables: |
-            SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/sportDB
+            SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb.internal.${{ env.AZURE_CONTAINER_ENVIRONMENT }}.westus3.azurecontainerapps.io:3306/sportDB
             SPRING_DATASOURCE_USERNAME=desarrollo
             SPRING_DATASOURCE_PASSWORD=${{ secrets.MARIADB_PASSWORD }}
             SERVER_PORT=8096
@@ -98,12 +106,12 @@ jobs:
           ingress: external
           imageToDeploy: axlmd/backend-futbol:${{ github.sha }}
           environmentVariables: |
-            DB_HOST=postgres-db
+            DB_HOST=postgres-db.internal.${{ env.AZURE_CONTAINER_ENVIRONMENT }}.westus3.azurecontainerapps.io
             DB_PORT=5432
             DB_USER=ci_user
             DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             DB_NAME=futbol_prod_db
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PERSON_MS_BASE_URL=http://users-ms:8096
+            PERSON_MS_BASE_URL=http://users-ms.internal.${{ env.AZURE_CONTAINER_ENVIRONMENT }}.westus3.azurecontainerapps.io:8096
             ALLOWED_ORIGINS=["http://localhost:3000","http://localhost:5173"]
             FRONTEND_URL=http://localhost:5173

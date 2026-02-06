@@ -1,0 +1,188 @@
+name: Deploy to Azure Container Instances
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  RESOURCE_GROUP: "kallpa-futbol-rg"
+  LOCATION: "westus3"
+  CONTAINER_GROUP_NAME: "kallpa-futbol-group"
+  DNS_LABEL: "kallpa-futbol-api"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: axlmd/backend-futbol:${{ github.sha }},axlmd/backend-futbol:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Delete existing container group
+        run: |
+          az container delete \
+            --name ${{ env.CONTAINER_GROUP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --yes 2>/dev/null || echo "No existing container group to delete"
+
+      - name: Wait for deletion
+        run: sleep 15
+
+      - name: Prepare deployment file
+        run: |
+          cat > azure-deploy-resolved.yaml << EOF
+          apiVersion: '2021-10-01'
+          location: ${{ env.LOCATION }}
+          name: ${{ env.CONTAINER_GROUP_NAME }}
+          properties:
+            osType: Linux
+            restartPolicy: Always
+            ipAddress:
+              type: Public
+              dnsNameLabel: ${{ env.DNS_LABEL }}
+              ports:
+                - protocol: TCP
+                  port: 8000
+            containers:
+              - name: postgres-db
+                properties:
+                  image: postgres:15
+                  resources:
+                    requests:
+                      cpu: 0.5
+                      memoryInGB: 1
+                  ports:
+                    - port: 5432
+                  environmentVariables:
+                    - name: POSTGRES_USER
+                      value: ci_user
+                    - name: POSTGRES_PASSWORD
+                      secureValue: "${{ secrets.POSTGRES_PASSWORD }}"
+                    - name: POSTGRES_DB
+                      value: futbol_prod_db
+              - name: mariadb
+                properties:
+                  image: mariadb:11
+                  resources:
+                    requests:
+                      cpu: 0.5
+                      memoryInGB: 1
+                  ports:
+                    - port: 3306
+                  environmentVariables:
+                    - name: MARIADB_ROOT_PASSWORD
+                      secureValue: "${{ secrets.MARIADB_ROOT_PASSWORD }}"
+                    - name: MARIADB_DATABASE
+                      value: sportDB
+                    - name: MARIADB_USER
+                      value: desarrollo
+                    - name: MARIADB_PASSWORD
+                      secureValue: "${{ secrets.MARIADB_PASSWORD }}"
+              - name: users-ms
+                properties:
+                  image: joseguaman1/users-docker:v1
+                  resources:
+                    requests:
+                      cpu: 0.5
+                      memoryInGB: 1
+                  ports:
+                    - port: 8096
+                  environmentVariables:
+                    - name: SPRING_DATASOURCE_URL
+                      value: jdbc:mariadb://localhost:3306/sportDB
+                    - name: SPRING_DATASOURCE_USERNAME
+                      value: desarrollo
+                    - name: SPRING_DATASOURCE_PASSWORD
+                      secureValue: "${{ secrets.MARIADB_PASSWORD }}"
+                    - name: SERVER_PORT
+                      value: "8096"
+              - name: backend-futbol
+                properties:
+                  image: axlmd/backend-futbol:${{ github.sha }}
+                  resources:
+                    requests:
+                      cpu: 0.5
+                      memoryInGB: 1
+                  ports:
+                    - port: 8000
+                  environmentVariables:
+                    - name: DB_HOST
+                      value: localhost
+                    - name: DB_PORT
+                      value: "5432"
+                    - name: DB_USER
+                      value: ci_user
+                    - name: DB_PASSWORD
+                      secureValue: "${{ secrets.POSTGRES_PASSWORD }}"
+                    - name: DB_NAME
+                      value: futbol_prod_db
+                    - name: JWT_SECRET
+                      secureValue: "${{ secrets.JWT_SECRET }}"
+                    - name: PERSON_MS_BASE_URL
+                      value: http://localhost:8096
+                    - name: ALLOWED_ORIGINS
+                      value: '["http://localhost:3000","http://localhost:5173"]'
+                    - name: FRONTEND_URL
+                      value: http://localhost:5173
+          EOF
+
+      - name: Deploy Container Group
+        run: |
+          az container create \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --file azure-deploy-resolved.yaml
+
+      - name: Wait for containers to start
+        run: sleep 60
+
+      - name: Get deployment info
+        run: |
+          FQDN=$(az container show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.CONTAINER_GROUP_NAME }} \
+            --query ipAddress.fqdn \
+            --output tsv)
+          
+          IP=$(az container show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.CONTAINER_GROUP_NAME }} \
+            --query ipAddress.ip \
+            --output tsv)
+          
+          STATE=$(az container show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.CONTAINER_GROUP_NAME }} \
+            --query instanceView.state \
+            --output tsv)
+          
+          echo "=============================================="
+          echo "🚀 DEPLOYMENT COMPLETE!"
+          echo "=============================================="
+          echo "📊 State: $STATE"
+          echo "🌐 API URL: http://$FQDN:8000"
+          echo "📚 Swagger Docs: http://$FQDN:8000/docs"
+          echo "🔗 IP Address: $IP"
+          echo "=============================================="
