@@ -66,6 +66,8 @@ jobs:
               ports:
                 - protocol: TCP
                   port: 8000
+                - protocol: TCP
+                  port: 80
             containers:
               - name: postgres-db
                 properties:
@@ -144,9 +146,18 @@ jobs:
                     - name: PERSON_MS_BASE_URL
                       value: http://localhost:8096
                     - name: ALLOWED_ORIGINS
-                      value: '["http://localhost:3000","http://localhost:5173"]'
+                      value: '["http://localhost:3000","http://localhost:5173","http://${{ env.DNS_LABEL }}.${{ env.LOCATION }}.azurecontainer.io"]'
                     - name: FRONTEND_URL
-                      value: http://localhost:5173
+                      value: http://${{ env.DNS_LABEL }}.${{ env.LOCATION }}.azurecontainer.io
+              - name: frontend
+                properties:
+                  image: axlmd/frontend-futbol:latest
+                  resources:
+                    requests:
+                      cpu: 0.25
+                      memoryInGB: 0.5
+                  ports:
+                    - port: 80
           EOF
 
       - name: Deploy Container Group
@@ -182,7 +193,4 @@ jobs:
           echo "🚀 DEPLOYMENT COMPLETE!"
           echo "=============================================="
           echo "📊 State: $STATE"
-          echo "🌐 API URL: http://$FQDN:8000"
-          echo "📚 Swagger Docs: http://$FQDN:8000/docs"
-          echo "🔗 IP Address: $IP"
-          echo "=============================================="
+          echo "🌐 Frontend URL: http://$FQDN"
