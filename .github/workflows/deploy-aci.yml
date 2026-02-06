@@ -165,19 +165,19 @@ jobs:
             --name ${{ env.CONTAINER_GROUP_NAME }} \
             --query ipAddress.fqdn \
             --output tsv)
-          
+
           IP=$(az container show \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.CONTAINER_GROUP_NAME }} \
             --query ipAddress.ip \
             --output tsv)
-          
+
           STATE=$(az container show \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.CONTAINER_GROUP_NAME }} \
             --query instanceView.state \
             --output tsv)
-          
+
           echo "=============================================="
           echo "🚀 DEPLOYMENT COMPLETE!"
           echo "=============================================="
